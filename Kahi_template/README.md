@@ -5,12 +5,12 @@ This is a template for xyz project
 replace template for the name of the plugin everywhere.
 
 # Description
-Write something meaningful her ;)
+Write something meaningful here ;)
 
 # Installation
 
 ## Dependencies
-What do I need fot this plugin, it could be external services etc..
+What do I need fot this plugin?, it could be external services etc..
 
 ## Package
 Write here how to install this plugin
