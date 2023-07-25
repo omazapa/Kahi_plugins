@@ -30,6 +30,10 @@ class Kahi_scimago_sources(KahiBase):
         del (entry["_id"])
         ids = [extid["id"] for extid in entry["external_ids"]]
         entry["updated"].append({"source": "scimago", "time": int(time())})
+        for name in entry["names"]:
+            if name == reg["title"]:
+                entry["names"].append(
+                    {"lang": "en", "name": reg["title"], "source": "scimago"})
         entry["external_ids"].append(
             {"source": "scimago", "id": str(sjr["Sourceid"])})
         entry["types"].append({"source": "scimago", "type": sjr["Type"]})
@@ -109,7 +113,7 @@ class Kahi_scimago_sources(KahiBase):
                 entry["external_ids"] = ext_ids
                 entry["external_ids"].append(
                     {"source": "scimago", "id": int(sjr["Sourceid"])})
-                entry["names"] = [{"lang": "en", "name": sjr["Title"]}]
+                entry["names"] = [{"lang": "en", "name": sjr["Title"],"source":"scimago"}]
                 country = None
                 try:
                     if sjr["Country"] == "United States":
