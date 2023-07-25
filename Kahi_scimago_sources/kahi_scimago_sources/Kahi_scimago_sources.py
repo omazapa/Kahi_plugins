@@ -35,7 +35,7 @@ class Kahi_scimago_sources(KahiBase):
         entry["types"].append({"source": "scimago", "type": sjr["Type"]})
         for extid in sjr["Issn"].split(","):
             extid = extid.strip()
-            extid = extid[:4]+"-"+extid[4:]
+            extid = extid[:4] + "-" + extid[4:]
             if extid not in ids:
                 entry["external_ids"].append({"source": "issn", "id": extid})
         entry["ranking"].append({
@@ -87,7 +87,7 @@ class Kahi_scimago_sources(KahiBase):
             found_issn = None
             for issn in issn_list.split(","):
                 issn = issn.strip()
-                extid = issn[:4]+"-"+issn[4:]
+                extid = issn[:4] + "-" + issn[4:]
                 db_reg = self.collection.find_one({"external_ids.id": extid})
                 if db_reg:
                     found_issn = issn
