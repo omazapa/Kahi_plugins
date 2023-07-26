@@ -195,7 +195,7 @@ class Kahi_doaj_sources(KahiBase):
                 if verbose > 0:
                     print("Total inserted: ", len(self.already_in_db))
 
-                delta = dt.datetime.now()-old
+                delta = dt.datetime.now() - old
                 if delta.seconds > 240:
                     self.doaj_client.admin.command(
                         'refreshSessions', [session.session_id], session=session)
