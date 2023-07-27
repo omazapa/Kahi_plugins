@@ -1,5 +1,6 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient
+from datetime import datetime as dt
 from time import time
 from pandas import read_csv
 import iso3166
@@ -19,56 +20,82 @@ class Kahi_scimago_sources(KahiBase):
         self.db = self.client[config["database_name"]]
         self.collection = self.db["sources"]
 
-        self.scimago_file_path = self.config["scimago_sources"]["file_path"]
-        self.scimago = read_csv(self.scimago_file_path,
-                                sep=";", dtype={"Sourceid": str})
+        self.scimago_file_paths = self.config["scimago_sources"]["file_path"]
 
         self.already_in_db = []
 
     def update_scimago(self, sjr, entry):
         _id = entry["_id"]
         del (entry["_id"])
-        ids = [extid["id"] for extid in entry["external_ids"]]
-        entry["updated"].append({"source": "scimago", "time": int(time())})
+
+        for upd in entry["updated"]:
+            if upd["source"] == "scimago":
+                entry["updated"].remove(upd)
+                entry["updated"].append(
+                    {"source": "scimago", "time": int(time())})
+                break
         for name in entry["names"]:
-            if name == reg["title"]:
-                entry["names"].append(
-                    {"lang": "en", "name": reg["title"], "source": "scimago"})
-        entry["external_ids"].append(
-            {"source": "scimago", "id": str(sjr["Sourceid"])})
-        entry["types"].append({"source": "scimago", "type": sjr["Type"]})
+            if name == sjr["Title"]:
+                if name["source"] != "scimago":
+                    entry["names"].append(
+                        {"lang": "en", "name": sjr["Title"], "source": "scimago"})
+        found_scimagoid = False
+        for ext in entry["external_ids"]:
+            if ext["source"] == "scimago":
+                found_scimagoid = True
+                break
+        if not found_scimagoid:
+            entry["external_ids"].append(
+                {"source": "scimago", "id": str(sjr["Sourceid"])})
+        found_scimago_type = False
+        for typ in entry["types"]:
+            if typ["source"] == "scimago":
+                found_scimago_type = True
+                break
+        if not found_scimago_type:
+            entry["types"].append({"source": "scimago", "type": sjr["Type"]})
+
+        ids = [extid["id"] for extid in entry["external_ids"]]
         for extid in sjr["Issn"].split(","):
             extid = extid.strip()
             extid = extid[:4] + "-" + extid[4:]
             if extid not in ids:
                 entry["external_ids"].append({"source": "issn", "id": extid})
-        entry["ranking"].append({
-            "to_date": 1640995199,
-            "from_date": 1640995199,
-            "rank": sjr["SJR Best Quartile"],
-            "order": int(sjr["Rank"]) if sjr["Rank"] else None,
-            "source": "scimago Best Quartile"
-        })
-        entry["ranking"].append({
-            "to_date": 1640995199,
-            "from_date": 1640995199,
-            "rank": int(sjr["H index"]),
-            "order": int(sjr["Rank"]) if sjr["Rank"] else None,
-            "source": "scimago hindex"
-        })
-        if sjr["SJR"]:
-            rank = ""
-            if isinstance(sjr["SJR"], str):
-                rank = float(sjr["SJR"].replace(",", "."))
-            else:
-                rank = sjr["SJR"]
+
+        rankings = [(rank["source"], rank["from_date"], rank["to_date"])
+                    for rank in entry["ranking"]]
+
+        if ("scimago Best Quartile", self.scimago_start_ts, self.scimago_end_ts) not in rankings:
             entry["ranking"].append({
-                "to_date": 1640995199,
-                "from_date": 1640995199,
-                "rank": rank,
+                "to_date": self.scimago_end_ts,
+                "from_date": self.scimago_start_ts,
+                "rank": sjr["SJR Best Quartile"],
                 "order": int(sjr["Rank"]) if sjr["Rank"] else None,
-                "source": "scimago"
+                "source": "scimago Best Quartile"
             })
+        if ("scimago hindex", self.scimago_start_ts, self.scimago_end_ts) not in rankings:
+            entry["ranking"].append({
+                "to_date": self.scimago_end_ts,
+                "from_date": self.scimago_start_ts,
+                "rank": int(sjr["H index"]),
+                "order": int(sjr["Rank"]) if sjr["Rank"] else None,
+                "source": "scimago hindex"
+            })
+        if ("scimago", self.scimago_start_ts, self.scimago_end_ts) not in rankings:
+            if sjr["SJR"]:
+                rank = ""
+                if isinstance(sjr["SJR"], str):
+                    rank = float(sjr["SJR"].replace(",", "."))
+                else:
+                    rank = sjr["SJR"]
+                entry["ranking"].append({
+                    "to_date": self.scimago_end_ts,
+                    "from_date": self.scimago_start_ts,
+                    "rank": rank,
+                    "order": int(sjr["Rank"]) if sjr["Rank"] else None,
+                    "source": "scimago"
+                })
+
         scimago_subjects = []
         for cat in sjr["Categories"].split(";"):
             scimago_subjects.append({
@@ -77,10 +104,23 @@ class Kahi_scimago_sources(KahiBase):
                 "level": None,
                 "external_ids": []
             })
-        entry["subjects"].append({
-            "source": "scimago",
-            "subjects": scimago_subjects
-        })
+        found_scimago_subjects = False
+        scimago_subjetcs_index = -1
+        for sub in entry["subjects"]:
+            if sub["source"] == "scimago":
+                found_scimago_subjects = True
+                break
+        if found_scimago_subjects:
+            for sub in scimago_subjects:
+                if sub not in entry["subjects"][scimago_subjetcs_index]["subjects"]:
+                    entry["subjects"][scimago_subjetcs_index]["subjects"].append(
+                        sub)
+        else:
+            entry["subjects"].append({
+                "source": "scimago",
+                "subjects": scimago_subjects
+            })
+
         self.collection.update_one({"_id": _id}, {"$set": entry})
 
     def process_scimago(self):
@@ -113,7 +153,8 @@ class Kahi_scimago_sources(KahiBase):
                 entry["external_ids"] = ext_ids
                 entry["external_ids"].append(
                     {"source": "scimago", "id": int(sjr["Sourceid"])})
-                entry["names"] = [{"lang": "en", "name": sjr["Title"],"source":"scimago"}]
+                entry["names"] = [
+                    {"lang": "en", "name": sjr["Title"], "source":"scimago"}]
                 country = None
                 try:
                     if sjr["Country"] == "United States":
@@ -136,8 +177,12 @@ class Kahi_scimago_sources(KahiBase):
                         sjr["Country"] = "North Macedonia"
                     elif sjr["Country"] == "Palestine":
                         sjr["Country"] = "Palestine, State of"
+                    elif sjr["Country"] == "Vatican City State":
+                        sjr["Country"] = "Holy See"
                     elif sjr["Country"] == "Tanzania":
                         sjr["Country"] = "Tanzania, United Republic of"
+                    elif sjr["Country"] == "Bolivia":
+                        sjr["Country"] = "Bolivia, Plurinational State of"
 
                     country = iso3166.countries_by_name.get(
                         sjr["Country"].upper()).alpha2
@@ -189,5 +234,14 @@ class Kahi_scimago_sources(KahiBase):
                 self.collection.insert_one(entry)
 
     def run(self):
-        self.process_scimago()
+        for filename in self.scimago_file_paths:
+            self.scimago_year = int(
+                filename.replace(".csv", "").split(" ")[-1])
+            self.scimago_start_ts = dt.strptime(
+                "01 01 " + str(self.scimago_year), "%d %m %Y").timestamp()
+            self.scimago_end_ts = dt.strptime(
+                "31 12 " + str(self.scimago_year), "%d %m %Y").timestamp()
+            self.scimago = read_csv(filename,
+                                    sep=";", dtype={"Sourceid": str})
+            self.process_scimago()
         return 0
