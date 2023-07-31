@@ -1,0 +1,2 @@
+recursive-include kahi_scienti_sources/ *.py
+recursive-include kahi_scienti_sources/ *.*
