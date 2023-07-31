@@ -107,7 +107,7 @@ class Kahi_scienti_sources(KahiBase):
                         {"source": "scienti", "time": int(time())}]
                     lang = classify(journal["TXT_NME_REVISTA"])[0]
                     entry["names"] = [
-                        {"lang": lang, "name": journal["TXT_NME_REVISTA"], "source":"scienti"}]
+                        {"lang": lang, "name": journal["TXT_NME_REVISTA"], "source": "scienti"}]
                     entry["external_ids"].append(
                         {"source": "issn", "id": journal["TXT_ISSN_SEP"]})
                     entry["external_ids"].append(
