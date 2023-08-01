@@ -4,7 +4,7 @@
 Kahi will use this plugin to insert or update the journal information from scimago
 
 # Description
-Plungin that reads the information from scimago ranking csv file to update or insert the information of the journals in CoLav's database format.
+Plugin that reads the information from scimago ranking csv file to update or insert the information of the journals in CoLav's database format.
 
 # Installation
 You could download the repository from github. Go into the folder where the setup.py is located and run
@@ -18,7 +18,7 @@ pip3 install kahi_scimago_sources
 
 ## Dependencies
 Software dependencies will automatically be installed when installing the plugin.
-The user must have at least one file fomr scimago report of journal rankings that can be downloaded from [scimago website](https://www.scimagojr.com/journalrank.php "Scimago journal rankings")
+The user must have at least one file fomr scimago report of journal rankings that can be downloaded from [scimago website](https://www.scimagojr.com/journalrank.php "Scimago journal rankings"). The file **MUST** be named as the download from scimago suggests i.e. scimagojr 2023.csv
 
 # Usage
 To use this plugin you must have kahi installed in your system and construct a yaml file such as

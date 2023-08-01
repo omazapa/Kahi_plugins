@@ -177,6 +177,8 @@ class Kahi_scimago_sources(KahiBase):
                         sjr["Country"] = "North Macedonia"
                     elif sjr["Country"] == "Palestine":
                         sjr["Country"] = "Palestine, State of"
+                    elif sjr["Country"] == "Turkey":
+                        sjr["Country"] = "Türkiye"
                     elif sjr["Country"] == "Vatican City State":
                         sjr["Country"] = "Holy See"
                     elif sjr["Country"] == "Tanzania":
