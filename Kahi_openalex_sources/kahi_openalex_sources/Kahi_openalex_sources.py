@@ -110,7 +110,7 @@ class Kahi_openalex_sources(KahiBase):
 
                     self.collection.insert_one(entry)
                     self.already_processed.append(source["id"])
-                delta = dt.now()-old
+                delta = dt.now() - old
                 if delta.seconds > 240:
                     self.openalex_client.admin.command(
                         'refreshSessions', [session.session_id], session=session)
