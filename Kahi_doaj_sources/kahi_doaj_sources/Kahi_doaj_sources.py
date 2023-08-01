@@ -77,7 +77,7 @@ class Kahi_doaj_sources(KahiBase):
                     sub_entry = {
                         "id": "",
                         "name": sub["term"],
-                        "external_ids": [{"source": sub["scheme"], "id":sub["code"]}]
+                        "external_ids": [{"source": sub["scheme"], "id": sub["code"]}]
                     }
                     if sub["scheme"] in subjects_source.keys():
                         subjects_source[sub["scheme"]].append(
@@ -138,7 +138,7 @@ class Kahi_doaj_sources(KahiBase):
                 entry = self.empty_source()
                 entry["updated"] = [{"source": "doaj", "time": int(time())}]
                 entry["names"] = [
-                    {"lang": "en", "name": reg["title"], "source":"doaj"}]
+                    {"lang": "en", "name": reg["title"], "source": "doaj"}]
                 entry["keywords"] = reg["keywords"]
                 entry["languages"] = reg["language"]
                 entry["publisher"] = {"country_code": reg["publisher"]
@@ -165,7 +165,7 @@ class Kahi_doaj_sources(KahiBase):
                             sub_entry = {
                                 "id": "",
                                 "name": sub["term"],
-                                "external_ids": [{"source": sub["scheme"], "id":sub["code"]}]
+                                "external_ids": [{"source": sub["scheme"], "id": sub["code"]}]
                             }
                             if sub["scheme"] in subjects_source.keys():
                                 subjects_source[sub["scheme"]].append(
