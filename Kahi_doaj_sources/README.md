@@ -1,36 +1,39 @@
 <center><img src="https://raw.githubusercontent.com/colav/colav.github.io/master/img/Logo.png"/></center>
 
-# Kahi template plugin 
-This is a template for xyz project
-replace template for the name of the plugin everywhere.
+# Kahi scimago sources plugin 
+Kahi will use this plugin to insert or update the journal information from DOAJ
 
 # Description
-Write something meaningful here ;)
+Plungin that reads the information from a mongodb collection with doaj json information to update or insert the information of the journals in CoLav's database format.
 
 # Installation
+You could download the repository from github. Go into the folder where the setup.py is located and run
+```shell
+pip3 install .
+```
+From the package you can install by running
+```shell
+pip3 install kahi_doaj_sources
+```
 
 ## Dependencies
-What do I need fot this plugin?, it could be external services etc..
-
-## Package
-Write here how to install this plugin
-usauly is 
-
-`pip install kahi_template`
-
+Software dependencies will automatically be installed when installing the plugin.
+The user must have a copy of the DOAJ dump which can be downloaded at [DOAJ data dump website](https://doaj.org/docs/public-data-dump/ "SDOAJ data dump website") and import it on a mongodb database.
 
 # Usage
-what should I know?
-put it here.
-
-Additional parameters for kahi_run in the workflow should be here as well.
-example :
-
+To use this plugin you must have kahi installed in your system and construct a yaml file such as
+```yaml
+config:
+  database_url: localhost:27017
+  database_name: kahi
+  log_database: kahi_log
+  log_collection: log
+workflow:
+  doaj_sources:
+    database_url: localhost:27017
+    database_name: doaj
+    collection_name: stage
 ```
-template:
-    -   my_param_example: value
-```
-Those parameters are not really needed in the workflow file, it is just for illustration.
 
 
 # License
@@ -38,6 +41,7 @@ BSD-3-Clause License
 
 # Links
 http://colav.udea.edu.co/
+
 
 
 
