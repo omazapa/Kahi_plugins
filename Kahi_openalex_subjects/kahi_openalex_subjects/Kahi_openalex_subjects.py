@@ -1,7 +1,6 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient
 from time import time
-import datetime as dt
 from joblib import Parallel, delayed
 
 
@@ -90,7 +89,8 @@ class Kahi_openalex_subjects(KahiBase):
                     self.relations_inserted_ids.append(oa_id)
 
     def process_openalex(self):
-        openalex_subjects = list(self.openalex_collection.find({"id": {"$nin": self.inserted_concepts}}))
+        openalex_subjects = list(self.openalex_collection.find(
+            {"id": {"$nin": self.inserted_concepts}}))
         for sub in openalex_subjects:
             if sub["id"] in self.inserted_concepts:
                 continue
@@ -140,7 +140,8 @@ class Kahi_openalex_subjects(KahiBase):
                 (response.inserted_id, sub["id"]))
 
     def process_relations(self):
-        openalex_data=list(self.openalex_collection.find({"id": {"$nin": self.relations_inserted_ids}},{"id":1,"ancestors":1,"related_concepts":1}))
+        openalex_data = list(self.openalex_collection.find(
+            {"id": {"$nin": self.relations_inserted_ids}}, {"id": 1, "ancestors": 1, "related_concepts": 1}))
         Parallel(
             n_jobs=self.n_jobs,
             backend="multiprocessing",
