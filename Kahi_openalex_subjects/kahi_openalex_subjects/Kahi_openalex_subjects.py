@@ -4,6 +4,50 @@ from time import time
 import datetime as dt
 from joblib import Parallel, delayed
 
+def process_relation(sub, url, db_name):
+        client = MongoClient(url)
+
+        db = client[db_name]
+        collection = db["subjects"]
+        relations = []
+        for rel in sub["related_concepts"]:
+            sub_db = collection.find_one(
+                {"external_ids.id": rel["id"]})
+            if sub_db:
+                name = sub_db["names"][0]["name"]
+                for n in sub_db["names"]:
+                    if n["lang"] == "en":
+                        name = n["name"]
+                        break
+                rel_entry = {
+                    "id": sub_db["_id"],
+                    "name": name,
+                    "level": sub_db["level"]
+                }
+                relations.append(rel_entry)
+            else:
+                print("Could not find related concept in colombia db")
+        for rel in sub["ancestors"]:
+            sub_db = collection.find_one(
+                {"external_ids.id": rel["id"]})
+            if sub_db:
+                name = sub_db["names"][0]["name"]
+                for n in sub_db["names"]:
+                    if n["lang"] == "en":
+                        name = n["name"]
+                        break
+                rel_entry = {
+                    "id": sub_db["_id"],
+                    "name": name,
+                    "level": sub_db["level"]
+                }
+                relations.append(rel_entry)
+            else:
+                print("Could not find related concept in colombia db")
+        if len(relations) > 0:
+            collection.update_one({"external_ids.id": sub["id"]}, {
+                "$set": {"relations": relations}})
+
 
 class Kahi_openalex_subjects(KahiBase):
 
@@ -105,57 +149,12 @@ class Kahi_openalex_subjects(KahiBase):
                         'refreshSessions', [session.session_id], session=session)
                     old = dt.datetime.now()
 
-    def process_relation(self, sub, url, db_name):
-        client = MongoClient(url)
-
-        db = client[db_name]
-        collection = db["subjects"]
-        relations = []
-        for rel in sub["related_concepts"]:
-            sub_db = self.collection.find_one(
-                {"external_ids.id": rel["id"]})
-            if sub_db:
-                name = sub_db["names"][0]["name"]
-                for n in sub_db["names"]:
-                    if n["lang"] == "en":
-                        name = n["name"]
-                        break
-                rel_entry = {
-                    "id": sub_db["_id"],
-                    "name": name,
-                    "level": sub_db["level"]
-                }
-                relations.append(rel_entry)
-            else:
-                print("Could not find related concept in colombia db")
-        for rel in sub["ancestors"]:
-            sub_db = collection.find_one(
-                {"external_ids.id": rel["id"]})
-            if sub_db:
-                name = sub_db["names"][0]["name"]
-                for n in sub_db["names"]:
-                    if n["lang"] == "en":
-                        name = n["name"]
-                        break
-                rel_entry = {
-                    "id": sub_db["_id"],
-                    "name": name,
-                    "level": sub_db["level"]
-                }
-                relations.append(rel_entry)
-            else:
-                print("Could not find related concept in colombia db")
-        if len(relations) > 0:
-            collection.update_one({"external_ids.id": sub["id"]}, {
-                "$set": {"relations": relations}})
-            # self.relations_inserted_ids.append(sub["id"])
-
     def process_relations(self):
         Parallel(
             n_jobs=self.n_jobs,
             backend="multiprocessing",
             verbose=10
-        )(delayed(self.process_relation)(sub, self.config["database_url"], self.config["database_name"]) for sub in self.openalex_collection.find({"id": {"$nin": self.relations_inserted_ids}}))
+        )(delayed(process_relation)(sub, self.config["database_url"], self.config["database_name"]) for sub in self.openalex_collection.find({"id": {"$nin": self.relations_inserted_ids}}))
 
     def run(self):
         # print("Inserting the subjects")
