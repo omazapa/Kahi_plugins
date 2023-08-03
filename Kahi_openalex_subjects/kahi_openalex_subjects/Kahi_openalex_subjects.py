@@ -65,8 +65,16 @@ class Kahi_openalex_subjects(KahiBase):
 
         self.openalex_client = MongoClient(
             config["openalex_subjects"]["database_url"])
+
+        if config["openalex_subjects"]["database_name"] not in list(self.openalex_client.list_database_names()):
+            raise Exception("Database not found in mongodb client")
+
         self.openalex_db = self.openalex_client[config["openalex_subjects"]
                                                 ["database_name"]]
+
+        if config["openalex_subjects"]["collection_name"] not in list(self.openalex_db.list_collection_names()):
+            raise Exception("Collection not found in openalex database")
+
         self.openalex_collection = self.openalex_db[config["openalex_subjects"]
                                                     ["collection_name"]]
 
