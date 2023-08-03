@@ -1,0 +1,2 @@
+recursive-include kahi_openalex_subjects/ *.py
+recursive-include kahi_openalex_subjects/ *.*
