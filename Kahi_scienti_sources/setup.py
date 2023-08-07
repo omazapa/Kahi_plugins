@@ -81,7 +81,8 @@ def main():
         # put you packages here
         install_requires=[
             'kahi',
-            'langid'
+            'langid',
+            'pymongo'
         ],
     )
 
