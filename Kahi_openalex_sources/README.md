@@ -1,7 +1,7 @@
 <center><img src="https://raw.githubusercontent.com/colav/colav.github.io/master/img/Logo.png"/></center>
 
 # Kahi OpenAlex sources plugin 
-Kahi will use this plugin to insert or update the journal information from DOAJ
+Kahi will use this plugin to insert or update the journal information from openalex
 
 # Description
 Plugin that reads the information from a mongodb collection with openalex information to update or insert the information of the journals in CoLav's database format.
@@ -29,11 +29,7 @@ config:
   log_database: kahi_log
   log_collection: log
 workflow:
-  doaj_sources:
-    database_url: localhost:27017
-    database_name: doaj
-    collection_name: stage
-openalex_sources:
+  openalex_sources:
     database_url: localhost:27017
     database_name: openalex
     collection_name: venues
