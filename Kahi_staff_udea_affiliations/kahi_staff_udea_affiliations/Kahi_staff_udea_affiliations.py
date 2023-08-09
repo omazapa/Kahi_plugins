@@ -2,7 +2,7 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from pandas import read_excel
-import time
+from time import time
 
 class Kahi_staff_udea_affiliations(KahiBase):
 
@@ -11,42 +11,22 @@ class Kahi_staff_udea_affiliations(KahiBase):
     def __init__(self, config):
         self.config = config
 
-        self.client=MongoClient(self.mongodb_url)
+        self.client=MongoClient(config["database_url"])
         
-        self.db=client[config["database_name"]]
-        self.collection=db["affiliations"]
+        self.db=self.client[config["database_name"]]
+        self.collection=self.db["affiliations"]
 
-        self.file_path=config["file_path"]
+        self.file_path=config["staff_udea_affiliations"]["file_path"]
         self.data=read_excel(self.file_path)
 
         #logs for higher verbosity
-        self.already_in_db=[]
         self.facs_inserted={}
         self.deps_inserted={}
         self.fac_dep=[]
 
-        udea_reg=self.collection.find_one({"names.name":"Universidad de Antioquia"})
-        if not udea_reg:
+        self.udea_reg=self.collection.find_one({"names.name":"University of Antioquia"})
+        if not self.udea_reg:
             raise Exception("University of Antioquia not found in database")
-
-    def empty_affiliations(self):
-        entry = {
-            "updated":[],
-            "names":[],
-            "aliases":[],
-            "abbreviations":[],
-            "types":[],
-            "year_established":None,
-            "status":[],
-            "relations":[],
-            "addresses":[],
-            "external_urls":[],
-            "external_ids":[],
-            "subjects":[],
-            "ranking":[],
-            "description":[]
-        }
-        return entry
 
     def fix_names(self,name): #reg["Nombre fac"]
         name=name.strip()
@@ -104,44 +84,46 @@ class Kahi_staff_udea_affiliations(KahiBase):
 
     def run(self):
         #inserting faculties and departments
-        for idx, reg in data.iterrows():
-            name=fix_names(reg["Nombre fac"])
-            if not name in self.already_in_db:
+        for idx, reg in self.data.iterrows():
+            name=self.fix_names(reg["Nombre fac"])
+            if not name in self.facs_inserted.keys():
                 is_in_db=self.collection.find_one({"names.name":name})
                 if is_in_db:
-                    self.already_in_db.append(name)
+                    if name not in self.facs_inserted.keys():
+                        self.facs_inserted[name]=is_in_db["_id"]
+                        print(name, " already in db")
                     #continue
                     #may be updatable, check accordingly
                 else:
-                    entry=empty_affiliations()
+                    entry=self.empty_affiliation()
                     entry["updated"].append({"time":int(time()),"source":"staff"})
                     entry["names"].append({"name":reg["Nombre fac"],"lang":"es"})
                     entry["types"].append({"source":"staff","type":"faculty"})
-                    entry["relations"].append({"id":udea_reg["_id"],"name":"Universidad de Antioquia","types":udea_reg["types"]})
+                    entry["relations"].append({"id":self.udea_reg["_id"],"name":"Universidad de Antioquia","types":self.udea_reg["types"]})
                     
                     fac=self.collection.insert_one(entry)
-                    already_in_db.append(name)
-                    facs_inserted[reg["Nombre cencos"]]=name
+                    self.facs_inserted[name]=fac.inserted_id
 
-            if not reg["Nombre cencos"] in self.already_in_db:
+            if not reg["Nombre cencos"] in self.deps_inserted.keys():
                 is_in_db=self.collection.find_one({"names.name":reg["Nombre cencos"]})
                 if is_in_db:
-                    self.already_in_db.append(name)
+                    if reg["Nombre cencos"] not in self.deps_inserted.keys():
+                        self.deps_inserted[reg["Nombre cencos"]]=is_in_db["_id"]
+                        print(reg["Nombre cencos"], " already in db")
                     #continue
                     #may be updatable, check accordingly
                 else:
-                    entry=empty_affiliations()
+                    entry=self.empty_affiliation()
                     entry["updated"].append({"time":int(time()),"source":"staff"})
                     entry["names"].append({"name":reg["Nombre cencos"],"lang":"es"})
                     entry["types"].append({"source":"staff","type":"department"})
-                    entry["relations"].append({"id":udea_reg["_id"],"name":"Universidad de Antioquia","types":udea_reg["types"]})
+                    entry["relations"].append({"id":self.udea_reg["_id"],"name":"Universidad de Antioquia","types":self.udea_reg["types"]})
 
                     dep=self.collection.insert_one(entry)
-                    already_in_db.append(name)
-                    deps_inserted[reg["Nombre cencos"]]=response.inserted_id
+                    self.deps_inserted[reg["Nombre cencos"]]=dep.inserted_id
             
-            if not (name,reg["Nombre cencos"]) in fac_dep_pair:
-                fac_dep_pair.append((name,reg["Nombre cencos"]))
+            if not (name,reg["Nombre cencos"]) in self.fac_dep:
+                self.fac_dep.append((name,reg["Nombre cencos"]))
 
         #Creating relations between faculties and departments
         for fac,dep in self.fac_dep:
