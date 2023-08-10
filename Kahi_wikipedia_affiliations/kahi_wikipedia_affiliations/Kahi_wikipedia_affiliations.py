@@ -89,7 +89,7 @@ def get_wikipedia_names(url="", name="", lang="en", verbose=0):
         return None
 
 
-def process_one_wikipedia_name(inst, url, db_name,verbose=0):
+def process_one_wikipedia_name(inst, url, db_name, verbose=0):
     client = MongoClient(url)
 
     db = client[db_name]
@@ -105,7 +105,8 @@ def process_one_wikipedia_name(inst, url, db_name,verbose=0):
             return
     else:
         if verbose > 4:
-            print("No information could be used for wikipedia API query in ",inst["_id"])
+            print(
+                "No information could be used for wikipedia API query in ", inst["_id"])
         return
     result = {}
     res = []
@@ -127,9 +128,11 @@ def process_one_wikipedia_name(inst, url, db_name,verbose=0):
                 print("Something went wrong processing ", wikipedia_name)
         result = {"response": res, "names": []}
         if wikipedia_url:
-            res = get_wikipedia_names(url=wikipedia_url, lang="es", verbose=verbose)
+            res = get_wikipedia_names(
+                url=wikipedia_url, lang="es", verbose=verbose)
         elif wikipedia_name:
-            res = get_wikipedia_names(name=wikipedia_name, lang="es", verbose=verbose)
+            res = get_wikipedia_names(
+                name=wikipedia_name, lang="es", verbose=verbose)
         try:
             k = list(res["query"]["pages"].keys())[0]
             result = {"response": res,
