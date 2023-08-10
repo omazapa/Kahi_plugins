@@ -34,7 +34,7 @@ def get_wikipedia_names(url="", name="", lang="en", verbose=0):
     else:
         return {"response": [], "names": []}
 
-    base = 'https://'+lang+'.wikipedia.org/w/api.php'
+    base = 'https://' + lang + '.wikipedia.org/w/api.php'
     # searching entire wikipedia
     if verbose > 4:
         print("Searching ", subject)
