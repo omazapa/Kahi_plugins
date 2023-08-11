@@ -36,6 +36,7 @@ workflow:
     num_jobs: 10
     verbose: 5
 ```
+The user must have to take into account the limits of requests in wikipedia to estimate the value of the varibale num_jobs which determines the number of concurrent tasks. [Wikimedia limits](https://api.wikimedia.org/wiki/Rate_limits#:~:text=User%2Dauthenticated%20requests,requests%20per%20hour%20per%20user. "Wikimedia limits data") 
 
 
 # License
