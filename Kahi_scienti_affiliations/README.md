@@ -1,6 +1,6 @@
 <center><img src="https://raw.githubusercontent.com/colav/colav.github.io/master/img/Logo.png"/></center>
 
-# Kahi scienti sources plugin 
+# Kahi scienti affiliations plugin 
 Kahi will use this plugin to insert or update the affiliations information from scienti dump
 
 # Description
@@ -13,7 +13,7 @@ pip3 install .
 ```
 From the package you can install by running
 ```shell
-pip3 install kahi_scienti_sources
+pip3 install kahi_scienti_affiliations
 ```
 
 ## Dependencies
@@ -30,9 +30,10 @@ config:
   log_collection: log
 workflow:
   scienti_affiliations:
-    - database_url: localhost:27017
-      database_name: scienti_111
-      collection_name: products
+    databases:
+      - database_url: localhost:27017
+        database_name: scienti_111
+        collection_name: products
 ```
 
 If you have several scienti databases use the example below
@@ -44,15 +45,14 @@ config:
   log_collection: log
 workflow:
   scienti_affiliations:
-    - database_url: localhost:27017
-      database_name: scienti_111
-      collection_name: products
-    - database_url: localhost:27017
-      database_name: scienti_uec_2022
-      collection_name: products
-    - database_url: localhost:27017
-      database_name: scienti_univalle_2022
-      collection_name: products
+    databases:
+      - database_url: localhost:27017
+        database_name: scienti_111
+        collection_name: products
+      - database_url: localhost:27017
+        database_name: scienti_uec_2022
+        collection_name: product
+    verbose: 2
 ```
 
 # License
