@@ -88,6 +88,110 @@ def get_wikipedia_names(url="", name="", lang="en", verbose=0):
     else:
         return None
 
+def get_logo_wikipedia(url="",name="",lang="en",verbose=5):
+    '''
+    Find and image of a wikipedia page.
+    Right now it is only tested for the logos of organizations gotten from ror db
+    
+    Parameters
+    ----------
+    url : str
+        The wikipedia url if is available
+    name : str
+        The name of keywords to do the search over wikipedia api
+    lang : str
+        The iso-639 lang code to fix the language endpooint of the search language
+        
+    Returns
+    -------
+    data : dict
+        The response of the wikipedia request
+        
+    '''
+    if url:
+        subject = unquote(url.split("/")[-1].replace("_"," "))
+    elif name:
+        subject = name
+    else:
+        return {"response":[],"names":[]}
+    
+    base = 'https://'+lang+'.wikipedia.org/w/api.php'
+    #searching entire wikipedia
+    if verbose>5:
+        print("Searching ",subject)
+    params = {
+            'action':'query',
+            'format':'json',
+            'list':'search',
+            'srsearch':subject
+        }
+ 
+    data = requests.get(base, params=params).json()
+    #print(data)
+    entry=""
+    pageid=""
+    if not "query" in data.keys():
+        return None
+    for reg in data["query"]["search"]:
+        score=fuzz.ratio(reg["title"].lower(),subject.lower())
+        if score>90:
+            entry=reg
+            pageid=int(reg["pageid"])
+        elif score>50:
+            score=fuzz.partial_ratio(reg["title"].lower(),subject.lower())
+            if score>95:
+                entry=reg
+                pageid=int(reg["pageid"])
+            elif score>80:
+                score=fuzz.token_set_ratio(reg["title"].lower(),subject.lower())
+                if score>98:
+                    entry=reg
+                    pageid=int(reg["pageid"])
+        if entry!="":
+            break
+
+    if pageid!="":
+        #retrieveing the actual page    
+        params = {
+            'action': 'query',
+            'format': 'json',
+            'pageids': pageid,
+            'prop': 'images'
+        }
+
+        response = requests.get(base, params=params)
+        data = response.json()
+        try:
+            title=""
+            for img in data["query"]["pages"][str(pageid)]["images"]:
+                if "commons" in img["title"].lower(): #avoid the wikipedia logo
+                    continue
+                for keyword in ["flag", "escudo", "logo", "shield", "bandera"]:
+                    if keyword in img["title"].lower():
+                        title=img["title"]
+                        break
+                if title != "":
+                    break
+            if verbose>5:
+                print("title: ",title)
+            params = {
+                'action': 'query',
+                'format': 'json',
+                'titles': title,
+                'prop': 'imageinfo',
+                'iiprop':"url"
+            }
+            response = requests.get(base, params=params)
+            data = response.json()
+            return data
+        except Exception as e:
+            if verbose>5:
+                print("@@@@")
+                print("Function error: ", e)
+                print(data)
+                print("@@@@")
+    else:
+        return None
 
 def process_one_wikipedia_name(inst, url, db_name, verbose=0):
     client = MongoClient(url)
@@ -158,6 +262,46 @@ def process_one_wikipedia_name(inst, url, db_name, verbose=0):
         collection.update_one({"_id": inst["_id"]}, {
                               "$set": {"names": names, "updated": inst["updated"]}})
 
+def process_one_wikipedia_logo(inst, url, db_name, verbose=0):
+    client = MongoClient(url)
+
+    db = client[db_name]
+    collection = db["affiliations"]
+
+    logo_url=None
+    url=None
+    for ext in inst["external_urls"]:
+        if ext["source"]=="wikipedia":
+            url=ext["url"]
+    if url:
+        logo_url=get_logo_wikipedia(url=url)
+    else:
+        name=None
+        lang=None
+        for n in inst["names"]:
+            if n["lang"]=="en":
+                name=n["name"]
+                lang=n["lang"]
+                break
+        if name and lang:
+            logo_url=get_logo_wikipedia(name=name,lang=lang)
+        if not logo_url:
+            for n in inst["names"]:
+                if n["lang"]=="es":
+                    name=n["name"]
+                    lang=n["lang"]
+                    break
+            if name and lang:
+                logo_url=get_logo_wikipedia(name=name,lang=lang)
+    if logo_url:
+        try:
+            logo_url=logo_url["query"]["pages"][list(logo_url["query"]["pages"].keys())[0]]["imageinfo"][0]["url"]
+            collection.update_one({"_id":inst["_id"]},{"$push":{"external_urls":{"source":"logo","url":logo_url}}})
+        except Exception as e:
+            if verbose > 4:
+                print(inst["_id"])
+                print(e)
+
 
 class Kahi_wikipedia_affiliations(KahiBase):
 
@@ -181,8 +325,6 @@ class Kahi_wikipedia_affiliations(KahiBase):
         ) else 0
 
         self.wikipedia_updated = []
-        for aff in self.collection.find({"updated.source": "wikipedia"}):
-            self.wikipedia_updated.append(aff["_id"])
 
     def process_wikipedia(self):
         for task in self.tasks:
@@ -204,7 +346,18 @@ class Kahi_wikipedia_affiliations(KahiBase):
             elif task == "logos":
                 if self.verbose > 0:
                     print("Getting logos from wikipedia")
-                pass
+                institutions = list(self.collection.find(
+                    {"updated.source": "ror", "_id": {"$nin": self.wikipedia_updated}}))
+                Parallel(
+                    n_jobs=self.n_jobs,
+                    backend="multiprocessing",
+                    verbose=10
+                )(delayed(process_one_wikipedia_logo)(
+                    inst,
+                    self.config["database_url"],
+                    self.config["database_name"],
+                    self.verbose
+                ) for inst in institutions)
 
     def run(self):
         self.process_wikipedia()
