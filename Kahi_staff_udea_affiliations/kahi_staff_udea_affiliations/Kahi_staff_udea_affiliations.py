@@ -153,3 +153,5 @@ class Kahi_staff_udea_affiliations(KahiBase):
                                            "relations": {
                                                "id": fac_reg["_id"],
                                                "name": fac_reg["names"][0]["name"], "types": fac_reg["types"]}}})
+
+        return 0
