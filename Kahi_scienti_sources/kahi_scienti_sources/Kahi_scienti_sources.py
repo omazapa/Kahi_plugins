@@ -33,7 +33,7 @@ class Kahi_scienti_sources(KahiBase):
         if not updated_scienti:
             entry["updated"].append({"source": "scienti", "time": int(time())})
         journal = None
-        for  detail in reg["details"]:
+        for detail in reg["details"]:
             if "article" in detail.keys():
                 paper = detail["article"][0]
                 if "journal" in paper.keys():
@@ -54,7 +54,7 @@ class Kahi_scienti_sources(KahiBase):
         for reg_scienti in self.scienti_collection["products"].find({"details.article.journal.TXT_ISSN_SEP": issn}):
             paper = None
             journal = None
-            for  detail in reg_scienti["details"]:
+            for detail in reg_scienti["details"]:
                 if "article" in detail.keys():
                     paper = detail["article"][0]
                     if "journal" in paper.keys():
@@ -103,18 +103,19 @@ class Kahi_scienti_sources(KahiBase):
 
     def process_scienti(self, config, verbose=0):
         self.scienti_client = MongoClient(config["database_url"])
-        
+
         if config["database_name"] not in self.scienti_client.list_database_names():
-            raise Exception("Database {} not found".format(config["database_name"]))
+            raise Exception("Database {} not found".format(
+                config["database_name"]))
 
         self.scienti_db = self.scienti_client[config["database_name"]]
 
         if config["collection_name"] not in self.scienti_db.list_collection_names():
-            raise Exception("Collection {} not found".format(config["collection_name"]))
+            raise Exception("Collection {} not found".format(
+                config["collection_name"]))
 
         self.scienti_collection = self.scienti_db[config["collection_name"]]
         for issn in self.scienti_collection.distinct("details.article.journal.TXT_ISSN_SEP"):
-            print(issn)
             reg_db = self.collection.find_one({"external_ids.id": issn})
             if reg_db:
                 reg_scienti = self.scienti_collection.find_one(
@@ -126,7 +127,7 @@ class Kahi_scienti_sources(KahiBase):
                     {"details.article.journal.TXT_ISSN_SEP": issn})
                 if reg_scienti:
                     journal = None
-                    for  detail in reg_scienti["details"]:
+                    for detail in reg_scienti["details"]:
                         if "article" in detail.keys():
                             paper = detail["article"][0]
                             if "journal" in paper.keys():
@@ -156,7 +157,7 @@ class Kahi_scienti_sources(KahiBase):
                     for reg_scienti in self.scienti_collection.find({"details.article.journal.TXT_ISSN_SEP": issn}):
                         paper = None
                         journal = None
-                        for  detail in reg_scienti["details"]:
+                        for detail in reg_scienti["details"]:
                             if "article" in detail.keys():
                                 paper = detail["article"][0]
                                 if "journal" in paper.keys():
@@ -166,13 +167,19 @@ class Kahi_scienti_sources(KahiBase):
                             continue
                         if not journal["TPO_CLASIFICACION"] in ranks:
                             try:
-                                from_date = int(dt.strptime(paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-                                to_date = int(dt.strptime(paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-                            except:
+                                from_date = int(dt.strptime(
+                                    paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
+                                to_date = int(dt.strptime(
+                                    paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
+                            except Exception as e:
+                                print(e)
                                 try:
-                                    from_date = int(dt.strptime(paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
-                                    to_date = int(dt.strptime(paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
-                                except:
+                                    from_date = int(dt.strptime(
+                                        paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
+                                    to_date = int(dt.strptime(
+                                        paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
+                                except Exception as e:
+                                    print(e)
                                     from_date = None
                                     to_date = None
                             ranking = {
@@ -192,20 +199,21 @@ class Kahi_scienti_sources(KahiBase):
                                     int(dt.strptime(
                                         paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
                                 )
-                            except:
+                            except Exception as e:
+                                print(e)
                                 try:
                                     dates_tuple = (
-                                    int(dt.strptime(
-                                        paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp()),
-                                    int(dt.strptime(
-                                        paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
-                                )
-                                except:
+                                        int(dt.strptime(
+                                            paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp()),
+                                        int(dt.strptime(
+                                            paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
+                                    )
+                                except Exception as e:
+                                    print(e)
                                     dates_tuple = (
                                         None,
                                         None
                                     )
-
 
                             dates.append(dates_tuple)
                         else:
@@ -219,7 +227,8 @@ class Kahi_scienti_sources(KahiBase):
                                 if date2 < int(dt.strptime(paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp()):
                                     date2 = int(dt.strptime(
                                         paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-                            except:
+                            except Exception as e:
+                                print(e)
                                 try:
                                     if date1 > int(dt.strptime(paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp()):
                                         date1 = int(dt.strptime(
@@ -227,8 +236,8 @@ class Kahi_scienti_sources(KahiBase):
                                     if date2 < int(dt.strptime(paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp()):
                                         date2 = int(dt.strptime(
                                             paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
-                                except:
-                                    pass
+                                except Exception as e:
+                                    print(e)
                             dates[idx] = (date1, date2)
                     entry["ranking"] = rankings_list
                     self.collection.insert_one(entry)
