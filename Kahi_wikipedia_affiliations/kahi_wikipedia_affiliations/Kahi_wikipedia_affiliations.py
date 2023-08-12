@@ -116,7 +116,7 @@ def get_logo_wikipedia(url="", name="", lang="en", verbose=5):
     else:
         return {"response": [], "names": []}
 
-    base = 'https://'+lang+'.wikipedia.org/w/api.php'
+    base = 'https://' + lang + '.wikipedia.org/w/api.php'
     # searching entire wikipedia
     if verbose > 5:
         print("Searching ", subject)
