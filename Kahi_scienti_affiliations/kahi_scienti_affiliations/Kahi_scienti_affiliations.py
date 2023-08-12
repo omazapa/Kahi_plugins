@@ -108,7 +108,7 @@ class Kahi_scienti_affiliations(KahiBase):
                     reg_col["external_ids"].append(
                         {"source": "minciencias", "id": inst["COD_INST"]})
                     reg_col["external_ids"].append(
-                        {"source": "nit", "id": inst["TXT_NIT"]+"-"+inst["TXT_DIGITO_VERIFICADOR"]})
+                        {"source": "nit", "id": inst["TXT_NIT"] + "-" + inst["TXT_DIGITO_VERIFICADOR"]})
                     if inst["SGL_INST"] not in reg_col["abbreviations"]:
                         reg_col["abbreviations"].append(inst["SGL_INST"])
                     if "URL_HOME_PAGE" in inst.keys():
@@ -162,7 +162,7 @@ class Kahi_scienti_affiliations(KahiBase):
                 entry["names"].append(
                     {"name": group["NME_GRUPO"], "lang": "es"})
                 entry["birthdate"] = int(dt.strptime(
-                    str(group["ANO_FORMACAO"])+"-"+str(group["MES_FORMACAO"]), "%Y-%m").timestamp())
+                    str(group["ANO_FORMACAO"]) + "-" + str(group["MES_FORMACAO"]), "%Y-%m").timestamp())
                 if group["STA_ELIMINADO"] == "F":
                     entry["status"].append(
                         {"source": "minciencias", "status": "activo"})
@@ -199,7 +199,7 @@ class Kahi_scienti_affiliations(KahiBase):
                 for reg in scienti.find({"group.COD_ID_GRUPO": group_id}):
                     for inst in reg["group"][0]["institution"]:
                         db_inst = self.collection.find_one(
-                            {"external_ids.id": inst["TXT_NIT"]+"-"+inst["TXT_DIGITO_VERIFICADOR"]})
+                            {"external_ids.id": inst["TXT_NIT"] + "-" + inst["TXT_DIGITO_VERIFICADOR"]})
                         if db_inst:
                             rel_entry = {
                                 "names": db_inst["names"], "id": db_inst["_id"], "types": db_inst["types"]}
