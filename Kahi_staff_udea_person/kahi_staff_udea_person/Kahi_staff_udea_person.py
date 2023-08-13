@@ -86,13 +86,13 @@ class Kahi_staff_udea_person(KahiBase):
         # print(sl)
         sll = [s.replace('-', ' ') for s in sl.split()]
         if len(s.split()) == 2:
-            sll = [s.split()[0]]+['']+[s.split()[1]]
+            sll = [s.split()[0]] + [''] + [s.split()[1]]
         #
-        d = {'NOMBRE COMPLETO': ' '.join(sll[2:]+sll[:2]),
+        d = {'NOMBRE COMPLETO': ' '.join(sll[2:] + sll[:2]),
              'PRIMER APELLIDO': sll[0],
              'SEGUNDO APELLIDO': sll[1],
              'NOMBRES': ' '.join(sll[2:]),
-             'INICIALES': ' '.join([i[0]+'.' for i in ' '.join(sll[2:]).split()])
+             'INICIALES': ' '.join([i[0] + '.' for i in ' '.join(sll[2:]).split()])
              }
         return d
 
