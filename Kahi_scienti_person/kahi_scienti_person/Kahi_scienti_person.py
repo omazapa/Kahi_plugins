@@ -88,9 +88,9 @@ class Kahi_scienti_person(KahiBase):
                         else:
                             continue
                         if len(str(prod["NRO_MES_PRESENTA"])) < 2:
-                            time_str += "-0"+str(prod["NRO_MES_PRESENTA"])
+                            time_str += "-0" + str(prod["NRO_MES_PRESENTA"])
                         elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
-                            time_str += "-"+str(prod["NRO_MES_PRESENTA"])
+                            time_str += "-" + str(prod["NRO_MES_PRESENTA"])
                         aff_time = int(dt.strptime(
                             time_str, "%Y-%m").timestamp())
                         group_entry = {
@@ -132,7 +132,6 @@ class Kahi_scienti_person(KahiBase):
         scienti = db[config["collection_name"]]
 
         for rh in scienti.distinct("author.COD_RH"):
-            autor_db = None
             author_db = self.collection.find_one({"external_ids.id": rh})
             if author_db:
                 continue
@@ -176,7 +175,7 @@ class Kahi_scienti_person(KahiBase):
                     if "TXT_SEG_APELL" in author.keys():
                         entry["last_names"].append(author["TXT_SEG_APELL"])
                     entry["full_name"] = " ".join(
-                        entry["first_names"])+" "+" ".join(entry["last_names"])
+                        entry["first_names"]) + " " + " ".join(entry["last_names"])
                     entry["initials"] = "".join(
                         [p[0].upper() for p in entry["first_names"]])
                     if "TXT_CITACION_BIBLIO" in author.keys():
@@ -235,9 +234,9 @@ class Kahi_scienti_person(KahiBase):
                             else:
                                 continue
                             if len(str(prod["NRO_MES_PRESENTA"])) < 2:
-                                time_str += "-0"+str(prod["NRO_MES_PRESENTA"])
+                                time_str += "-0" + str(prod["NRO_MES_PRESENTA"])
                             elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
-                                time_str += "-"+str(prod["NRO_MES_PRESENTA"])
+                                time_str += "-" + str(prod["NRO_MES_PRESENTA"])
                             aff_time = int(dt.strptime(
                                 time_str, "%Y-%m").timestamp())
                             group_entry = {
