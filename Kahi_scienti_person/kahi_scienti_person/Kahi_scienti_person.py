@@ -58,6 +58,28 @@ class Kahi_scienti_person(KahiBase):
                     person["last_names"].append(author["TXT_SEG_APELL"])
                 initials = "".join([p[0].upper()
                                    for p in person["first_names"]])
+
+                marital = None
+                if "TPO_ESTADO_CIVIL" in author.keys():
+                    if author["TPO_ESTADO_CIVIL"] == "C":
+                        marital = "Married"
+                    elif author["TPO_ESTADO_CIVIL"] == "S":
+                        marital = "Single"
+                    elif author["TPO_ESTADO_CIVIL"] == "U":
+                        marital = "Domestic Partnership"
+                    elif author["TPO_ESTADO_CIVIL"] == "D":
+                        marital = "Divorced"
+                    elif author["TPO_ESTADO_CIVIL"] == "V":
+                        marital = "Widowed"
+
+                if "city" in author.keys():
+                    city = author["city"][0]
+                    birthplace = {
+                        "city": city["TXT_NME_MUNICIPIO"].capitalize(),
+                        "state": city["department"][0]["TXT_NME_DEPARTAMENTO"].capitalize(),
+                        "country": city["department"][0]["country"][0]["TXT_NME_PAIS"].capitalize()
+                    }
+
                 person["updated"].append(
                     {"time": int(time()), "source": "scienti"})
 
@@ -123,7 +145,9 @@ class Kahi_scienti_person(KahiBase):
                     "full_name": " ".join(person["first_names"]) + " " + " ".join(person["last_names"]),
                     "updated": person["updated"],
                     "affiliations": person["affiliations"],
-                    "ranking": rank
+                    "ranking": rank,
+                    "marital_status": marital,
+                    "birthplace": birthplace
                 }})
 
     def insert_scienti(self, config, verbose=0):
@@ -207,6 +231,26 @@ class Kahi_scienti_person(KahiBase):
                                 "end_date": -1
                             })
 
+                    if "TPO_ESTADO_CIVIL" in author.keys():
+                        if author["TPO_ESTADO_CIVIL"] == "C":
+                            entry["marital_status"] = "Married"
+                        elif author["TPO_ESTADO_CIVIL"] == "S":
+                            entry["marital_status"] = "Single"
+                        elif author["TPO_ESTADO_CIVIL"] == "U":
+                            entry["marital_status"] = "Domestic Partnership"
+                        elif author["TPO_ESTADO_CIVIL"] == "D":
+                            entry["marital_status"] = "Divorced"
+                        elif author["TPO_ESTADO_CIVIL"] == "V":
+                            entry["marital_status"] = "Widowed"
+
+                    if "city" in author.keys():
+                        city = author["city"][0]
+                        entry["birthplace"] = {
+                            "city": city["TXT_NME_MUNICIPIO"].capitalize(),
+                            "state": city["department"][0]["TXT_NME_DEPARTAMENTO"].capitalize(),
+                            "country": city["department"][0]["country"][0]["TXT_NME_PAIS"].capitalize()
+                        }
+
                     rank = []
                     ranks = []
                     for prod in scienti.find({"author.COD_RH": rh}):
@@ -234,7 +278,8 @@ class Kahi_scienti_person(KahiBase):
                             else:
                                 continue
                             if len(str(prod["NRO_MES_PRESENTA"])) < 2:
-                                time_str += "-0" + str(prod["NRO_MES_PRESENTA"])
+                                time_str += "-0" + \
+                                    str(prod["NRO_MES_PRESENTA"])
                             elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
                                 time_str += "-" + str(prod["NRO_MES_PRESENTA"])
                             aff_time = int(dt.strptime(
