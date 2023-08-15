@@ -1,2 +1,2 @@
-recursive-include kahi_template/ *.py
-recursive-include kahi_template/ *.*
+recursive-include kahi_ror_affiliations/ *.py
+recursive-include kahi_ror_affiliations/ *.*
