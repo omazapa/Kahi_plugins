@@ -124,11 +124,6 @@ class Kahi_doaj_sources(KahiBase):
                     if reg_db:
                         _id = reg_db["_id"]
                         self.already_in_db.append(reg["pissn"])
-                        if verbose > 4:
-                            print("Already in db: " + reg["pissn"])
-                        if verbose > 0:
-                            print("Total already found: ",
-                                  len(self.already_in_db))
                         entry = self.update_doaj(reg, reg_db)
                         if entry:
                             self.collection.update_one(
@@ -187,13 +182,9 @@ class Kahi_doaj_sources(KahiBase):
 
                 entry["waiver"] = reg["waiver"]
 
-                response = self.collection.insert_one(entry)
+                self.collection.insert_one(entry)
                 for ext in entry["external_ids"]:
                     self.already_in_db.append(ext["id"])
-                if verbose > 4:
-                    print("Inserted: ", response.inserted_id)
-                if verbose > 0:
-                    print("Total inserted: ", len(self.already_in_db))
 
                 delta = dt.datetime.now() - old
                 if delta.seconds > 240:
