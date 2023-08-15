@@ -13,12 +13,12 @@ pip3 install .
 ```
 From the package you can install by running
 ```shell
-pip3 install kahi_minciencias_opendata_affiliations
+pip3 install kahi_minciencias_opendata_person
 ```
 
 ## Dependencies
 Software dependencies will automatically be installed when installing the plugin.
-The user must have at least one file from minciencias opendata found [here](https://www.datos.gov.co/Ciencia-Tecnolog-a-e-Innovaci-n/Investigadores-Reconocidos-por-convocatoria/bqtm-4y2h "minciencias researchers data"). Also the user needs the file from the production of the research groups found [here](https://www.datos.gov.co/Ciencia-Tecnolog-a-e-Innovaci-n/Producci-n-Grupos-Investigaci-n/33dq-ab5a).
+The user must have at least one file from minciencias opendata found [here](https://www.datos.gov.co/Ciencia-Tecnolog-a-e-Innovaci-n/Investigadores-Reconocidos-por-convocatoria/bqtm-4y2h "minciencias researchers data"). Also the user needs the file from the production of the research groups found [here](https://www.datos.gov.co/Ciencia-Tecnolog-a-e-Innovaci-n/Producci-n-Grupos-Investigaci-n/33dq-ab5a). Additionally user must have a cvlac [file](https://drive.google.com/file/d/1DwNqYzUg57YVjBSno-A6ZlEt51mPTzER/view?usp=drive_link) with a scraping of all available researchers.
 
 # Usage
 To use this plugin you must have kahi installed in your system and construct a yaml file such as
