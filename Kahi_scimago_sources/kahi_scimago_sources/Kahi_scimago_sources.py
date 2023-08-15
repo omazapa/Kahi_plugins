@@ -189,8 +189,7 @@ class Kahi_scimago_sources(KahiBase):
                     country = iso3166.countries_by_name.get(
                         sjr["Country"].upper()).alpha2
                 except Exception as e:
-                    print(e)
-                    print(sjr["Country"])
+                    print(e, sjr["Country"])
                 if country:
                     entry["publisher"] = {
                         "country_code": country, "name": sjr["Publisher"]}

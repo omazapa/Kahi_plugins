@@ -1,2 +1,2 @@
-recursive-include kahi_template/ *.py
-recursive-include kahi_template/ *.*
+recursive-include kahi_scimago_sources/ *.py
+recursive-include kahi_scimago_sources/ *.*
