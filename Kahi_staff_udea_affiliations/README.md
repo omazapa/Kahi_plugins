@@ -13,7 +13,7 @@ pip3 install .
 ```
 From the package you can install by running
 ```shell
-pip3 install kahi_scimago_sources
+pip3 install kahi_staff_udea_affiliations
 ```
 
 ## Dependencies
@@ -33,8 +33,6 @@ workflow:
     file_path: 
       - /current/data/colombia/udea/Base de Datos profesores 2019.xlsx
 ```
-Where file_path under scimago_sources task is the full path where the scimago csv is located.
-
 
 # License
 BSD-3-Clause License 
