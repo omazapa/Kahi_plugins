@@ -1136,13 +1136,9 @@ def process_one(doi, url, db_name, dbs, empty_work):
     ranking_aff = db["affiliaitons"].find_one(
         {"names.name": "University of Antioquia"}, {"_id": 1, "names": 1, "types": 1})
     try:
-        print("Finding doi")
         entry = find_doi(doi, dbs)
-        print("Processing doi")
         entry = process_doi(entry, empty_work, ranking_aff=ranking_aff)
-        print("Linking doi")
         entry = linking_doi(entry, url, db_name)
-        print("Inserting doi")
         insert_doi(entry, url, db_name)
     except Exception:
         print("Error in doi: ", doi)

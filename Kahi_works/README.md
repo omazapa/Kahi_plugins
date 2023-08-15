@@ -69,6 +69,7 @@ workflow:
       file_path: /current/data/colombia/udea/produccion 2018-2022 al 27 oct 2022.xlsx
 ```
 
+* WARNING *. This process could take several hours
 
 # License
 BSD-3-Clause License 
