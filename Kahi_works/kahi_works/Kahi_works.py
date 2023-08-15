@@ -26,11 +26,11 @@ def lang_poll(text):
 
     detected_language = None
     try:
-        _, _, _, detected_language = cld2.detect(text,  returnVectors=True)
+        _, _, _, detected_language = cld2.detect(text, returnVectors=True)
     except Exception as e:
         print(e)
         text = str(unidecode.unidecode(text).encode("ascii", "ignore"))
-        _, _, _, detected_language = cld2.detect(text,  returnVectors=True)
+        _, _, _, detected_language = cld2.detect(text, returnVectors=True)
 
     if detected_language:
         lang_list.append(detected_language[0][-1].lower())
@@ -66,7 +66,7 @@ def lang_poll(text):
     lang = None
     for prospect in set(lang_list):
         votes = lang_list.count(prospect)
-        if votes > len(lang_list)/2:
+        if votes > len(lang_list) / 2:
             lang = prospect
             break
     return lang
@@ -494,7 +494,7 @@ def parse_scopus(reg, empty_work):
     if "ISSN" in reg.keys():
         if reg["ISSN"] and reg["ISSN"] == reg["ISSN"] and isinstance(reg["ISSN"], str):
             source["external_ids"].append(
-                {"source": "issn", "id": reg["ISSN"][:4]+"-"+reg["ISSN"][4:]})
+                {"source": "issn", "id": reg["ISSN"][:4] + "-" + reg["ISSN"][4:]})
         if reg["ISBN"] and reg["ISBN"] == reg["ISBN"] and isinstance(reg["ISBN"], str):
             source["external_ids"].append(
                 {"source": "isbn", "id": reg["ISBN"]})
@@ -618,7 +618,7 @@ def parse_scholar(reg, empty_work):
                 last_names = names_list[0].strip()
             if len(names_list) > 1:
                 first_names = names_list[1].strip()
-            full_name = first_names+" "+last_names
+            full_name = first_names + " " + last_names
             author_entry["full_name"] = full_name
             author_entry["affiliations"] = []
             author_entry["external_ids"] = []
@@ -751,7 +751,7 @@ def find_doi(doi, dbs, verbose=0):
     data = {}
     if verbose > 4:
         print("Searching OpenAlex")
-    openalex_reg = openalexco.find({"doi": "https://doi.org/"+doi}).collation(
+    openalex_reg = openalexco.find({"doi": "https://doi.org/" + doi}).collation(
         collation.Collation(locale="en", strength=2)).limit(1)
     for reg in openalex_reg:
         if reg:
