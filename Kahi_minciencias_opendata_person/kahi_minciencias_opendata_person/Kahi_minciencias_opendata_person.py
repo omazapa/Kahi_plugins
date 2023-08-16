@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient
+from pymongo import MongoClient, TEXT
 from pandas import read_csv
 from time import time
 from datetime import datetime as dt
