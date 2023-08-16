@@ -18,6 +18,10 @@ class Kahi_scienti_person(KahiBase):
         self.db = self.client[config["database_name"]]
         self.collection = self.db["person"]
 
+        self.collection.create_index("external_ids.id")
+        self.collection.create_index("affiliations.id")
+        self.collection.create_index([("full_name.name", TEXT)])
+
         self.verbose = config["scienti_person"]["verbose"] if "verbose" in config["scienti_person"].keys(
         ) else 0
 
