@@ -19,6 +19,11 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
         self.db = self.client[config["database_name"]]
         self.collection = self.db["affiliations"]
 
+        self.collection.create_index("external_ids.id")
+        self.collection.create_index("types.type")
+        self.collection.create_index("names.name")
+        self.collection.create_index([("names.name", TEXT)])
+
         self.file_path = config["minciencias_opendata_affiliations"]["file_path"]
         self.grupos_minciencias = read_csv(self.file_path)
 
@@ -31,15 +36,6 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
             for ext in reg["external_ids"]:
                 if ext["source"] == "minciencias":
                     self.inserted_cod_grupo.append(ext["id"])
-
-        name_index = False
-        for key, val in self.collection.index_information().items():
-            if key == "names.name_text":
-                name_index = True
-                break
-        if not name_index:
-            self.collection.create_index([("names.name", TEXT)])
-            print("Text index created on names.name field")
 
     def rename_institution(self, name):
         if name == "Colegio Mayor Nuestra Señora del Rosario".lower() or name == "Colegio Mayor de Nuestra Señora del Rosario".lower():
