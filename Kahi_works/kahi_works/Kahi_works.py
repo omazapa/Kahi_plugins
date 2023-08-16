@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, collation
+from pymongo import MongoClient, collation, TEXT
 from time import time
 from datetime import datetime as dt
 from joblib import Parallel, delayed
@@ -1158,6 +1158,11 @@ class Kahi_works(KahiBase):
 
         self.db = self.client[config["database_name"]]
         self.collection = self.db["works"]
+
+        self.collection.create_index("year_published")
+        self.collection.create_index("authors.affiliations.id")
+        self.collection.create_index("authors.id")
+        self.collection.create_index([("titles.title", TEXT)])
 
         self.n_jobs = config["works"]["num_jobs"] if "num_jobs" in config["works"].keys(
         ) else 1
