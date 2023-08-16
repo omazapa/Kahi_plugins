@@ -20,6 +20,8 @@ class Kahi_scimago_sources(KahiBase):
         self.db = self.client[config["database_name"]]
         self.collection = self.db["sources"]
 
+        self.collection.create_index("external_ids.id")
+
         self.scimago_file_paths = self.config["scimago_sources"]["file_path"]
 
         self.already_in_db = []
