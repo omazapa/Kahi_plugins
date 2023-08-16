@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient
+from pymongo import MongoClient, TEXT
 from bson.objectid import ObjectId
 from pandas import read_excel
 from time import time
@@ -16,6 +16,11 @@ class Kahi_staff_udea_affiliations(KahiBase):
 
         self.db = self.client[config["database_name"]]
         self.collection = self.db["affiliations"]
+
+        self.collection.create_index("external_ids.id")
+        self.collection.create_index("names.name")
+        self.collection.create_index("types.type")
+        self.collection.create_index([("names.name", TEXT)])
 
         self.file_path = config["staff_udea_affiliations"]["file_path"]
         self.data = read_excel(self.file_path)
