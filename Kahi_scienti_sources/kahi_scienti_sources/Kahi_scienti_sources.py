@@ -19,6 +19,8 @@ class Kahi_scienti_sources(KahiBase):
         self.db = self.client[config["database_name"]]
         self.collection = self.db["sources"]
 
+        self.collection.create_index("external_ids.id")
+
         self.already_in_db = []
 
     def update_scienti(self, reg, entry, issn):
