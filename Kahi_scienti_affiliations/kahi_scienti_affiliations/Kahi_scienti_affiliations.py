@@ -19,6 +19,11 @@ class Kahi_scienti_affiliations(KahiBase):
         self.db = self.client[config["database_name"]]
         self.collection = self.db["affiliations"]
 
+        self.collection.create_index("external_ids.id")
+        self.collection.create_index("names.name")
+        self.collection.create_index("types.type")
+        self.collection.create_index([("names.name", TEXT)])
+
         self.verbose = config["scienti_affiliations"]["verbose"] if "verbose" in config["scienti_affiliations"].keys(
         ) else 0
 
