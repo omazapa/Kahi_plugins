@@ -210,6 +210,10 @@ class Kahi_minciencias_opendata_person(KahiBase):
         self.db = self.client[config["database_name"]]
         self.collection = self.db["person"]
 
+        self.collection.create_index("external_ids.id")
+        self.collection.create_index("affiliations.id")
+        self.collection.create_index([("full_name.name",TEXT)])
+
         self.researchers_file = config["minciencias_opendata_person"]["researchers"]
         self.cvlac_file = config["minciencias_opendata_person"]["cvlac"]
         self.groups_file = config["minciencias_opendata_person"]["groups_production"]
