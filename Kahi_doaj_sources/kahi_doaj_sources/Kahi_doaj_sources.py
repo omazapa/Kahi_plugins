@@ -18,6 +18,8 @@ class Kahi_doaj_sources(KahiBase):
         self.db = self.client[config["database_name"]]
         self.collection = self.db["sources"]
 
+        self.collection.create_index("external_ids.id")
+
         self.doaj_client = MongoClient(config["doaj_sources"]["database_url"])
         self.doaj_db = self.doaj_client[config["doaj_sources"]
                                         ["database_name"]]
