@@ -99,6 +99,8 @@ class Kahi_openalex_sources(KahiBase):
 
         self.collection.create_index("external_ids.id")
 
+        self.collection.create_index("external_ids.id")
+
         self.openalex_client = MongoClient(
             config["openalex_sources"]["database_url"])
         self.openalex_db = self.openalex_client[config["openalex_sources"]
