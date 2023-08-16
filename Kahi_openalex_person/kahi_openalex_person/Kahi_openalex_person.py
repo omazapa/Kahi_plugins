@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient
+from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
 
@@ -87,6 +87,10 @@ class Kahi_openalex_person(KahiBase):
 
         self.db = self.client[config["database_name"]]
         self.collection = self.db["person"]
+
+        self.collection.create_index("external_ids.id")
+        self.collection.create_index("affiliations.id")
+        self.collection.create_index([("full_name.name", TEXT)])
 
         self.openalex_client = MongoClient(
             config["openalex_person"]["database_url"])
