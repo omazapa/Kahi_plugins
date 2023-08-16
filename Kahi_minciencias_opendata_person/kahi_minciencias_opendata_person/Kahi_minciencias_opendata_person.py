@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient
+from pymongo import MongoClient, TEXT
 from pandas import read_csv
 from time import time
 from datetime import datetime as dt
@@ -209,6 +209,10 @@ class Kahi_minciencias_opendata_person(KahiBase):
 
         self.db = self.client[config["database_name"]]
         self.collection = self.db["person"]
+
+        self.collection.create_index("external_ids.id")
+        self.collection.create_index("affiliations.id")
+        self.collection.create_index([("full_name.name", TEXT)])
 
         self.researchers_file = config["minciencias_opendata_person"]["researchers"]
         self.cvlac_file = config["minciencias_opendata_person"]["cvlac"]
