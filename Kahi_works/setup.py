@@ -86,7 +86,7 @@ def main():
             'thefuzz',
             'joblib',
             'langid',
-            'lingua',
+            'lingua-language-detector',
             'pycld2',
             'langdetect',
             'fasttext-langdetect',
