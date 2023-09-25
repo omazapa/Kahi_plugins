@@ -63,7 +63,7 @@ class Kahi_scienti_sources(KahiBase):
                         journal = paper["journal"][0]
                         break
 
-            if journal == None:
+            if journal is None:
                 continue
             if "TPO_CLASIFICACION" not in journal.keys():
                 continue
