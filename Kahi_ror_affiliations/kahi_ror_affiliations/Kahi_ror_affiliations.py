@@ -84,10 +84,10 @@ class Kahi_ror_affiliations(KahiBase):
         self.ror_collection = self.ror_db[config["ror_affiliations"]
                                           ["collection_name"]]
 
-        self.ror_collection.create_index("external_ids.id")
-        self.ror_collection.create_index("names.name")
-        self.ror_collection.create_index("types.type")
-        self.ror_collection.create_index([("names.name", TEXT)])
+        self.collection.create_index("external_ids.id")
+        self.collection.create_index("names.name")
+        self.collection.create_index("types.type")
+        self.collection.create_index([("names.name", TEXT)])
 
         self.n_jobs = config["ror_affiliations"]["num_jobs"]
 
