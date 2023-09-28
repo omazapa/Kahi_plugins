@@ -65,15 +65,12 @@ class Kahi_scienti_affiliations(KahiBase):
                 if "colciencias" in inst_name:
                     reg_col = self.collection.find_one(
                         {"names.name": "Colciencias"})
-                    name = reg_col["names"][0]["name"]
                 if inst["NME_INST"] == "UNIVERSIDAD CATOLICA DE ORIENTE":
                     reg_col = self.collection.find_one(
                         {"names.name": "Universidad Católica de Oriente"})
-                    name = reg_col["names"][0]["name"]
                 if inst["NME_INST"] == "UNIVERSIDAD ":
                     reg_col = self.collection.find_one(
                         {"names.name": "Universidad Católica de Oriente"})
-                    name = reg_col["names"][0]["name"]
                 if not reg_col:
                     for reg in col_list:
                         for name in reg["names"]:
@@ -108,6 +105,7 @@ class Kahi_scienti_affiliations(KahiBase):
                         if reg_col:
                             break
                 if reg_col:
+                    name = reg_col["names"][0]["name"]
                     reg_col["updated"].append(
                         {"source": "scienti", "time": int(time())})
                     reg_col["external_ids"].append(
