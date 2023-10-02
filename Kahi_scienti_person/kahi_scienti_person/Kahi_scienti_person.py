@@ -25,15 +25,6 @@ class Kahi_scienti_person(KahiBase):
         self.verbose = config["scienti_person"]["verbose"] if "verbose" in config["scienti_person"].keys(
         ) else 0
 
-        name_index = False
-        for key, val in self.collection.index_information().items():
-            if key == "names.name_text":
-                name_index = True
-                break
-        if not name_index:
-            self.collection.create_index([("names.name", TEXT)])
-            print("Text index created on names.name field")
-
     def update_inserted(self, config, verbose=0):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
