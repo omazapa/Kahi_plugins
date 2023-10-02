@@ -31,16 +31,62 @@ class Kahi_staff_udea_person(KahiBase):
         self.deps_inserted = {}
         self.fac_dep = []
 
-        self.udea_reg = self.db["affiliations"].find_one(
-            {"names.name": "University of Antioquia"})
-        if not self.udea_reg:
-            raise Exception("University of Antioquia not found in database")
-
         self.cedula_dep = {}
         self.cedula_fac = {}
         for idx, reg in self.data.iterrows():
             self.cedula_fac[reg["cedula"]] = reg["Nombre fac"]
             self.cedula_dep[reg["cedula"]] = reg["Nombre cencos"]
+
+        self.udea_reg = self.collection.find_one(
+            {"names.name": "University of Antioquia"})
+        if not self.udea_reg:
+            print(
+                "University of Antioquia not found in database. Creating it with minimal information...")
+            udea_reg = self.empty_affiliation()
+            udea_reg["updated"].append(
+                {"time": int(time()), "source": "manual"})
+            udea_reg["names"] = [
+                {"name": 'University of Antioquia', "lang": 'en'},
+                {"name": "Universitat d'Antioquia", "lang": 'ca'},
+                {"name": 'University of Antioquia', "lang": 'ceb'},
+                {"name": 'Universidad de Antioquia', "lang": 'de'},
+                {"name": 'Universitato de Antjokio', "lang": 'eo'},
+                {"name": 'Universidad de Antioquia', "lang": 'es'},
+                {"name": 'Antioquia Ülikool', "lang": 'et'},
+                {"name": "Université d'Antioquia", "lang": 'fr'},
+                {"name": 'Oilthigh Antioquia', "lang": 'gd'},
+                {"name": 'アンティオキア大学', "lang": 'ja'},
+                {"name": 'Universiteit van Antioquia', "lang": 'nl'},
+                {"name": 'Uniwersytet Antioquia', "lang": 'pl'},
+                {"name": 'Antioquias universitet', "lang": 'sv'},
+                {"name": 'Unibersidad ng Antioquia', "lang": 'tl'},
+                {"name": 'Antiokiya universiteti', "lang": 'uz'}
+            ]
+            udea_reg["abbreviations"] = ['UdeA']
+            udea_reg["year_established"] = 1803
+            udea_reg["addresses"] = [
+                {
+                    "lat": 6.267417,
+                    "lng": -75.568389,
+                    "postcode": '',
+                    "state": "Antioquia",
+                    "city": 'Medellín',
+                    "country": 'Colombia',
+                    "country_code": 'CO'
+                }
+            ]
+            udea_reg["external_ids"] = [
+                {"source": 'isni', "id": '0000 0000 8882 5269'},
+                {"source": 'fundref', "id": '501100005278'},
+                {"source": 'orgref', "id": '2696975'},
+                {"source": 'wikidata', "id": 'Q1258413'},
+                {"source": 'ror', "id": 'https://ror.org/03bp5hc83'},
+                {"source": 'minciencias', "id": '007300000887'},
+                {"source": 'nit', "id": '890980040-8'}
+            ]
+            self.collection.insert_one(udea_reg)
+            self.udea_reg = self.collection.find_one(
+                {"names.name": "University of Antioquia"})
 
     # noqa: W605
     def split_names(self, s, exceptions=['GIL', 'LEW', 'LIZ', 'PAZ', 'REY', 'RIO', 'ROA', 'RUA', 'SUS', 'ZEA']):
