@@ -1,10 +1,10 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, TEXT, errors
-from time import time, sleep
+from pymongo import MongoClient, TEXT
+from time import time
 from joblib import Parallel, delayed
 
 
-def process_one(oa_author, url, db_name, empty_person,max_tries=10):
+def process_one(oa_author, url, db_name, empty_person, max_tries=10):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["person"]
