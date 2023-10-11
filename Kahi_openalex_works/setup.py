@@ -82,8 +82,6 @@ def main():
         install_requires=[
             'kahi',
             'pymongo',
-            'pandas',
-            'thefuzz',
             'joblib',
             'langid',
             'lingua-language-detector',

@@ -1,11 +1,8 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, collation, TEXT
+from pymongo import MongoClient, TEXT
 from time import time
 from datetime import datetime as dt
 from joblib import Parallel, delayed
-from pandas import read_excel
-import traceback
-from thefuzz import fuzz, process
 from re import sub, split, UNICODE
 import unidecode
 
@@ -179,7 +176,7 @@ def parse_openalex(reg, empty_work):
             entry["bibliographic_info"]["end_page"] = reg["biblio"]["last_page"]
     if "open_access" in reg.keys():
         if "is_oa" in reg["open_access"].keys():
-            entry["bibliographic_info"]["is_open_acess"] = reg["open_access"]["is_oa"]
+            entry["bibliographic_info"]["is_open_access"] = reg["open_access"]["is_oa"]
         if "oa_status" in reg["open_access"].keys():
             entry["bibliographic_info"]["open_access_status"] = reg["open_access"]["oa_status"]
         if "oa_url" in reg["open_access"].keys():
@@ -226,28 +223,221 @@ def parse_openalex(reg, empty_work):
 
     return entry
 
-def process_one(oa_reg,url,db_name,empty_work):
+
+def process_one(oa_reg, url, db_name, empty_work):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
     doi = None
-    #register has doi
+    # register has doi
     if "doi" in oa_reg.keys():
         if oa_reg["doi"]:
-            doi = reg["doi"].split(".org/")[-1].lower()
+            doi = oa_reg["doi"].split(".org/")[-1].lower()
     if doi:
-        #is the doi in colavdb?
-        colav_reg = collection.find_one({"external_ids.id":doi})
-        if colav_reg: #update the register
-            pass
-        else: #insert a new register
-            #parse
-            parsed = parse_openalex(oa_reg)
-            #link
-            #insert
-    else:
-        #elasticsearch section
+        # is the doi in colavdb?
+        colav_reg = collection.find_one({"external_ids.id": doi})
+        if colav_reg:  # update the register
+            entry = parse_openalex(oa_reg, empty_work.copy())
+            # updated
+            for upd in colav_reg["updated"]:
+                if upd["source"] == "openalex":
+                    return None  # Register already on db
+                    # Could be updated with new information when openalex database changes
+            colav_reg["updated"].append(
+                {"source": "openalex", "time": int(time())})
+            # titles
+            lang = lang_poll(entry["titles"][0]["title"])
+            entry["titles"].append(
+                {"title": entry["titles"][0]["title"], "lang": lang, "source": "openalex"})
+            # external_ids
+            ext_ids = [ext["id"] for ext in colav_reg["external_ids"]]
+            for ext in entry["external_ids"]:
+                if ext["id"] not in ext_ids:
+                    colav_reg["external_ids"].append(ext)
+                    ext_ids.append(ext["id"])
+            # types
+            colav_reg["types"].append(
+                {"source": "openalex", "type": entry["types"][0]["type"]})
+            # open access
+            if "is_open_acess" not in entry["bibliographic_info"].keys():
+                colav_reg["bibliographic_info"]["is_open_acess"] = entry["bibliographic_info"]["is_open_access"]
+            if "open_access_status" not in entry["bibliographic_info"].keys():
+                colav_reg["bibliographic_info"]["open_access_status"] = entry["bibliographic_info"]["open_access_status"]
+            # external urls
+            urls_sources = [url["source"]
+                            for url in colav_reg["external_urls"]]
+            if "oa" not in urls_sources:
+                oa_url = None
+                for ext in entry["external_urls"]:
+                    if ext["source"] == "oa":
+                        oa_url = ext["url"]
+                        break
+                if oa_url:
+                    colav_reg["external_urls"].append(
+                        {"source": "oa", "url": entry["external_urls"][0]["url"]})
+            # citations by year
+            colav_reg["citations_by_year"] = entry["counts_by_year"]
+            # citations count
+            colav_reg["citations_count"].append(
+                {"source": "openalex", "count": entry["cited_by_count"]})
+            # subjects
+            subject_list = []
+            for subjects in entry["subjects"]:
+                for i, subj in enumerate(subjects["subjects"]):
+                    for ext in subj["external_ids"]:
+                        sub_db = db["subjects"].find_one(
+                            {"external_ids.id": ext["id"]})
+                        if sub_db:
+                            name = sub_db["names"][0]["name"]
+                            for n in sub_db["names"]:
+                                if n["lang"] == "en":
+                                    name = n["name"]
+                                    break
+                                elif n["lang"] == "es":
+                                    name = n["name"]
+                            subject_list.append({
+                                "id": sub_db["_id"],
+                                "name": name,
+                                "level": sub_db["level"]
+                            })
+                            break
+            colav_reg["subjects"].append(
+                {"source": "openalex", "subjects": subject_list})
+
+            collection.update_one(
+                {"_id": colav_reg["_id"]},
+                {"$set": {
+                    "updated": colav_reg["updated"],
+                    "titles": colav_reg["titles"],
+                    "external_ids": colav_reg["external_ids"],
+                    "types": colav_reg["types"],
+                    "bibliographic_info": colav_reg["bibliographic_info"],
+                    "external_urls": colav_reg["external_urls"],
+                    "subjects": colav_reg["subjects"],
+                }}
+            )
+        else:  # insert a new register
+            # parse
+            entry = parse_openalex(oa_reg, empty_work.copy())
+            # link
+            source_db = None
+            for ext in entry["source"]["external_ids"]:
+                source_db = db["sources"].find_one(
+                    {"external_ids.id": ext["id"]})
+                if source_db:
+                    break
+            if source_db:
+                entry["source"] = {
+                    "id": source_db["_id"],
+                    "names": source_db["names"]
+                }
+            else:
+                print("No source found for\n\t",
+                      entry["source"]["external_ids"])
+            for subjects in entry["subjects"]:
+                for i, subj in enumerate(subjects["subjects"]):
+                    for ext in subj["external_ids"]:
+                        sub_db = db["subjects"].find_one(
+                            {"external_ids.id": ext["id"]})
+                        if sub_db:
+                            name = sub_db["names"][0]["name"]
+                            for n in sub_db["names"]:
+                                if n["lang"] == "en":
+                                    name = n["name"]
+                                    break
+                                elif n["lang"] == "es":
+                                    name = n["name"]
+                            entry["subjects"][0]["subjects"][i] = {
+                                "id": sub_db["_id"],
+                                "name": name,
+                                "level": sub_db["level"]
+                            }
+                            break
+            # search authors and affiliations in db
+            for i, author in enumerate(entry["authors"]):
+                author_db = None
+                for ext in author["external_ids"]:
+                    author_db = db["person"].find_one(
+                        {"external_ids.id": ext["id"]})
+                    if author_db:
+                        break
+                if author_db:
+                    sources = [ext["source"]
+                               for ext in author_db["external_ids"]]
+                    ids = [ext["id"] for ext in author_db["external_ids"]]
+                    for ext in author["external_ids"]:
+                        if ext["id"] not in ids:
+                            author_db["external_ids"].append(ext)
+                            sources.append(ext["source"])
+                            ids.append(ext["id"])
+                    entry["authors"][i] = {
+                        "id": author_db["_id"],
+                        "full_name": author_db["full_name"],
+                        "affiliations": author["affiliations"]
+                    }
+                    if "external_ids" in author.keys():
+                        del (author["external_ids"])
+                else:
+                    author_db = db["person"].find_one(
+                        {"full_name": author["full_name"]})
+                    if author_db:
+                        sources = [ext["source"]
+                                   for ext in author_db["external_ids"]]
+                        ids = [ext["id"] for ext in author_db["external_ids"]]
+                        for ext in author["external_ids"]:
+                            if ext["id"] not in ids:
+                                author_db["external_ids"].append(ext)
+                                sources.append(ext["source"])
+                                ids.append(ext["id"])
+                        entry["authors"][i] = {
+                            "id": author_db["_id"],
+                            "full_name": author_db["full_name"],
+                            "affiliations": author["affiliations"]
+                        }
+                    else:
+                        entry["authors"][i] = {
+                            "id": "",
+                            "full_name": author["full_name"],
+                            "affiliations": author["affiliations"]
+                        }
+                for j, aff in enumerate(author["affiliations"]):
+                    aff_db = None
+                    if "external_ids" in aff.keys():
+                        for ext in aff["external_ids"]:
+                            aff_db = db["affiliations"].find_one(
+                                {"external_ids.id": ext["id"]})
+                            if aff_db:
+                                break
+                    if aff_db:
+                        entry["authors"][i]["affiliations"][j] = {
+                            "id": aff_db["_id"],
+                            "names": aff_db["names"],
+                            "types": aff_db["types"]
+                        }
+                    else:
+                        aff_db = db["affiliations"].find_one(
+                            {"names.name": aff["name"]})
+                        if aff_db:
+                            entry["authors"][i]["affiliations"][j] = {
+                                "id": aff_db["_id"],
+                                "names": aff_db["names"],
+                                "types": aff_db["types"]
+                            }
+                        else:
+                            entry["authors"][i]["affiliations"][j] = {
+                                "id": "",
+                                "names": [{"name": aff["name"]}],
+                                "types": []
+                            }
+
+            entry["author_count"] = len(entry["authors"])
+            # insert in mongo
+            collection.insert_one(entry)
+            # insert in elasticsearch
+    else:  # does not have a doi identifier
+        # elasticsearch section
         pass
+
 
 class Kahi_openalex_works(KahiBase):
 
@@ -291,7 +481,7 @@ class Kahi_openalex_works(KahiBase):
                 self.mongodb_url,
                 self.config["database_name"],
                 self.empty_work()
-            ) for paper in self.paper_list
+            ) for paper in paper_list
         )
 
     def run(self):
