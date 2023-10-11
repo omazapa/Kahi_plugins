@@ -37,7 +37,7 @@ def lang_poll(text):
     except Exception as e:
         print(e)
 
-    result = fd.detect(text=text, low_memory=True)
+    result = fd.detect(text=text)  # low_memory breaks the function
     lang_list.append(result["lang"].lower())
 
     detector = LanguageDetectorBuilder.from_all_languages().build()
@@ -56,8 +56,8 @@ def lang_poll(text):
         elif res.name.capitalize() == "Slovene":
             la = "sl"
         else:
-            la = iso639.languages.get(
-                name=res.name.capitalize()).alpha2.lower()
+            la = iso639.find(
+                res.name.capitalize())["iso639_1"].lower()
         lang_list.append(la)
 
     lang = None
@@ -465,9 +465,9 @@ class Kahi_openalex_works(KahiBase):
         self.openalex_collection = self.openalex_db[config["openalex_works"]
                                                     ["collection_name"]]
 
-        self.n_jobs = config["works"]["num_jobs"] if "num_jobs" in config["works"].keys(
+        self.n_jobs = config["openalex_works"]["num_jobs"] if "num_jobs" in config["openalex_works"].keys(
         ) else 1
-        self.verbose = config["works"]["verbose"] if "verbose" in config["works"].keys(
+        self.verbose = config["openalex_works"]["verbose"] if "verbose" in config["openalex_works"].keys(
         ) else 0
 
     def process_openalex(self):

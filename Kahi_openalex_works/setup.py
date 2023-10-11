@@ -51,7 +51,7 @@ if os.name in ('nt', 'dos'):
 def main():
     setup(
         # Application name:
-        name="Kahi_works",
+        name="Kahi_openalex_works",
 
         # Version number (initial):
         version=get_version('kahi_openalex_works/_version.py'),
