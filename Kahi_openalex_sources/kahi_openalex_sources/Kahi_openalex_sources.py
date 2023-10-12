@@ -118,7 +118,7 @@ class Kahi_openalex_sources(KahiBase):
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
-            backend="multiprocessing")(
+            backend="threading")(
             delayed(process_one)(
                 source,
                 self.mongodb_url,
