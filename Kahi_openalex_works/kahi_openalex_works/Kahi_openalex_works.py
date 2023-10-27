@@ -278,8 +278,8 @@ def process_one(oa_reg, url, db_name, empty_work):
             # citations by year
             colav_reg["citations_by_year"] = entry["counts_by_year"]
             # citations count
-            colav_reg["citations_count"].append(
-                {"source": "openalex", "count": entry["cited_by_count"]})
+            if entry["citations_count"]:
+                colav_reg["citations_count"].extend(entry["citations_count"])
             # subjects
             subject_list = []
             for subjects in entry["subjects"]:
@@ -314,6 +314,8 @@ def process_one(oa_reg, url, db_name, empty_work):
                     "bibliographic_info": colav_reg["bibliographic_info"],
                     "external_urls": colav_reg["external_urls"],
                     "subjects": colav_reg["subjects"],
+                    "citations_count": colav_reg["citations_count"],
+                    "citations_by_year": colav_reg["citations_by_year"]
                 }}
             )
         else:  # insert a new register
