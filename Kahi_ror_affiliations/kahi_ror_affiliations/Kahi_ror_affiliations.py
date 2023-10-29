@@ -15,7 +15,7 @@ def process_one(inst, url, db_name, empty_affiliations):
     else:
         entry = empty_affiliations.copy()
         entry["updated"].append({"time": int(time()), "source": "ror"})
-        entry["names"].append({"name": inst["name"], "lang": "en"})
+        entry["names"].append({"source": "ror", "name": inst["name"], "lang": "en"})
         entry["aliases"].extend(inst["aliases"])
         entry["abbreviations"].extend(inst["acronyms"])
         entry["year_established"] = int(
