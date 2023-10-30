@@ -39,21 +39,8 @@ class Kahi_staff_udea_affiliations(KahiBase):
             udea_reg["updated"].append(
                 {"time": int(time()), "source": "manual"})
             udea_reg["names"] = [
-                {"name": 'University of Antioquia', "lang": 'en'},
-                {"name": "Universitat d'Antioquia", "lang": 'ca'},
-                {"name": 'University of Antioquia', "lang": 'ceb'},
-                {"name": 'Universidad de Antioquia', "lang": 'de'},
-                {"name": 'Universitato de Antjokio', "lang": 'eo'},
-                {"name": 'Universidad de Antioquia', "lang": 'es'},
-                {"name": 'Antioquia Ülikool', "lang": 'et'},
-                {"name": "Université d'Antioquia", "lang": 'fr'},
-                {"name": 'Oilthigh Antioquia', "lang": 'gd'},
-                {"name": 'アンティオキア大学', "lang": 'ja'},
-                {"name": 'Universiteit van Antioquia', "lang": 'nl'},
-                {"name": 'Uniwersytet Antioquia', "lang": 'pl'},
-                {"name": 'Antioquias universitet', "lang": 'sv'},
-                {"name": 'Unibersidad ng Antioquia', "lang": 'tl'},
-                {"name": 'Antiokiya universiteti', "lang": 'uz'}
+                {"name": 'Universidad de Antioquia',
+                    "lang": 'es', "source": "staff_udea"}
             ]
             udea_reg["abbreviations"] = ['UdeA']
             udea_reg["year_established"] = 1803
@@ -152,7 +139,7 @@ class Kahi_staff_udea_affiliations(KahiBase):
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
-                        {"name": reg["Nombre fac"], "lang": "es"})
+                        {"name": reg["Nombre fac"], "lang": "es", "source": "staff_udea"})
                     entry["types"].append(
                         {"source": "staff", "type": "faculty"})
                     entry["relations"].append(
@@ -176,7 +163,7 @@ class Kahi_staff_udea_affiliations(KahiBase):
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
-                        {"name": reg["Nombre cencos"], "lang": "es"})
+                        {"name": reg["Nombre cencos"], "lang": "es", "source": "staff_udea"})
                     entry["types"].append(
                         {"source": "staff", "type": "department"})
                     entry["relations"].append(
