@@ -163,7 +163,7 @@ class Kahi_scienti_affiliations(KahiBase):
                 entry["external_ids"].append(
                     {"source": "scienti", "id": group["NRO_ID_GRUPO"]})
                 entry["names"].append(
-                    {"name": group["NME_GRUPO"], "lang": "es"})
+                    {"name": group["NME_GRUPO"], "lang": "es", "source": "scienti"})
                 entry["birthdate"] = int(dt.strptime(
                     str(group["ANO_FORMACAO"]) + "-" + str(group["MES_FORMACAO"]), "%Y-%m").timestamp())
                 if group["STA_ELIMINADO"] == "F":
@@ -204,8 +204,15 @@ class Kahi_scienti_affiliations(KahiBase):
                         db_inst = self.collection.find_one(
                             {"external_ids.id": inst["TXT_NIT"] + "-" + inst["TXT_DIGITO_VERIFICADOR"]})
                         if db_inst:
+                            name = db_inst["names"][0]["name"]
+                            for n in db_inst["names"]:
+                                if n["lang"] == "es":
+                                    name = n["name"]
+                                    break
+                                elif n["lang"] == "en":
+                                    name = n["name"]
                             rel_entry = {
-                                "names": db_inst["names"], "id": db_inst["_id"], "types": db_inst["types"]}
+                                "name": name, "id": db_inst["_id"], "types": db_inst["types"]}
                             if rel_entry not in entry["relations"]:
                                 entry["relations"].append(rel_entry)
 
