@@ -83,7 +83,8 @@ def main():
             'kahi',
             'pymongo',
             'joblib',
-            'datetime'
+            'datetime',
+            'thefuzz'
         ],
     )
 
