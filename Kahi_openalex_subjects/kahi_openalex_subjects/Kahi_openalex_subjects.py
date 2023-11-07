@@ -155,7 +155,7 @@ class Kahi_openalex_subjects(KahiBase):
             {"id": {"$nin": self.relations_inserted_ids}}, {"id": 1, "ancestors": 1, "related_concepts": 1}))
         Parallel(
             n_jobs=self.n_jobs,
-            backend="multiprocessing",
+            backend="threading",
             verbose=10
         )(delayed(process_relation)(sub, self.config["database_url"], self.config["database_name"]) for sub in openalex_data)
 
