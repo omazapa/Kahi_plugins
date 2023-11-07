@@ -96,7 +96,7 @@ class Kahi_ror_affiliations(KahiBase):
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
-            backend="multiprocessing")(
+            backend="threading")(
             delayed(process_one)(
                 inst,
                 self.mongodb_url,
