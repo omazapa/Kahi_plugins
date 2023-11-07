@@ -15,7 +15,8 @@ def process_one(inst, url, db_name, empty_affiliations):
     else:
         entry = empty_affiliations.copy()
         entry["updated"].append({"time": int(time()), "source": "ror"})
-        entry["names"].append({"source": "ror", "name": inst["name"], "lang": "en"})
+        entry["names"].append(
+            {"source": "ror", "name": inst["name"], "lang": "en"})
         entry["aliases"].extend(inst["aliases"])
         entry["abbreviations"].extend(inst["acronyms"])
         entry["year_established"] = int(
@@ -96,7 +97,7 @@ class Kahi_ror_affiliations(KahiBase):
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
-            backend="multiprocessing")(
+            backend="threading")(
             delayed(process_one)(
                 inst,
                 self.mongodb_url,
