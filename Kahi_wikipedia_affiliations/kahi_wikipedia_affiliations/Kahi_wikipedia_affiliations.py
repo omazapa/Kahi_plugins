@@ -197,8 +197,11 @@ def get_logo_wikipedia(url="", name="", lang="en", verbose=5):
 
 
 def process_one_wikipedia_name(inst, url, db_name, verbose=0):
-    client = MongoClient(url)
+    for name in inst["names"]:
+        if name["source"] == "wikipedia":
+            return
 
+    client = MongoClient(url)
     db = client[db_name]
     collection = db["affiliations"]
     wikipedia_url = ""
@@ -342,7 +345,7 @@ class Kahi_wikipedia_affiliations(KahiBase):
                     {"updated.source": "ror", "_id": {"$nin": self.wikipedia_updated}}))
                 Parallel(
                     n_jobs=self.n_jobs,
-                    backend="multiprocessing",
+                    backend="threading",
                     verbose=10
                 )(delayed(process_one_wikipedia_name)(
                     inst,
