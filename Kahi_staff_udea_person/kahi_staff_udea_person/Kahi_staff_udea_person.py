@@ -37,7 +37,7 @@ class Kahi_staff_udea_person(KahiBase):
             self.cedula_fac[reg["cedula"]] = reg["Nombre fac"]
             self.cedula_dep[reg["cedula"]] = reg["Nombre cencos"]
 
-        self.udea_reg = self.collection.find_one(
+        self.udea_reg = self.db["affiliations"].find_one(
             {"names.name": "University of Antioquia"})
         if not self.udea_reg:
             print(
@@ -84,8 +84,8 @@ class Kahi_staff_udea_person(KahiBase):
                 {"source": 'minciencias', "id": '007300000887'},
                 {"source": 'nit', "id": '890980040-8'}
             ]
-            self.collection.insert_one(udea_reg)
-            self.udea_reg = self.collection.find_one(
+            self.db["affiliations"].insert_one(udea_reg)
+            self.udea_reg = self.db["affiliations"].find_one(
                 {"names.name": "University of Antioquia"})
 
     # noqa: W605
