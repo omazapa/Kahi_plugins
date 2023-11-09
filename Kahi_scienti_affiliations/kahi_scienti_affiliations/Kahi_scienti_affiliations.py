@@ -105,6 +105,9 @@ class Kahi_scienti_affiliations(KahiBase):
                         if reg_col:
                             break
                 if reg_col:
+                    for upd in reg_col["updated"]:
+                        if upd["source"] == "scienti":
+                            continue
                     name = reg_col["names"][0]["name"]
                     reg_col["updated"].append(
                         {"source": "scienti", "time": int(time())})
