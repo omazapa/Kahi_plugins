@@ -163,13 +163,16 @@ def process_one(url, db_name, empty_person, auid, cv, articulos, subset, verbose
                         if rel["id"] in inst_cod:
                             continue
                         inst_cod.append(rel["id"])
-                        name = rel["names"][0]["name"]
-                        for n in rel["names"]:
-                            if n["lang"] == "es":
-                                name = n["name"]
-                                break
-                            elif n["lang"] == "en":
-                                name = n["name"]
+                        if "names" in rel.keys():
+                            name = rel["names"][0]["name"]
+                            for n in rel["names"]:
+                                if n["lang"] == "es":
+                                    name = n["name"]
+                                    break
+                                elif n["lang"] == "en":
+                                    name = n["name"]
+                        else:
+                            name = rel["name"]
                         entry["affiliations"].append({
                             "name": name,
                             "id": rel["id"],
