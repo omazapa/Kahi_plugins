@@ -37,8 +37,11 @@ def lang_poll(text):
     except Exception as e:
         print(e)
 
-    result = fd.detect(text=text)  # low_memory breaks the function
-    lang_list.append(result["lang"].lower())
+    try:
+        result = fd.detect(text=text)  # low_memory breaks the function
+        lang_list.append(result["lang"].lower())
+    except Exception as e:
+        print(e)
 
     detector = LanguageDetectorBuilder.from_all_languages().build()
     res = detector.detect_language_of(text)
@@ -130,11 +133,12 @@ def split_names(s, exceptions=['GIL', 'LEW', 'LIZ', 'PAZ', 'REY', 'RIO', 'ROA', 
 def parse_openalex(reg, empty_work):
     entry = empty_work.copy()
     entry["updated"] = [{"source": "openalex", "time": int(time())}]
-    if "http" in reg["title"]:
-        reg["title"] = reg["title"].split("//")[-1]
-    lang = lang_poll(reg["title"])
-    entry["titles"].append(
-        {"title": reg["title"], "lang": lang, "source": "openalex"})
+    if reg["title"]:
+        if "http" in reg["title"]:
+            reg["title"] = reg["title"].split("//")[-1]
+        lang = lang_poll(reg["title"])
+        entry["titles"].append(
+            {"title": reg["title"], "lang": lang, "source": "openalex"})
     for source, idx in reg["ids"].items():
         if "doi" in source:
             idx = idx.replace("https://doi.org/", "").lower()
@@ -411,18 +415,36 @@ def process_one(oa_reg, url, db_name, empty_work):
                             if aff_db:
                                 break
                     if aff_db:
+                        name = aff_db["names"][0]["name"]
+                        for n in aff_db["names"]:
+                            if n["source"] == "ror":
+                                name = n["name"]
+                                break
+                            if n["lang"] == "en":
+                                name = n["name"]
+                            if n["lang"] == "es":
+                                name = n["name"]
                         entry["authors"][i]["affiliations"][j] = {
                             "id": aff_db["_id"],
-                            "names": aff_db["names"],
+                            "names": name,
                             "types": aff_db["types"]
                         }
                     else:
                         aff_db = db["affiliations"].find_one(
                             {"names.name": aff["name"]})
                         if aff_db:
+                            name = aff_db["names"][0]["name"]
+                            for n in aff_db["names"]:
+                                if n["source"] == "ror":
+                                    name = n["name"]
+                                    break
+                                if n["lang"] == "en":
+                                    name = n["name"]
+                                if n["lang"] == "es":
+                                    name = n["name"]
                             entry["authors"][i]["affiliations"][j] = {
                                 "id": aff_db["_id"],
-                                "names": aff_db["names"],
+                                "names": name,
                                 "types": aff_db["types"]
                             }
                         else:
@@ -434,7 +456,15 @@ def process_one(oa_reg, url, db_name, empty_work):
 
             entry["author_count"] = len(entry["authors"])
             # insert in mongo
-            collection.insert_one(entry)
+            try:
+                collection.insert_one(entry)
+            except Exception as e:
+                print(entry)
+                print(e)
+                print(doi)
+                print(entry["autrhors_count"])
+                raise
+
             # insert in elasticsearch
     else:  # does not have a doi identifier
         # elasticsearch section
