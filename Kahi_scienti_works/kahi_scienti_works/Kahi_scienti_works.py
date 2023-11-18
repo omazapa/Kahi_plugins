@@ -36,8 +36,11 @@ def lang_poll(text):
     except Exception as e:
         print(e)
 
-    result = fd.detect(text=text)  # low_memory breaks the function
-    lang_list.append(result["lang"].lower())
+    try:
+        result = fd.detect(text=text)  # low_memory breaks the function
+        lang_list.append(result["lang"].lower())
+    except Exception as e:
+        print(e)
 
     detector = LanguageDetectorBuilder.from_all_languages().build()
     res = detector.detect_language_of(text)
@@ -152,24 +155,28 @@ def parse_scienti(reg, empty_work):
 
     details = reg["details"][0]["article"][0]
     try:
-        entry["bibliographic_info"]["start_page"] = details["TXT_PAGINA_INICIAL"]
+        if "TXT_PAGINA_INICIAL" in details.keys():
+            entry["bibliographic_info"]["start_page"] = details["TXT_PAGINA_INICIAL"]
     except Exception as e:
         print(e)
     try:
-        entry["bibliographic_info"]["end_page"] = details["TXT_PAGINA_FINAL"]
+        if "TXT_PAGINA_FINAL" in details.keys():
+            entry["bibliographic_info"]["end_page"] = details["TXT_PAGINA_FINAL"]
     except Exception as e:
         print(e)
     try:
-        entry["bibliographic_info"]["volume"] = details["TXT_VOLUMEN_REVISTA"]
+        if "TXT_VOLUMEN_REVISTA" in details.keys():
+            entry["bibliographic_info"]["volume"] = details["TXT_VOLUMEN_REVISTA"]
     except Exception as e:
         print(e)
     try:
-        entry["bibliographic_info"]["issue"] = details["TXT_FASCICULO_REVISTA"]
+        if "TXT_FASCICULO_REVISTA" in details.keys():
+            entry["bibliographic_info"]["issue"] = details["TXT_FASCICULO_REVISTA"]
     except Exception as e:
         print(e)
 
     # source section
-    source = {"external_ids": []}
+    source = {"external_ids": [], "title": ""}
     if "journal" in details.keys():
         journal = details["journal"][0]
         source["title"] = journal["TXT_NME_REVISTA"]
@@ -179,6 +186,7 @@ def parse_scienti(reg, empty_work):
         if "COD_REVISTA" in journal.keys():
             source["external_ids"].append(
                 {"source": "scienti", "id": journal["COD_REVISTA"]})
+    entry["source"] = source
 
     # authors section
     affiliations = []
@@ -198,7 +206,7 @@ def parse_scienti(reg, empty_work):
     author_entry = {
         "full_name": author["TXT_TOTAL_NAMES"],
         "types": [],
-        "affiliations": [{"name": affiliations}],
+        "affiliations": affiliations,
         "external_ids": [{"source": "scienti", "id": author["COD_RH"]}]
     }
     if author["TPO_DOCUMENTO_IDENT"] == "P":
@@ -210,6 +218,7 @@ def parse_scienti(reg, empty_work):
     if author["TPO_DOCUMENTO_IDENT"] == "E":
         author_entry["external_ids"].append(
             {"source": "Cédula de Extranjería", "id": author["NRO_DOCUMENTO_IDENT"]})
+    entry["authors"] = [author_entry]
 
     return entry
 
@@ -283,16 +292,23 @@ def process_one(scienti_reg, url, db_name, empty_work):
                 if source_db:
                     break
             if source_db:
+                name = source_db["names"][0]["name"]
+                for n in source_db["names"]:
+                    if n["lang"] == "es":
+                        name = n["name"]
+                        break
+                    if n["lang"] == "en":
+                        name = n["name"]
                 entry["source"] = {
                     "id": source_db["_id"],
-                    "names": source_db["names"]
+                    "name": name
                 }
             else:
                 print("No source found for\n\t",
                       entry["source"]["external_ids"])
                 entry["source"] = {
                     "id": "",
-                    "names": source_db["names"]
+                    "name": entry["source"]["title"]
                 }
 
             # search authors and affiliations in db
@@ -399,6 +415,7 @@ class Kahi_scienti_works(KahiBase):
         self.collection.create_index("authors.affiliations.id")
         self.collection.create_index("authors.id")
         self.collection.create_index([("titles.title", TEXT)])
+        self.collection.create_index("external_ids.id")
 
         self.n_jobs = config["scienti_works"]["num_jobs"] if "num_jobs" in config["scienti_works"].keys(
         ) else 1
@@ -406,7 +423,7 @@ class Kahi_scienti_works(KahiBase):
         ) else 0
 
     def process_scienti(self, config):
-        client = MongoClient(config[["database_url"]])
+        client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
         paper_list = list(scienti.find())
@@ -428,5 +445,7 @@ class Kahi_scienti_works(KahiBase):
                 print("Processing {} database".format(config["database_name"]))
             if self.verbose > 4:
                 print("Updating already inserted entries")
+            print(config)
+            print(type(config))
             self.process_scienti(config)
         return 0
