@@ -1,6 +1,6 @@
 <center><img src="https://raw.githubusercontent.com/colav/colav.github.io/master/img/Logo.png"/></center>
 
-# Kahi works plugin 
+# Kahi scienti works plugin 
 Kahi will use this plugin to insert or update the works information from scienti database.
 
 # Description
@@ -27,7 +27,7 @@ To use this plugin you must have kahi installed in your system and construct a y
 config:
   database_url: localhost:27017
   database_name: kahi
-  log_database: kahi_log
+  log_database: kahi
   log_collection: log
 workflow:
   scienti_works:
@@ -44,7 +44,7 @@ If you have several scienti databases use the example below
 config:
   database_url: localhost:27017
   database_name: kahi
-  log_database: kahi_log
+  log_database: kahi
   log_collection: log
 workflow:
   scienti_works:
