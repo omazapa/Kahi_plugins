@@ -17,6 +17,7 @@ def process_one(oa_aff, url, db_name, empty_affiliations, max_tries=10):
     if db_reg:
         for upd in db_reg["updated"]:
             if upd["source"] == "openalex":
+                client.close()
                 return  # Should it be update-able?
         db_reg["updated"].append({"time": int(time()), "source": "openalex"})
         id_sources = [ext["id"] for ext in db_reg["external_ids"]]
@@ -113,7 +114,7 @@ def process_one(oa_aff, url, db_name, empty_affiliations, max_tries=10):
             }
         ]
         collection.insert_one(entry)
-
+    client.close()
 
 class Kahi_openalex_affiliations(KahiBase):
 
