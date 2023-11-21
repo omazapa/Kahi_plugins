@@ -24,6 +24,7 @@ def process_one(source, url, db_name, empty_source):
                 oa_found = True
                 break
         if oa_found:
+            client.close()
             return
 
         source_db["updated"].append(
@@ -81,6 +82,7 @@ def process_one(source, url, db_name, empty_source):
                     {"source": soc["organization"], "url": soc["url"]})
 
         collection.insert_one(entry)
+    client.close()
 
 
 class Kahi_openalex_sources(KahiBase):
@@ -118,7 +120,7 @@ class Kahi_openalex_sources(KahiBase):
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
-            backend="multiprocessing")(
+            backend="threading")(
             delayed(process_one)(
                 source,
                 self.mongodb_url,
