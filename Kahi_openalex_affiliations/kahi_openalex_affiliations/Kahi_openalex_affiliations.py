@@ -17,6 +17,7 @@ def process_one(oa_aff, url, db_name, empty_affiliations, max_tries=10):
     if db_reg:
         for upd in db_reg["updated"]:
             if upd["source"] == "openalex":
+                client.close()
                 return  # Should it be update-able?
         db_reg["updated"].append({"time": int(time()), "source": "openalex"})
         id_sources = [ext["id"] for ext in db_reg["external_ids"]]
@@ -36,12 +37,12 @@ def process_one(oa_aff, url, db_name, empty_affiliations, max_tries=10):
             db_reg["addresses"] = [
                 {
                     "lat": oa_aff["geo"]["latitude"],
-                    "lng":oa_aff["geo"]["longitude"],
-                    "state":oa_aff["geo"]["region"],
-                    "city":oa_aff["geo"]["city"],
-                    "city_id":oa_aff["geo"]["geo_names_city_id"],
-                    "country":oa_aff["geo"]["country"],
-                    "country_code":oa_aff["geo"]["country_code"]
+                    "lng": oa_aff["geo"]["longitude"],
+                    "state": oa_aff["geo"]["region"],
+                    "city": oa_aff["geo"]["city"],
+                    "city_id": oa_aff["geo"]["geo_names_city_id"],
+                    "country": oa_aff["geo"]["country"],
+                    "country_code": oa_aff["geo"]["country_code"]
                 }
             ]
 
@@ -104,15 +105,16 @@ def process_one(oa_aff, url, db_name, empty_affiliations, max_tries=10):
         entry["addresses"] = [
             {
                 "lat": oa_aff["geo"]["latitude"],
-                "lng":oa_aff["geo"]["longitude"],
-                "state":oa_aff["geo"]["region"],
-                "city":oa_aff["geo"]["city"],
-                "city_id":oa_aff["geo"]["geonames_city_id"],
-                "country":oa_aff["geo"]["country"],
-                "country_code":oa_aff["geo"]["country_code"]
+                "lng": oa_aff["geo"]["longitude"],
+                "state": oa_aff["geo"]["region"],
+                "city": oa_aff["geo"]["city"],
+                "city_id": oa_aff["geo"]["geonames_city_id"],
+                "country": oa_aff["geo"]["country"],
+                "country_code": oa_aff["geo"]["country_code"]
             }
         ]
         collection.insert_one(entry)
+    client.close()
 
 
 class Kahi_openalex_affiliations(KahiBase):
