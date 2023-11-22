@@ -86,7 +86,6 @@ class Kahi_ror_affiliations(KahiBase):
                                           ["collection_name"]]
 
         self.collection.create_index("external_ids.id")
-        self.collection.create_index("names.name")
         self.collection.create_index("types.type")
         self.collection.create_index([("names.name", TEXT)])
 
