@@ -473,6 +473,7 @@ def process_one(oa_reg, url, db_name, empty_work):
         pass
     client.close()
 
+
 class Kahi_openalex_works(KahiBase):
 
     config = {}
