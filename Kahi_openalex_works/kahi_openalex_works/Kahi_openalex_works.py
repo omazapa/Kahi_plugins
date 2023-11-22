@@ -245,6 +245,7 @@ def process_one(oa_reg, url, db_name, empty_work):
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "openalex":
+                    client.close()
                     return None  # Register already on db
                     # Could be updated with new information when openalex database changes
             colav_reg["updated"].append(
@@ -459,6 +460,7 @@ def process_one(oa_reg, url, db_name, empty_work):
             try:
                 collection.insert_one(entry)
             except Exception as e:
+                client.close()
                 print(entry)
                 print(e)
                 print(doi)
@@ -469,7 +471,7 @@ def process_one(oa_reg, url, db_name, empty_work):
     else:  # does not have a doi identifier
         # elasticsearch section
         pass
-
+    client.close()
 
 class Kahi_openalex_works(KahiBase):
 
