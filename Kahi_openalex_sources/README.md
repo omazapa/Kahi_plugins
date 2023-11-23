@@ -33,6 +33,7 @@ workflow:
     database_url: localhost:27017
     database_name: openalex
     collection_name: venues
+    num_jobs: 10
 ```
 
 
