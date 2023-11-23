@@ -10,6 +10,7 @@ def process_one(inst, url, db_name, empty_affiliations):
     collection = db["affiliations"]
     found_entry = collection.find_one({"external_ids.id": inst["id"]})
     if found_entry:
+        client.close()
         return
         # may be updatable, check accordingly
     else:
@@ -64,6 +65,7 @@ def process_one(inst, url, db_name, empty_affiliations):
         entry["external_ids"].append(
             {"source": "ror", "id": inst["id"]})
         collection.insert_one(entry)
+    client.close()
 
 
 class Kahi_ror_affiliations(KahiBase):
@@ -86,7 +88,6 @@ class Kahi_ror_affiliations(KahiBase):
                                           ["collection_name"]]
 
         self.collection.create_index("external_ids.id")
-        self.collection.create_index("names.name")
         self.collection.create_index("types.type")
         self.collection.create_index([("names.name", TEXT)])
 
