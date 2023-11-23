@@ -196,8 +196,8 @@ class Kahi_scienti_affiliations(KahiBase):
                     entry["ranking"].append({
                         "source": "scienti",
                         "rank": group["TXT_CLASIF"],
-                        "from_date": int(dt.strptime(group["DTA_CLASIF"].split(", ")[-1].replace(" GMT", ""), "%d %b %Y %H:%M:%S").timestamp()),
-                        "to_date": int(dt.strptime(group["DTA_FIN_CLASIF"].split(", ")[-1].replace(" GMT", ""), "%d %b %Y %H:%M:%S").timestamp())
+                        "from_date": int(dt.strptime(group["DTA_CLASIF"].split(", ")[-1].replace(" GMT", ""), "%Y-%m-%d %H:%M:%S").timestamp()),
+                        "to_date": int(dt.strptime(group["DTA_FIN_CLASIF"].split(", ")[-1].replace(" GMT", ""), "%Y-%m-%d %H:%M:%S").timestamp())
                     })
                 subjects = self.extract_subject([], group["knowledge_area"][0])
                 if len(subjects) > 0:
