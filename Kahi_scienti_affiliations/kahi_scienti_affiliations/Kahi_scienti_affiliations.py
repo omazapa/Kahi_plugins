@@ -3,7 +3,7 @@ from pymongo import MongoClient, TEXT
 from datetime import datetime as dt
 from time import time
 from thefuzz import fuzz
-import re
+from re import match
 
 
 class Kahi_scienti_affiliations(KahiBase):
@@ -150,6 +150,17 @@ class Kahi_scienti_affiliations(KahiBase):
             self.extract_subject(subjects, data["knowledge_area"][0])
         return subjects
 
+    def check_date_format(self, date_str):
+        if date_str is None:
+            return ""
+        ymd_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+        dmy_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+        if match(ymd_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
+        elif match(dmy_format, date_str):
+            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
+        return ""
+
     def process_scienti_groups(self, config, verbose=0):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
@@ -194,25 +205,11 @@ class Kahi_scienti_affiliations(KahiBase):
                 })
 
                 if "TXT_CLASIF" in group.keys() and "DTA_CLASIF" in group.keys():
-                    def check_date_format(date_str):
-                        if date_str is None:
-                            return ""
-
-                        ymd_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
-                        dmy_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
-
-                        if re.match(ymd_format, date_str):
-                            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
-                        elif re.match(dmy_format, date_str):
-                            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
-
-                        return ""
-
                     entry["ranking"].append({
                         "source": "scienti",
                         "rank": group["TXT_CLASIF"],
-                        "from_date": check_date_format(group["DTA_CLASIF"]),
-                        "to_date": check_date_format(group["DTA_FIN_CLASIF"])
+                        "from_date": self.check_date_format(group["DTA_CLASIF"]),
+                        "to_date": self.check_date_format(group["DTA_FIN_CLASIF"])
                     })
 
                 subjects = self.extract_subject([], group["knowledge_area"][0])
