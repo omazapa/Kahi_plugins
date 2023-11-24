@@ -194,7 +194,6 @@ class Kahi_scienti_affiliations(KahiBase):
                 })
 
                 if "TXT_CLASIF" in group.keys() and "DTA_CLASIF" in group.keys():
-                    
                     def check_date_format(date_str):
                         if date_str is None:
                             return ""
