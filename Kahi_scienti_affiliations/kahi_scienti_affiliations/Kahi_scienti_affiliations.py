@@ -3,6 +3,7 @@ from pymongo import MongoClient, TEXT
 from datetime import datetime as dt
 from time import time
 from thefuzz import fuzz
+import re
 
 
 class Kahi_scienti_affiliations(KahiBase):
@@ -193,12 +194,28 @@ class Kahi_scienti_affiliations(KahiBase):
                 })
 
                 if "TXT_CLASIF" in group.keys() and "DTA_CLASIF" in group.keys():
+                    
+                    def check_date_format(date_str):
+                        if date_str is None:
+                            return ""
+
+                        ymd_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+                        dmy_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+
+                        if re.match(ymd_format, date_str):
+                            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
+                        elif re.match(dmy_format, date_str):
+                            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
+
+                        return ""
+
                     entry["ranking"].append({
                         "source": "scienti",
                         "rank": group["TXT_CLASIF"],
-                        "from_date": int(dt.strptime(group["DTA_CLASIF"].split(", ")[-1].replace(" GMT", ""), "%Y-%m-%d %H:%M:%S").timestamp()),
-                        "to_date": int(dt.strptime(group["DTA_FIN_CLASIF"].split(", ")[-1].replace(" GMT", ""), "%Y-%m-%d %H:%M:%S").timestamp())
+                        "from_date": check_date_format(group["DTA_CLASIF"]),
+                        "to_date": check_date_format(group["DTA_FIN_CLASIF"])
                     })
+
                 subjects = self.extract_subject([], group["knowledge_area"][0])
                 if len(subjects) > 0:
                     entry["subjects"].append({
