@@ -243,6 +243,7 @@ def process_one(scienti_reg, url, db_name, empty_work):
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "scienti":
+                    client.close()
                     return None  # Register already on db
                     # Could be updated with new information when scienti database changes
             colav_reg["updated"].append(
