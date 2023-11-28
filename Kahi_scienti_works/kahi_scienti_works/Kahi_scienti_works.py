@@ -153,40 +153,42 @@ def parse_scienti(reg, empty_work):
         typ = reg["product_type"][0]["product_type"][0]["TXT_NME_TIPO_PRODUCTO"]
         entry["types"].append({"source": "scienti", "type": typ})
 
-    details = reg["details"][0]["article"][0]
-    try:
-        if "TXT_PAGINA_INICIAL" in details.keys():
-            entry["bibliographic_info"]["start_page"] = details["TXT_PAGINA_INICIAL"]
-    except Exception as e:
-        print(e)
-    try:
-        if "TXT_PAGINA_FINAL" in details.keys():
-            entry["bibliographic_info"]["end_page"] = details["TXT_PAGINA_FINAL"]
-    except Exception as e:
-        print(e)
-    try:
-        if "TXT_VOLUMEN_REVISTA" in details.keys():
-            entry["bibliographic_info"]["volume"] = details["TXT_VOLUMEN_REVISTA"]
-    except Exception as e:
-        print(e)
-    try:
-        if "TXT_FASCICULO_REVISTA" in details.keys():
-            entry["bibliographic_info"]["issue"] = details["TXT_FASCICULO_REVISTA"]
-    except Exception as e:
-        print(e)
+    # details for articles
+    if "details" in reg.keys() and  len(reg["details"]) > 1 and "article" in reg["details"][0].keys():
+        details = reg["details"][0]["article"][0]
+        try:
+            if "TXT_PAGINA_INICIAL" in details.keys():
+                entry["bibliographic_info"]["start_page"] = details["TXT_PAGINA_INICIAL"]
+        except Exception as e:
+            print(e)
+        try:
+            if "TXT_PAGINA_FINAL" in details.keys():
+                entry["bibliographic_info"]["end_page"] = details["TXT_PAGINA_FINAL"]
+        except Exception as e:
+            print(e)
+        try:
+            if "TXT_VOLUMEN_REVISTA" in details.keys():
+                entry["bibliographic_info"]["volume"] = details["TXT_VOLUMEN_REVISTA"]
+        except Exception as e:
+            print(e)
+        try:
+            if "TXT_FASCICULO_REVISTA" in details.keys():
+                entry["bibliographic_info"]["issue"] = details["TXT_FASCICULO_REVISTA"]
+        except Exception as e:
+            print(e)
 
-    # source section
-    source = {"external_ids": [], "title": ""}
-    if "journal" in details.keys():
-        journal = details["journal"][0]
-        source["title"] = journal["TXT_NME_REVISTA"]
-        if "TXT_ISSN_REF_SEP" in journal.keys():
-            source["external_ids"].append(
-                {"source": "issn", "id": journal["TXT_ISSN_REF_SEP"]})
-        if "COD_REVISTA" in journal.keys():
-            source["external_ids"].append(
-                {"source": "scienti", "id": journal["COD_REVISTA"]})
-    entry["source"] = source
+        # source section
+        source = {"external_ids": [], "title": ""}
+        if "journal" in details.keys():
+            journal = details["journal"][0]
+            source["title"] = journal["TXT_NME_REVISTA"]
+            if "TXT_ISSN_REF_SEP" in journal.keys():
+                source["external_ids"].append(
+                    {"source": "issn", "id": journal["TXT_ISSN_REF_SEP"]})
+            if "COD_REVISTA" in journal.keys():
+                source["external_ids"].append(
+                    {"source": "scienti", "id": journal["COD_REVISTA"]})
+        entry["source"] = source
 
     # authors section
     affiliations = []
@@ -286,30 +288,31 @@ def process_one(scienti_reg, url, db_name, empty_work):
             entry = parse_scienti(scienti_reg, empty_work.copy())
             # link
             source_db = None
-            for ext in entry["source"]["external_ids"]:
-                source_db = db["sources"].find_one(
-                    {"external_ids.id": ext["id"]})
-                if source_db:
-                    break
-            if source_db:
-                name = source_db["names"][0]["name"]
-                for n in source_db["names"]:
-                    if n["lang"] == "es":
-                        name = n["name"]
+            if "external_ids" in entry["source"].keys():
+                for ext in entry["source"]["external_ids"]:
+                    source_db = db["sources"].find_one(
+                        {"external_ids.id": ext["id"]})
+                    if source_db:
                         break
-                    if n["lang"] == "en":
-                        name = n["name"]
-                entry["source"] = {
-                    "id": source_db["_id"],
-                    "name": name
-                }
-            else:
-                print("No source found for\n\t",
-                      entry["source"]["external_ids"])
-                entry["source"] = {
-                    "id": "",
-                    "name": entry["source"]["title"]
-                }
+                if source_db:
+                    name = source_db["names"][0]["name"]
+                    for n in source_db["names"]:
+                        if n["lang"] == "es":
+                            name = n["name"]
+                            break
+                        if n["lang"] == "en":
+                            name = n["name"]
+                    entry["source"] = {
+                        "id": source_db["_id"],
+                        "name": name
+                    }
+                else:
+                    print("No source found for\n\t",
+                        entry["source"]["external_ids"])
+                    entry["source"] = {
+                        "id": "",
+                        "name": entry["source"]["title"]
+                    }
 
             # search authors and affiliations in db
             for i, author in enumerate(entry["authors"]):
