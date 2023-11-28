@@ -154,7 +154,7 @@ def parse_scienti(reg, empty_work):
         entry["types"].append({"source": "scienti", "type": typ})
 
     # details for articles
-    if "details" in reg.keys() and  len(reg["details"]) > 1 and "article" in reg["details"][0].keys():
+    if "details" in reg.keys() and len(reg["details"]) > 1 and "article" in reg["details"][0].keys():
         details = reg["details"][0]["article"][0]
         try:
             if "TXT_PAGINA_INICIAL" in details.keys():
@@ -309,7 +309,7 @@ def process_one(scienti_reg, url, db_name, empty_work):
                     }
                 else:
                     print("No source found for\n\t",
-                        entry["source"]["external_ids"])
+                          entry["source"]["external_ids"])
                     entry["source"] = {
                         "id": "",
                         "name": entry["source"]["title"]
@@ -400,6 +400,7 @@ def process_one(scienti_reg, url, db_name, empty_work):
         # elasticsearch section
         pass
     client.close()
+
 
 class Kahi_scienti_works(KahiBase):
 
