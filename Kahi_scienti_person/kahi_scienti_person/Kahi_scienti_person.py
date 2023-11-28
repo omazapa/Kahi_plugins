@@ -89,7 +89,7 @@ class Kahi_scienti_person(KahiBase):
 
                 for upd in person["updated"]:
                     if upd["source"] == "scienti":
-                        scienti_updated[upd["source"]]=upd["time"]
+                        upd["time"] = int(time())
 
                 rank = person["ranking"]
                 ranks = []
@@ -350,7 +350,7 @@ class Kahi_scienti_person(KahiBase):
                 entry = self.empty_person()
                 entry["updated"].append(
                     {"time": int(time()), "source": "scienti"})
-            
+
                 if "NRO_DOC_IDENTIFICACION" in author.keys() and "TPO_DOC_IDENTIFICACION" in author.keys():
                     if author["TPO_DOC_IDENTIFICACION"] == "P":
                         entry["external_ids"].append(
@@ -371,7 +371,7 @@ class Kahi_scienti_person(KahiBase):
                 if "AUTOR_ID_SCP" in author.keys():
                     entry["external_ids"].append(
                         {"source": "scopus", "id": author["AUTOR_ID_SCP"]})
-                
+
                 if entry["external_ids"] == []:
                     continue
 
@@ -389,7 +389,7 @@ class Kahi_scienti_person(KahiBase):
                 if "DTA_NACIMIENTO" in author.keys():
                     entry["birthdate"] = int(dt.strptime(
                         author["DTA_NACIMIENTO"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-                
+
                 self.collection.insert_one(entry)
 
     def run(self):
