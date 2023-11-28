@@ -2,6 +2,7 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from datetime import datetime as dt
 from time import time
+from re import match
 
 
 class Kahi_scienti_person(KahiBase):
@@ -24,6 +25,17 @@ class Kahi_scienti_person(KahiBase):
 
         self.verbose = config["scienti_person"]["verbose"] if "verbose" in config["scienti_person"].keys(
         ) else 0
+
+    def check_date_format(self, date_str):
+        if date_str is None:
+            return ""
+        ymd_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+        dmy_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+        if match(ymd_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
+        elif match(dmy_format, date_str):
+            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
+        return ""
 
     def update_inserted(self, config, verbose=0):
         client = MongoClient(config["database_url"])
@@ -122,8 +134,7 @@ class Kahi_scienti_person(KahiBase):
                         continue
                     date = ""
                     if "DTA_CREACION" in prod.keys():
-                        date = int(dt.strptime(
-                            prod["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
+                        date = self.check_date_format(prod["DTA_CREACION"])
                     rank_entry = {
                         "date": date,
                         "rank": au["TPO_PERFIL"],
@@ -291,8 +302,7 @@ class Kahi_scienti_person(KahiBase):
                             continue
                         date = ""
                         if "DTA_CREACION" in prod.keys():
-                            date = int(dt.strptime(
-                                prod["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
+                            date = self.check_date_format(prod["DTA_CREACION"])
                         rank_entry = {
                             "date": date,
                             "rank": au["TPO_PERFIL"],
