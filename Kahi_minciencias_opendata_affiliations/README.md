@@ -30,8 +30,7 @@ config:
   log_collection: log
 workflow:
   minciencias_opendata_affiliations:
-    file_path: 
-      - /current/data/colombia/scienti-abiertos/3-Grupos_de_Investigaci_n_Reconocidos.csv
+    file_path: /current/data/colombia/scienti-abiertos/3-Grupos_de_Investigaci_n_Reconocidos.csv
 ```
 Where file_path under minciencias_opendata_affiliations task is the full path where the minciencias opendata csv is located.
 

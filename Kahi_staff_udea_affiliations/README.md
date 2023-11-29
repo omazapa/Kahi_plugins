@@ -30,8 +30,7 @@ config:
   log_collection: log
 workflow:
   staff_udea_affiliations:
-    file_path: 
-      - /current/data/colombia/udea/Base de Datos profesores 2019.xlsx
+    file_path: /current/data/colombia/udea/Base de Datos profesores 2019.xlsx
 ```
 
 # License

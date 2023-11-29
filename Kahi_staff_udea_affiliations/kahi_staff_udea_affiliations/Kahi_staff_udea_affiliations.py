@@ -33,7 +33,40 @@ class Kahi_staff_udea_affiliations(KahiBase):
         self.udea_reg = self.collection.find_one(
             {"names.name": "University of Antioquia"})
         if not self.udea_reg:
-            raise Exception("University of Antioquia not found in database")
+            print(
+                "University of Antioquia not found in database. Creating it with minimal information...")
+            udea_reg = self.empty_affiliation()
+            udea_reg["updated"].append(
+                {"time": int(time()), "source": "manual"})
+            udea_reg["names"] = [
+                {"name": 'Universidad de Antioquia',
+                    "lang": 'es', "source": "staff_udea"}
+            ]
+            udea_reg["abbreviations"] = ['UdeA']
+            udea_reg["year_established"] = 1803
+            udea_reg["addresses"] = [
+                {
+                    "lat": 6.267417,
+                    "lng": -75.568389,
+                    "postcode": '',
+                    "state": "Antioquia",
+                    "city": 'Medellín',
+                    "country": 'Colombia',
+                    "country_code": 'CO'
+                }
+            ]
+            udea_reg["external_ids"] = [
+                {"source": 'isni', "id": '0000 0000 8882 5269'},
+                {"source": 'fundref', "id": '501100005278'},
+                {"source": 'orgref', "id": '2696975'},
+                {"source": 'wikidata', "id": 'Q1258413'},
+                {"source": 'ror', "id": 'https://ror.org/03bp5hc83'},
+                {"source": 'minciencias', "id": '007300000887'},
+                {"source": 'nit', "id": '890980040-8'}
+            ]
+            self.collection.insert_one(udea_reg)
+            self.udea_reg = self.collection.find_one(
+                {"names.name": "Universidad de Atioquia"})
 
     def fix_names(self, name):  # reg["Nombre fac"]
         name = name.strip()
@@ -106,7 +139,7 @@ class Kahi_staff_udea_affiliations(KahiBase):
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
-                        {"name": reg["Nombre fac"], "lang": "es"})
+                        {"name": reg["Nombre fac"], "lang": "es", "source": "staff_udea"})
                     entry["types"].append(
                         {"source": "staff", "type": "faculty"})
                     entry["relations"].append(
@@ -130,7 +163,7 @@ class Kahi_staff_udea_affiliations(KahiBase):
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
-                        {"name": reg["Nombre cencos"], "lang": "es"})
+                        {"name": reg["Nombre cencos"], "lang": "es", "source": "staff_udea"})
                     entry["types"].append(
                         {"source": "staff", "type": "department"})
                     entry["relations"].append(

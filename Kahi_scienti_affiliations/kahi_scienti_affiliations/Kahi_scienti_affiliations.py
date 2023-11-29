@@ -3,6 +3,7 @@ from pymongo import MongoClient, TEXT
 from datetime import datetime as dt
 from time import time
 from thefuzz import fuzz
+from re import match
 
 
 class Kahi_scienti_affiliations(KahiBase):
@@ -105,6 +106,13 @@ class Kahi_scienti_affiliations(KahiBase):
                         if reg_col:
                             break
                 if reg_col:
+                    found_updated = False
+                    for upd in reg_col["updated"]:
+                        if upd["source"] == "scienti":
+                            found_updated = True
+                            break
+                    if found_updated:
+                        continue
                     name = reg_col["names"][0]["name"]
                     reg_col["updated"].append(
                         {"source": "scienti", "time": int(time())})
@@ -142,6 +150,17 @@ class Kahi_scienti_affiliations(KahiBase):
             self.extract_subject(subjects, data["knowledge_area"][0])
         return subjects
 
+    def check_date_format(self, date_str):
+        if date_str is None:
+            return ""
+        ymd_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+        dmy_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+        if match(ymd_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
+        elif match(dmy_format, date_str):
+            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
+        return ""
+
     def process_scienti_groups(self, config, verbose=0):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
@@ -163,7 +182,7 @@ class Kahi_scienti_affiliations(KahiBase):
                 entry["external_ids"].append(
                     {"source": "scienti", "id": group["NRO_ID_GRUPO"]})
                 entry["names"].append(
-                    {"name": group["NME_GRUPO"], "lang": "es"})
+                    {"name": group["NME_GRUPO"], "lang": "es", "source": "scienti"})
                 entry["birthdate"] = int(dt.strptime(
                     str(group["ANO_FORMACAO"]) + "-" + str(group["MES_FORMACAO"]), "%Y-%m").timestamp())
                 if group["STA_ELIMINADO"] == "F":
@@ -189,9 +208,10 @@ class Kahi_scienti_affiliations(KahiBase):
                     entry["ranking"].append({
                         "source": "scienti",
                         "rank": group["TXT_CLASIF"],
-                        "from_date": int(dt.strptime(group["DTA_CLASIF"].split(", ")[-1].replace(" GMT", ""), "%d %b %Y %H:%M:%S").timestamp()),
-                        "to_date": int(dt.strptime(group["DTA_FIN_CLASIF"].split(", ")[-1].replace(" GMT", ""), "%d %b %Y %H:%M:%S").timestamp())
+                        "from_date": self.check_date_format(group["DTA_CLASIF"]),
+                        "to_date": self.check_date_format(group["DTA_FIN_CLASIF"])
                     })
+
                 subjects = self.extract_subject([], group["knowledge_area"][0])
                 if len(subjects) > 0:
                     entry["subjects"].append({
@@ -204,8 +224,15 @@ class Kahi_scienti_affiliations(KahiBase):
                         db_inst = self.collection.find_one(
                             {"external_ids.id": inst["TXT_NIT"] + "-" + inst["TXT_DIGITO_VERIFICADOR"]})
                         if db_inst:
+                            name = db_inst["names"][0]["name"]
+                            for n in db_inst["names"]:
+                                if n["lang"] == "es":
+                                    name = n["name"]
+                                    break
+                                elif n["lang"] == "en":
+                                    name = n["name"]
                             rel_entry = {
-                                "names": db_inst["names"], "id": db_inst["_id"], "types": db_inst["types"]}
+                                "name": name, "id": db_inst["_id"], "types": db_inst["types"]}
                             if rel_entry not in entry["relations"]:
                                 entry["relations"].append(rel_entry)
 

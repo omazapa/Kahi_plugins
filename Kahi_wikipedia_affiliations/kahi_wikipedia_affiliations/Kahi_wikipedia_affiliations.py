@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from time import time
 import requests
 from urllib.parse import unquote
-from fuzzywuzzy import fuzz
+from thefuzz import fuzz
 from joblib import Parallel, delayed
 
 
@@ -197,8 +197,11 @@ def get_logo_wikipedia(url="", name="", lang="en", verbose=5):
 
 
 def process_one_wikipedia_name(inst, url, db_name, verbose=0):
-    client = MongoClient(url)
+    for name in inst["names"]:
+        if name["source"] == "wikipedia":
+            return
 
+    client = MongoClient(url)
     db = client[db_name]
     collection = db["affiliations"]
     wikipedia_url = ""
@@ -260,7 +263,8 @@ def process_one_wikipedia_name(inst, url, db_name, verbose=0):
         names = inst["names"]
         for nam in result["names"]:
             if nam["lang"] != "en":
-                names.append({"name": nam["*"], "lang": nam["lang"]})
+                names.append(
+                    {"name": nam["*"], "lang": nam["lang"], "source": "wikipedia"})
         inst["updated"].append({"source": "wikipedia", "time": int(time())})
         collection.update_one({"_id": inst["_id"]}, {
                               "$set": {"names": names, "updated": inst["updated"]}})
@@ -341,7 +345,7 @@ class Kahi_wikipedia_affiliations(KahiBase):
                     {"updated.source": "ror", "_id": {"$nin": self.wikipedia_updated}}))
                 Parallel(
                     n_jobs=self.n_jobs,
-                    backend="multiprocessing",
+                    backend="threading",
                     verbose=10
                 )(delayed(process_one_wikipedia_name)(
                     inst,

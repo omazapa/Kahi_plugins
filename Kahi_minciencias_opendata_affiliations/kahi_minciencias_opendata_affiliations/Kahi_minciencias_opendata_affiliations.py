@@ -96,7 +96,8 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
             entry = self.empty_affiliation()
             entry["updated"].append(
                 {"source": "minciencias", "time": int(time())})
-            entry["names"].append({"lang": "es", "name": reg["NME_GRUPO_GR"]})
+            entry["names"].append(
+                {"lang": "es", "name": reg["NME_GRUPO_GR"], "source": "minciencias"})
             entry["types"].append({"source": "minciencias", "type": "group"})
             entry["year_established"] = int(reg["FCREACION_GR"].split("/")[-1])
             entry["external_ids"].append(
@@ -108,14 +109,14 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
                     {
                         "level": 0,
                         "name": reg["NME_GRAN_AREA_GR"],
-                        "id":"",
-                        "external_ids":[{"source": "OECD", "id": reg["ID_AREA_CON_GR"][0]}]
+                        "id": "",
+                        "external_ids": [{"source": "OECD", "id": reg["ID_AREA_CON_GR"][0]}]
                     },
                     {
                         "level": 1,
                         "name": reg["NME_AREA_GR"],
-                        "id":"",
-                        "external_ids":[{"source": "OECD", "id": reg["ID_AREA_CON_GR"][1]}]
+                        "id": "",
+                        "external_ids": [{"source": "OECD", "id": reg["ID_AREA_CON_GR"][1]}]
                     },
                 ]
             })
@@ -173,8 +174,15 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
                                 institution = inst
                                 break
                 if institution != "":
+                    name = ""
+                    for n in inst["names"]:
+                        if n["lang"] == "es":
+                            name = n["name"]
+                            break
+                        elif n["lang"] == "en":
+                            name = n["name"]
                     entry["relations"].append(
-                        {"types": institution["types"], "id": institution["_id"], "names": institution["names"]})
+                        {"types": institution["types"], "id": institution["_id"], "name": name})
                     entry["addresses"].append({
                         "lat": institution["addresses"][0]["lat"],
                         "lng": institution["addresses"][0]["lng"],

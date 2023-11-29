@@ -51,10 +51,10 @@ if os.name in ('nt', 'dos'):
 def main():
     setup(
         # Application name:
-        name="Kahi_staff_udea_affiliations",
+        name="Kahi_scienti_works",
 
         # Version number (initial):
-        version=get_version('kahi_staff_udea_affiliations/_version.py'),
+        version=get_version('kahi_scienti_works/_version.py'),
 
         # Application author details:
         author="Colav",
@@ -71,7 +71,7 @@ def main():
         #
         license="BSD",
 
-        description="Kahi plugin staff_udea_affiliations",
+        description="Kahi plugin to insert and update works from scienti",
 
         long_description=open("README.md").read(),
 
@@ -82,8 +82,13 @@ def main():
         install_requires=[
             'kahi',
             'pymongo',
-            'pandas',
-            'openpyxl'
+            'joblib',
+            'langid',
+            'lingua-language-detector',
+            'pycld2',
+            'langdetect',
+            'fasttext-langdetect',
+            'iso639'
         ],
     )
 

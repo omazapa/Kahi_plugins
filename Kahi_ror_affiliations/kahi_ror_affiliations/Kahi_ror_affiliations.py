@@ -10,12 +10,14 @@ def process_one(inst, url, db_name, empty_affiliations):
     collection = db["affiliations"]
     found_entry = collection.find_one({"external_ids.id": inst["id"]})
     if found_entry:
+        client.close()
         return
         # may be updatable, check accordingly
     else:
         entry = empty_affiliations.copy()
         entry["updated"].append({"time": int(time()), "source": "ror"})
-        entry["names"].append({"name": inst["name"], "lang": "en"})
+        entry["names"].append(
+            {"source": "ror", "name": inst["name"], "lang": "en"})
         entry["aliases"].extend(inst["aliases"])
         entry["abbreviations"].extend(inst["acronyms"])
         entry["year_established"] = int(
@@ -63,6 +65,7 @@ def process_one(inst, url, db_name, empty_affiliations):
         entry["external_ids"].append(
             {"source": "ror", "id": inst["id"]})
         collection.insert_one(entry)
+    client.close()
 
 
 class Kahi_ror_affiliations(KahiBase):
@@ -85,7 +88,6 @@ class Kahi_ror_affiliations(KahiBase):
                                           ["collection_name"]]
 
         self.collection.create_index("external_ids.id")
-        self.collection.create_index("names.name")
         self.collection.create_index("types.type")
         self.collection.create_index([("names.name", TEXT)])
 
@@ -96,7 +98,7 @@ class Kahi_ror_affiliations(KahiBase):
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
-            backend="multiprocessing")(
+            backend="threading")(
             delayed(process_one)(
                 inst,
                 self.mongodb_url,
