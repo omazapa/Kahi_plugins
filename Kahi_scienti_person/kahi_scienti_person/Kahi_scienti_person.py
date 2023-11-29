@@ -87,45 +87,48 @@ class Kahi_scienti_person(KahiBase):
                         "country": city["department"][0]["country"][0]["TXT_NME_PAIS"].capitalize()
                     }
 
-                person["updated"].append(
-                    {"time": int(time()), "source": "scienti"})
+                for upd in person["updated"]:
+                    if upd["source"] == "scienti":
+                        upd["time"] = int(time())
 
                 rank = person["ranking"]
                 ranks = []
                 for prod in scienti.find({"author.NRO_DOCUMENTO_IDENT": idx}):
                     group_entry = {}
-                    group_db = db["affiliations"].find_one(
-                        {"external_ids.id": prod["group"][0]["COD_ID_GRUPO"]})
-                    if group_db:
-                        name = group_db["names"][0]["name"]
-                        for n in group_db["names"]:
-                            if n["lang"] == "es":
-                                name = n["name"]
-                                break
-                            elif n["lang"] == "en":
-                                name = n["name"]
-                        aff_found = False
-                        for aff in person["affiliations"]:
-                            if group_db["_id"] == aff["id"]:
-                                aff_found = True
-                                break
-                        if aff_found:
-                            continue
-                        time_str = ""
-                        if len(str(prod["NRO_ANO_PRESENTA"])) == 4:
-                            time_str += str(prod["NRO_ANO_PRESENTA"])
-                        else:
-                            continue
-                        if len(str(prod["NRO_MES_PRESENTA"])) < 2:
-                            time_str += "-0" + str(prod["NRO_MES_PRESENTA"])
-                        elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
-                            time_str += "-" + str(prod["NRO_MES_PRESENTA"])
-                        aff_time = int(dt.strptime(
-                            time_str, "%Y-%m").timestamp())
-                        group_entry = {
-                            "id": group_db["_id"], "name": name, "types": group_db["types"], "start_date": aff_time, "end_date": -1}
-                        if group_entry not in person["affiliations"]:
-                            person["affiliations"].append(group_entry)
+                    if "group" in prod.keys():
+                        group_db = db["affiliations"].find_one(
+                            {"external_ids.id": prod["group"][0]["COD_ID_GRUPO"]})
+                        if group_db:
+                            name = group_db["names"][0]["name"]
+                            for n in group_db["names"]:
+                                if n["lang"] == "es":
+                                    name = n["name"]
+                                    break
+                                elif n["lang"] == "en":
+                                    name = n["name"]
+                            aff_found = False
+                            for aff in person["affiliations"]:
+                                if group_db["_id"] == aff["id"]:
+                                    aff_found = True
+                                    break
+                            if aff_found:
+                                continue
+                            time_str = ""
+                            if len(str(prod["NRO_ANO_PRESENTA"])) == 4:
+                                time_str += str(prod["NRO_ANO_PRESENTA"])
+                            else:
+                                continue
+                            if len(str(prod["NRO_MES_PRESENTA"])) < 2:
+                                time_str += "-0" + \
+                                    str(prod["NRO_MES_PRESENTA"])
+                            elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
+                                time_str += "-" + str(prod["NRO_MES_PRESENTA"])
+                            aff_time = int(dt.strptime(
+                                time_str, "%Y-%m").timestamp())
+                            group_entry = {
+                                "id": group_db["_id"], "name": name, "types": group_db["types"], "start_date": aff_time, "end_date": -1}
+                            if group_entry not in person["affiliations"]:
+                                person["affiliations"].append(group_entry)
 
                     au = prod["author"][0]
                     if "TPO_PERFIL" not in au.keys():
@@ -237,6 +240,10 @@ class Kahi_scienti_person(KahiBase):
                                 "end_date": -1
                             })
 
+                    if "DTA_NACIM" in author.keys():
+                        entry["birthdate"] = int(dt.strptime(
+                            author["DTA_NACIM"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
+
                     if "TPO_ESTADO_CIVIL" in author.keys():
                         if author["TPO_ESTADO_CIVIL"] == "C":
                             entry["marital_status"] = "Married"
@@ -315,6 +322,78 @@ class Kahi_scienti_person(KahiBase):
 
                     self.collection.insert_one(entry)
 
+    def insert_scienti_others(self, config, verbose=0):
+        client = MongoClient(config["database_url"])
+        db = client[config["database_name"]]
+        scienti = db[config["collection_name"]]
+        author_others = scienti.find({}, {"author_others": 1})
+        for author_others_reg in author_others:
+            for author in author_others_reg["author_others"]:
+                if "COD_RH_REF" in author.keys():
+                    author_db = self.collection.find_one(
+                        {"external_ids.id": author["COD_RH_REF"]})
+                    if author_db:
+                        continue
+                if "NRO_DOC_IDENTIFICACION" in author.keys():
+                    author_db = self.collection.find_one(
+                        {"external_ids.id": author["NRO_DOC_IDENTIFICACION"]})
+                    if author_db:
+                        continue
+                if "COD_ORCID" in author.keys():
+                    author_db = self.collection.find_one(
+                        {"external_ids.id": author["COD_ORCID"]})
+                    if author_db:
+                        continue
+                if "AUTOR_ID_SCP" in author.keys():
+                    author_db = self.collection.find_one(
+                        {"external_ids.id": author["AUTOR_ID_SCP"]})
+                    if author_db:
+                        continue
+                entry = self.empty_person()
+                entry["updated"].append(
+                    {"time": int(time()), "source": "scienti"})
+
+                if "NRO_DOC_IDENTIFICACION" in author.keys() and "TPO_DOC_IDENTIFICACION" in author.keys():
+                    if author["TPO_DOC_IDENTIFICACION"] == "P":
+                        entry["external_ids"].append(
+                            {"source": "Passport", "id": author["NRO_DOC_IDENTIFICACION"]})
+                    if author["TPO_DOC_IDENTIFICACION"] == "C":
+                        entry["external_ids"].append(
+                            {"source": "Cédula de Ciudadanía", "id": author["NRO_DOC_IDENTIFICACION"]})
+                    if author["TPO_DOC_IDENTIFICACION"] == "E":
+                        entry["external_ids"].append(
+                            {"source": "Cédula de Extranjería", "id": author["NRO_DOC_IDENTIFICACION"]})
+                if "COD_ORCID" in author.keys():
+                    if author["COD_ORCID"]:
+                        entry["external_ids"].append(
+                            {"source": "orcid", "id": author["COD_ORCID"]})
+                if "COD_RH_REF" in author.keys():
+                    entry["external_ids"].append(
+                        {"source": "scienti", "id": author["COD_RH_REF"]})
+                if "AUTOR_ID_SCP" in author.keys():
+                    entry["external_ids"].append(
+                        {"source": "scopus", "id": author["AUTOR_ID_SCP"]})
+
+                if entry["external_ids"] == []:
+                    continue
+
+                entry["first_names"] = author["TXT_NME_RH"].strip().split()
+                entry["last_names"] = []
+                if "TXT_PRIM_APELL" in author.keys():
+                    entry["last_names"].append(author["TXT_PRIM_APELL"])
+                if "TXT_SEG_APELL" in author.keys():
+                    entry["last_names"].append(author["TXT_SEG_APELL"])
+                entry["full_name"] = " ".join(
+                    entry["first_names"]) + " " + " ".join(entry["last_names"])
+                entry["initials"] = "".join(
+                    [p[0].upper() for p in entry["first_names"]])
+
+                if "DTA_NACIMIENTO" in author.keys():
+                    entry["birthdate"] = int(dt.strptime(
+                        author["DTA_NACIMIENTO"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
+
+                self.collection.insert_one(entry)
+
     def run(self):
         for config in self.config["scienti_person"]["databases"]:
             if self.verbose > 0:
@@ -325,5 +404,8 @@ class Kahi_scienti_person(KahiBase):
             if self.verbose > 4:
                 print("Inserting new entries")
             self.insert_scienti(config, verbose=self.verbose)
+            if self.verbose > 4:
+                print("Processing authors_others")
+            self.insert_scienti_others(config, verbose=self.verbose)
 
         return 0
