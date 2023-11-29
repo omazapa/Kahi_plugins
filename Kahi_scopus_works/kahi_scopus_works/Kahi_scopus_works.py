@@ -36,8 +36,11 @@ def lang_poll(text):
     except Exception as e:
         print(e)
 
-    result = fd.detect(text=text)  # low_memory breaks the function
-    lang_list.append(result["lang"].lower())
+    try:
+        result = fd.detect(text=text)  # low_memory breaks the function
+        lang_list.append(result["lang"].lower())
+    except Exception as e:
+        print(e)
 
     detector = LanguageDetectorBuilder.from_all_languages().build()
     res = detector.detect_language_of(text)
@@ -241,9 +244,9 @@ def process_one(scopus_reg, url, db_name, empty_work):
     collection = db["works"]
     doi = None
     # register has doi
-    for ext in scopus_reg["external_ids"]:
-        if ext["source"] == "doi":
-            doi = ext["id"]
+    if scopus_reg["DOI"]:
+        if isinstance(scopus_reg["DOI"], str):
+            doi = scopus_reg["DOI"].lower().strip()
     if doi:
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
@@ -270,14 +273,16 @@ def process_one(scopus_reg, url, db_name, empty_work):
             colav_reg["types"].append(
                 {"source": "scopus", "type": entry["types"][0]["type"]})
             # open access
-            if "is_open_acess" not in entry["bibliographic_info"].keys():
-                colav_reg["bibliographic_info"]["is_open_acess"] = entry["bibliographic_info"]["is_open_access"]
-            if "open_access_status" not in entry["bibliographic_info"].keys():
-                colav_reg["bibliographic_info"]["open_access_status"] = entry["bibliographic_info"]["open_access_status"]
+            if "is_open_acess" not in colav_reg["bibliographic_info"].keys():
+                if "is_open_access" in entry["bibliographic_info"].keys():
+                    colav_reg["bibliographic_info"]["is_open_acess"] = entry["bibliographic_info"]["is_open_access"]
+            if "open_access_status" not in colav_reg["bibliographic_info"].keys():
+                if "open_access_status" in entry["bibliographic_info"].keys():
+                    colav_reg["bibliographic_info"]["open_access_status"] = entry["bibliographic_info"]["open_access_status"]
             # external urls
             urls_sources = [url["source"]
                             for url in colav_reg["external_urls"]]
-            for ext in entry["external_urlls"]:
+            for ext in entry["external_urls"]:
                 if ext["url"] not in urls_sources:
                     colav_reg["external_urls"].append(ext)
                     urls_sources.append(ext["url"])
@@ -311,13 +316,24 @@ def process_one(scopus_reg, url, db_name, empty_work):
                 if source_db:
                     break
             if source_db:
+                name = source_db["names"][0]["name"]
+                for n in source_db["names"]:
+                    if n["lang"] == "es":
+                        name = n["name"]
+                        break
+                    if n["lang"] == "en":
+                        name = n["name"]
                 entry["source"] = {
                     "id": source_db["_id"],
-                    "names": source_db["names"]
+                    "name": name
                 }
             else:
                 print("No source found for\n\t",
                       entry["source"]["external_ids"])
+                entry["source"] = {
+                    "id": "",
+                    "name": entry["source"]["title"]
+                }
             for subjects in entry["subjects"]:
                 for i, subj in enumerate(subjects["subjects"]):
                     for ext in subj["external_ids"]:
@@ -393,24 +409,42 @@ def process_one(scopus_reg, url, db_name, empty_work):
                             if aff_db:
                                 break
                     if aff_db:
+                        name = aff_db["names"][0]["name"]
+                        for n in aff_db["names"]:
+                            if n["source"] == "ror":
+                                name = n["name"]
+                                break
+                            if n["lang"] == "en":
+                                name = n["name"]
+                            if n["lang"] == "es":
+                                name = n["name"]
                         entry["authors"][i]["affiliations"][j] = {
                             "id": aff_db["_id"],
-                            "names": aff_db["names"],
+                            "name": name,
                             "types": aff_db["types"]
                         }
                     else:
                         aff_db = db["affiliations"].find_one(
                             {"names.name": aff["name"]})
                         if aff_db:
+                            name = aff_db["names"][0]["name"]
+                            for n in aff_db["names"]:
+                                if n["source"] == "ror":
+                                    name = n["name"]
+                                    break
+                                if n["lang"] == "en":
+                                    name = n["name"]
+                                if n["lang"] == "es":
+                                    name = n["name"]
                             entry["authors"][i]["affiliations"][j] = {
                                 "id": aff_db["_id"],
-                                "names": aff_db["names"],
+                                "name": name,
                                 "types": aff_db["types"]
                             }
                         else:
                             entry["authors"][i]["affiliations"][j] = {
                                 "id": "",
-                                "names": [{"name": aff["name"]}],
+                                "name": aff["name"],
                                 "types": []
                             }
 
