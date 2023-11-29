@@ -13,7 +13,7 @@ from lingua import LanguageDetectorBuilder
 import iso639
 
 
-def lang_poll(text):
+def lang_poll(text, verbose=0):
     text = text.lower()
     text = text.replace("\n", "")
     lang_list = []
@@ -24,9 +24,16 @@ def lang_poll(text):
     try:
         _, _, _, detected_language = cld2.detect(text, returnVectors=True)
     except Exception as e:
-        print(e)
-        text = str(unidecode.unidecode(text).encode("ascii", "ignore"))
-        _, _, _, detected_language = cld2.detect(text, returnVectors=True)
+        if verbose > 4:
+            print("Language detection error using cld2, trying without ascii")
+            print(e)
+        try:
+            text = str(unidecode.unidecode(text).encode("ascii", "ignore"))
+            _, _, _, detected_language = cld2.detect(text, returnVectors=True)
+        except Exception as e:
+            if verbose > 4:
+                print("Language detection error using cld2")
+                print(e)
 
     if detected_language:
         lang_list.append(detected_language[0][-1].lower())
@@ -34,13 +41,17 @@ def lang_poll(text):
     try:
         lang_list.append(detect(text).lower())
     except Exception as e:
-        print(e)
+        if verbose > 4:
+            print("Language detection error using langdetect")
+            print(e)
 
     try:
         result = fd.detect(text=text)  # low_memory breaks the function
         lang_list.append(result["lang"].lower())
     except Exception as e:
-        print(e)
+        if verbose > 4:
+            print("Language detection error using ftlangdetect")
+            print(e)
 
     detector = LanguageDetectorBuilder.from_all_languages().build()
     res = detector.detect_language_of(text)
@@ -129,10 +140,10 @@ def split_names(s, exceptions=['GIL', 'LEW', 'LIZ', 'PAZ', 'REY', 'RIO', 'ROA', 
     return d
 
 
-def parse_scienti(reg, empty_work):
+def parse_scienti(reg, empty_work, verbose=0):
     entry = empty_work.copy()
     entry["updated"] = [{"source": "scienti", "time": int(time())}]
-    lang = lang_poll(reg["TXT_NME_PROD"])
+    lang = lang_poll(reg["TXT_NME_PROD"], verbose=verbose)
     entry["titles"].append(
         {"title": reg["TXT_NME_PROD"], "lang": lang, "source": "scienti"})
     entry["external_ids"].append({"source": "COD_RH", "id": reg["COD_RH"]})
@@ -153,40 +164,54 @@ def parse_scienti(reg, empty_work):
         typ = reg["product_type"][0]["product_type"][0]["TXT_NME_TIPO_PRODUCTO"]
         entry["types"].append({"source": "scienti", "type": typ})
 
-    details = reg["details"][0]["article"][0]
-    try:
-        if "TXT_PAGINA_INICIAL" in details.keys():
-            entry["bibliographic_info"]["start_page"] = details["TXT_PAGINA_INICIAL"]
-    except Exception as e:
-        print(e)
-    try:
-        if "TXT_PAGINA_FINAL" in details.keys():
-            entry["bibliographic_info"]["end_page"] = details["TXT_PAGINA_FINAL"]
-    except Exception as e:
-        print(e)
-    try:
-        if "TXT_VOLUMEN_REVISTA" in details.keys():
-            entry["bibliographic_info"]["volume"] = details["TXT_VOLUMEN_REVISTA"]
-    except Exception as e:
-        print(e)
-    try:
-        if "TXT_FASCICULO_REVISTA" in details.keys():
-            entry["bibliographic_info"]["issue"] = details["TXT_FASCICULO_REVISTA"]
-    except Exception as e:
-        print(e)
+    # details only for articles
+    if "details" in reg.keys() and len(reg["details"]) > 1 and "article" in reg["details"][0].keys():
+        details = reg["details"][0]["article"][0]
+        try:
+            if "TXT_PAGINA_INICIAL" in details.keys():
+                entry["bibliographic_info"]["start_page"] = details["TXT_PAGINA_INICIAL"]
+        except Exception as e:
+            if verbose > 4:
+                print(
+                    f'Error parsing start page on RH:{reg["COD_RH"]} and COD_PROD:{reg["COD_PRODUCTO"]}')
+                print(e)
+        try:
+            if "TXT_PAGINA_FINAL" in details.keys():
+                entry["bibliographic_info"]["end_page"] = details["TXT_PAGINA_FINAL"]
+        except Exception as e:
+            if verbose > 4:
+                print(
+                    f'Error parsing end page on RH:{reg["COD_RH"]} and COD_PROD:{reg["COD_PRODUCTO"]}')
+                print(e)
+        try:
+            if "TXT_VOLUMEN_REVISTA" in details.keys():
+                entry["bibliographic_info"]["volume"] = details["TXT_VOLUMEN_REVISTA"]
+        except Exception as e:
+            if verbose > 4:
+                print(
+                    f'Error parsing volume on RH:{reg["COD_RH"]} and COD_PROD:{reg["COD_PRODUCTO"]}')
+                print(e)
+        try:
+            if "TXT_FASCICULO_REVISTA" in details.keys():
+                entry["bibliographic_info"]["issue"] = details["TXT_FASCICULO_REVISTA"]
+        except Exception as e:
+            if verbose > 4:
+                print(
+                    f'Error parsing issue on RH:{reg["COD_RH"]} and COD_PROD:{reg["COD_PRODUCTO"]}')
+                print(e)
 
-    # source section
-    source = {"external_ids": [], "title": ""}
-    if "journal" in details.keys():
-        journal = details["journal"][0]
-        source["title"] = journal["TXT_NME_REVISTA"]
-        if "TXT_ISSN_REF_SEP" in journal.keys():
-            source["external_ids"].append(
-                {"source": "issn", "id": journal["TXT_ISSN_REF_SEP"]})
-        if "COD_REVISTA" in journal.keys():
-            source["external_ids"].append(
-                {"source": "scienti", "id": journal["COD_REVISTA"]})
-    entry["source"] = source
+        # source section
+        source = {"external_ids": [], "title": ""}
+        if "journal" in details.keys():
+            journal = details["journal"][0]
+            source["title"] = journal["TXT_NME_REVISTA"]
+            if "TXT_ISSN_REF_SEP" in journal.keys():
+                source["external_ids"].append(
+                    {"source": "issn", "id": journal["TXT_ISSN_REF_SEP"]})
+            if "COD_REVISTA" in journal.keys():
+                source["external_ids"].append(
+                    {"source": "scienti", "id": journal["COD_REVISTA"]})
+        entry["source"] = source
 
     # authors section
     affiliations = []
@@ -223,7 +248,7 @@ def parse_scienti(reg, empty_work):
     return entry
 
 
-def process_one(scienti_reg, url, db_name, empty_work):
+def process_one(scienti_reg, url, db_name, empty_work, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
@@ -237,7 +262,8 @@ def process_one(scienti_reg, url, db_name, empty_work):
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
         if colav_reg:  # update the register
-            entry = parse_scienti(scienti_reg, empty_work.copy())
+            entry = parse_scienti(
+                scienti_reg, empty_work.copy(), verbose=verbose)
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "scienti":
@@ -286,11 +312,12 @@ def process_one(scienti_reg, url, db_name, empty_work):
             entry = parse_scienti(scienti_reg, empty_work.copy())
             # link
             source_db = None
-            for ext in entry["source"]["external_ids"]:
-                source_db = db["sources"].find_one(
-                    {"external_ids.id": ext["id"]})
-                if source_db:
-                    break
+            if "external_ids" in entry["source"].keys():
+                for ext in entry["source"]["external_ids"]:
+                    source_db = db["sources"].find_one(
+                        {"external_ids.id": ext["id"]})
+                    if source_db:
+                        break
             if source_db:
                 name = source_db["names"][0]["name"]
                 for n in source_db["names"]:
@@ -304,8 +331,12 @@ def process_one(scienti_reg, url, db_name, empty_work):
                     "name": name
                 }
             else:
-                print("No source found for\n\t",
-                      entry["source"]["external_ids"])
+                if len(entry["source"]["external_ids"]) == 0:
+                    print(
+                        f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
+                else:
+                    print("No source found for\n\t",
+                          entry["source"]["external_ids"])
                 entry["source"] = {
                     "id": "",
                     "name": entry["source"]["title"]
@@ -367,24 +398,42 @@ def process_one(scienti_reg, url, db_name, empty_work):
                             if aff_db:
                                 break
                     if aff_db:
+                        name = aff_db["names"][0]["name"]
+                        for n in aff_db["names"]:
+                            if n["source"] == "ror":
+                                name = n["name"]
+                                break
+                            if n["lang"] == "en":
+                                name = n["name"]
+                            if n["lang"] == "es":
+                                name = n["name"]
                         entry["authors"][i]["affiliations"][j] = {
                             "id": aff_db["_id"],
-                            "names": aff_db["names"],
+                            "name": name,
                             "types": aff_db["types"]
                         }
                     else:
                         aff_db = db["affiliations"].find_one(
                             {"names.name": aff["name"]})
                         if aff_db:
+                            name = aff_db["names"][0]["name"]
+                            for n in aff_db["names"]:
+                                if n["source"] == "ror":
+                                    name = n["name"]
+                                    break
+                                if n["lang"] == "en":
+                                    name = n["name"]
+                                if n["lang"] == "es":
+                                    name = n["name"]
                             entry["authors"][i]["affiliations"][j] = {
                                 "id": aff_db["_id"],
-                                "names": aff_db["names"],
+                                "name": name,
                                 "types": aff_db["types"]
                             }
                         else:
                             entry["authors"][i]["affiliations"][j] = {
                                 "id": "",
-                                "names": [{"name": aff["name"]}],
+                                "name": aff["name"],
                                 "types": []
                             }
 
@@ -395,6 +444,8 @@ def process_one(scienti_reg, url, db_name, empty_work):
     else:  # does not have a doi identifier
         # elasticsearch section
         pass
+
+    client.close()
 
 
 class Kahi_scienti_works(KahiBase):
@@ -435,7 +486,8 @@ class Kahi_scienti_works(KahiBase):
                 paper,
                 self.mongodb_url,
                 self.config["database_name"],
-                self.empty_work()
+                self.empty_work(),
+                verbose=self.verbose
             ) for paper in paper_list
         )
 
