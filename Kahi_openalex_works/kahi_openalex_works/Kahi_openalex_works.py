@@ -359,7 +359,7 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
             else:
                 if len(entry["source"]["external_ids"]) == 0:
                     print(
-                        f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
+                        f'Register with doi: {oa_reg["doi"]} does not provide a source')
                 else:
                     print("No source found for\n\t",
                           entry["source"]["external_ids"])
