@@ -252,13 +252,13 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
         if colav_reg:  # update the register
-            entry = parse_openalex(oa_reg, empty_work.copy(), verbose=verbose)
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "openalex":
                     client.close()
                     return None  # Register already on db
                     # Could be updated with new information when openalex database changes
+            entry = parse_openalex(oa_reg, empty_work.copy(), verbose=verbose)
             colav_reg["updated"].append(
                 {"source": "openalex", "time": int(time())})
             # titles
