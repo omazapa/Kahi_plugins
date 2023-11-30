@@ -365,7 +365,7 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
                           entry["source"]["external_ids"])
                 entry["source"] = {
                     "id": "",
-                    "name": entry["source"]["title"]
+                    "name": entry["source"]["name"]
                 }
             for subjects in entry["subjects"]:
                 for i, subj in enumerate(subjects["subjects"]):
