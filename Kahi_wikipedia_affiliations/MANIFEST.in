@@ -1,0 +1,2 @@
+recursive-include kahi_wikipedia_affiliations/ *.py
+recursive-include kahi_wikipedia_affiliations/ *.*

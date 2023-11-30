@@ -1,10 +1,10 @@
 <center><img src="https://raw.githubusercontent.com/colav/colav.github.io/master/img/Logo.png"/></center>
 
 # Kahi OpenAlex sources plugin 
-Kahi will use this plugin to insert or update the journal information from openalex
+Kahi will use this plugin to insert or update authors' information from openalex
 
 # Description
-Plugin that reads the information from a mongodb collection with openalex information to update or insert the information of the journals in CoLav's database format.
+Plugin that reads the information from a mongodb collection with openalex information to update or insert the information of the authors in CoLav's database format.
 
 # Installation
 You could download the repository from github. Go into the folder where the setup.py is located and run
@@ -13,7 +13,7 @@ pip3 install .
 ```
 From the package you can install by running
 ```shell
-pip3 install kahi_doaj_sources
+pip3 install kahi_openalex_person
 ```
 
 ## Dependencies
@@ -31,9 +31,10 @@ config:
 workflow:
   openalex_sources:
     database_url: localhost:27017
-    database_name: openalex
-    collection_name: venues
-    num_jobs: 10
+    database_name: openalexco
+    collection_name: authors
+    num_jobs: 20
+    verbose: 2
 ```
 
 

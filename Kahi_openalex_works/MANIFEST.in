@@ -1,0 +1,2 @@
+recursive-include kahi_openalex_works/ *.py
+recursive-include kahi_openalex_works/ *.*
