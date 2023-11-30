@@ -42,6 +42,8 @@ class Kahi_scienti_affiliations(KahiBase):
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
         for cod_inst in scienti.distinct("group.institution.TXT_NIT"):
+            if not cod_inst:
+                continue
             reg_scienti = scienti.find_one(
                 {"group.institution.TXT_NIT": cod_inst})
             for inst in reg_scienti["group"][0]["institution"]:
@@ -155,10 +157,13 @@ class Kahi_scienti_affiliations(KahiBase):
             return ""
         ymd_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
         dmy_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+        ym_format = r"\d{4}-\d{2}"
         if match(ymd_format, date_str):
             return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
         elif match(dmy_format, date_str):
             return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
+        elif match(ym_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m").timestamp())
         return ""
 
     def process_scienti_groups(self, config, verbose=0):
@@ -183,8 +188,7 @@ class Kahi_scienti_affiliations(KahiBase):
                     {"source": "scienti", "id": group["NRO_ID_GRUPO"]})
                 entry["names"].append(
                     {"name": group["NME_GRUPO"], "lang": "es", "source": "scienti"})
-                entry["birthdate"] = int(dt.strptime(
-                    str(group["ANO_FORMACAO"]) + "-" + str(group["MES_FORMACAO"]), "%Y-%m").timestamp())
+                entry["birthdate"] = self.check_date_format(str(group["ANO_FORMACAO"]) + "-" + str(group["MES_FORMACAO"]))
                 if group["STA_ELIMINADO"] == "F":
                     entry["status"].append(
                         {"source": "minciencias", "status": "activo"})
@@ -221,6 +225,8 @@ class Kahi_scienti_affiliations(KahiBase):
 
                 for reg in scienti.find({"group.COD_ID_GRUPO": group_id}):
                     for inst in reg["group"][0]["institution"]:
+                        if not inst["TXT_NIT"] or not inst["TXT_DIGITO_VERIFICADOR"]:
+                            continue
                         db_inst = self.collection.find_one(
                             {"external_ids.id": inst["TXT_NIT"] + "-" + inst["TXT_DIGITO_VERIFICADOR"]})
                         if db_inst:
