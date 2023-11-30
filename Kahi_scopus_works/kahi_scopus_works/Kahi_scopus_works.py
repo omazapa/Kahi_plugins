@@ -160,6 +160,9 @@ def parse_scopus(reg, empty_work):
     if "Pubmed ID" in reg.keys():
         entry["external_ids"].append(
             {"source": "pubmed", "id": reg["Pubmed ID"]})
+    if reg["ISBN"] and reg["ISBN"] == reg["ISBN"] and isinstance(reg["ISBN"], str):
+        entry["external_ids"].append(
+            {"source": "isbn", "id": reg["ISBN"]})
 
     if "Link" in reg.keys():
         entry["external_urls"].append({"source": "scopus", "url": reg["Link"]})
@@ -194,9 +197,6 @@ def parse_scopus(reg, empty_work):
         if reg["ISSN"] and reg["ISSN"] == reg["ISSN"] and isinstance(reg["ISSN"], str):
             source["external_ids"].append(
                 {"source": "issn", "id": reg["ISSN"][:4] + "-" + reg["ISSN"][4:]})
-        if reg["ISBN"] and reg["ISBN"] == reg["ISBN"] and isinstance(reg["ISBN"], str):
-            source["external_ids"].append(
-                {"source": "isbn", "id": reg["ISBN"]})
         if reg["CODEN"] and reg["CODEN"] == reg["CODEN"] and isinstance(reg["CODEN"], str):
             source["external_ids"].append(
                 {"source": "coden", "id": reg["CODEN"]})
