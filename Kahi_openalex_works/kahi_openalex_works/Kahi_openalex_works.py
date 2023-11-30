@@ -14,7 +14,7 @@ from lingua import LanguageDetectorBuilder
 import iso639
 
 
-def lang_poll(text):
+def lang_poll(text, verbose=0):
     text = text.lower()
     text = text.replace("\n", "")
     lang_list = []
@@ -25,9 +25,16 @@ def lang_poll(text):
     try:
         _, _, _, detected_language = cld2.detect(text, returnVectors=True)
     except Exception as e:
-        print(e)
-        text = str(unidecode.unidecode(text).encode("ascii", "ignore"))
-        _, _, _, detected_language = cld2.detect(text, returnVectors=True)
+        if verbose > 4:
+            print("Language detection error using cld2, trying without ascii")
+            print(e)
+        try:
+            text = str(unidecode.unidecode(text).encode("ascii", "ignore"))
+            _, _, _, detected_language = cld2.detect(text, returnVectors=True)
+        except Exception as e:
+            if verbose > 4:
+                print("Language detection error using cld2")
+                print(e)
 
     if detected_language:
         lang_list.append(detected_language[0][-1].lower())
@@ -35,13 +42,17 @@ def lang_poll(text):
     try:
         lang_list.append(detect(text).lower())
     except Exception as e:
-        print(e)
+        if verbose > 4:
+            print("Language detection error using langdetect")
+            print(e)
 
     try:
         result = fd.detect(text=text)  # low_memory breaks the function
         lang_list.append(result["lang"].lower())
     except Exception as e:
-        print(e)
+        if verbose > 4:
+            print("Language detection error using ftlangdetect")
+            print(e)
 
     detector = LanguageDetectorBuilder.from_all_languages().build()
     res = detector.detect_language_of(text)
@@ -130,13 +141,13 @@ def split_names(s, exceptions=['GIL', 'LEW', 'LIZ', 'PAZ', 'REY', 'RIO', 'ROA', 
     return d
 
 
-def parse_openalex(reg, empty_work):
+def parse_openalex(reg, empty_work, verbose=0):
     entry = empty_work.copy()
     entry["updated"] = [{"source": "openalex", "time": int(time())}]
     if reg["title"]:
         if "http" in reg["title"]:
             reg["title"] = reg["title"].split("//")[-1]
-        lang = lang_poll(reg["title"])
+        lang = lang_poll(reg["title"], verbose=verbose)
         entry["titles"].append(
             {"title": reg["title"], "lang": lang, "source": "openalex"})
     for source, idx in reg["ids"].items():
@@ -228,7 +239,7 @@ def parse_openalex(reg, empty_work):
     return entry
 
 
-def process_one(oa_reg, url, db_name, empty_work):
+def process_one(oa_reg, url, db_name, empty_work, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
@@ -241,7 +252,7 @@ def process_one(oa_reg, url, db_name, empty_work):
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
         if colav_reg:  # update the register
-            entry = parse_openalex(oa_reg, empty_work.copy())
+            entry = parse_openalex(oa_reg, empty_work.copy(), verbose=verbose)
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "openalex":
@@ -251,9 +262,7 @@ def process_one(oa_reg, url, db_name, empty_work):
             colav_reg["updated"].append(
                 {"source": "openalex", "time": int(time())})
             # titles
-            lang = lang_poll(entry["titles"][0]["title"])
-            entry["titles"].append(
-                {"title": entry["titles"][0]["title"], "lang": lang, "source": "openalex"})
+            colav_reg["titles"].extend(entry["titles"])
             # external_ids
             ext_ids = [ext["id"] for ext in colav_reg["external_ids"]]
             for ext in entry["external_ids"]:
@@ -261,13 +270,14 @@ def process_one(oa_reg, url, db_name, empty_work):
                     colav_reg["external_ids"].append(ext)
                     ext_ids.append(ext["id"])
             # types
-            colav_reg["types"].append(
-                {"source": "openalex", "type": entry["types"][0]["type"]})
+            colav_reg["types"].extend(entry["types"])
             # open access
-            if "is_open_acess" not in entry["bibliographic_info"].keys():
-                colav_reg["bibliographic_info"]["is_open_acess"] = entry["bibliographic_info"]["is_open_access"]
-            if "open_access_status" not in entry["bibliographic_info"].keys():
-                colav_reg["bibliographic_info"]["open_access_status"] = entry["bibliographic_info"]["open_access_status"]
+            if "is_open_acess" not in colav_reg["bibliographic_info"].keys():
+                if "is_open_access" in entry["bibliographic_info"].keys():
+                    colav_reg["bibliographic_info"]["is_open_acess"] = entry["bibliographic_info"]["is_open_access"]
+            if "open_access_status" not in colav_reg["bibliographic_info"].keys():
+                if "open_access_status" in entry["bibliographic_info"].keys():
+                    colav_reg["bibliographic_info"]["open_access_status"] = entry["bibliographic_info"]["open_access_status"]
             # external urls
             urls_sources = [url["source"]
                             for url in colav_reg["external_urls"]]
@@ -325,22 +335,38 @@ def process_one(oa_reg, url, db_name, empty_work):
             )
         else:  # insert a new register
             # parse
-            entry = parse_openalex(oa_reg, empty_work.copy())
+            entry = parse_openalex(oa_reg, empty_work.copy(), verbose=verbose)
             # link
             source_db = None
-            for ext in entry["source"]["external_ids"]:
-                source_db = db["sources"].find_one(
-                    {"external_ids.id": ext["id"]})
-                if source_db:
-                    break
+            if "external_ids" in entry["source"].keys():
+                for ext in entry["source"]["external_ids"]:
+                    source_db = db["sources"].find_one(
+                        {"external_ids.id": ext["id"]})
+                    if source_db:
+                        break
             if source_db:
+                name = source_db["names"][0]["name"]
+                for n in source_db["names"]:
+                    if n["lang"] == "es":
+                        name = n["name"]
+                        break
+                    if n["lang"] == "en":
+                        name = n["name"]
                 entry["source"] = {
                     "id": source_db["_id"],
-                    "names": source_db["names"]
+                    "name": name
                 }
             else:
-                print("No source found for\n\t",
-                      entry["source"]["external_ids"])
+                if len(entry["source"]["external_ids"]) == 0:
+                    print(
+                        f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
+                else:
+                    print("No source found for\n\t",
+                          entry["source"]["external_ids"])
+                entry["source"] = {
+                    "id": "",
+                    "name": entry["source"]["title"]
+                }
             for subjects in entry["subjects"]:
                 for i, subj in enumerate(subjects["subjects"]):
                     for ext in subj["external_ids"]:
@@ -427,7 +453,7 @@ def process_one(oa_reg, url, db_name, empty_work):
                                 name = n["name"]
                         entry["authors"][i]["affiliations"][j] = {
                             "id": aff_db["_id"],
-                            "names": name,
+                            "name": name,
                             "types": aff_db["types"]
                         }
                     else:
@@ -445,13 +471,13 @@ def process_one(oa_reg, url, db_name, empty_work):
                                     name = n["name"]
                             entry["authors"][i]["affiliations"][j] = {
                                 "id": aff_db["_id"],
-                                "names": name,
+                                "name": name,
                                 "types": aff_db["types"]
                             }
                         else:
                             entry["authors"][i]["affiliations"][j] = {
                                 "id": "",
-                                "names": [{"name": aff["name"]}],
+                                "name": aff["name"],
                                 "types": []
                             }
 
@@ -515,7 +541,8 @@ class Kahi_openalex_works(KahiBase):
                 paper,
                 self.mongodb_url,
                 self.config["database_name"],
-                self.empty_work()
+                self.empty_work(),
+                verbose=self.verbose
             ) for paper in paper_list
         )
 
