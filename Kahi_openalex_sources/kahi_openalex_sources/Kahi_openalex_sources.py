@@ -11,30 +11,59 @@ def process_one(source, url, db_name, empty_source):
 
     source_db = None
     if "issn" in source.keys():
-        source_db = collection.find_one(
-            {"external_ids.id": source["issn"]})
+        if source["issn"]:
+            source_db = collection.find_one(
+                {"external_ids.id": source["issn"]})
     if not source_db:
         if "issn_l" in source.keys():
-            source_db = collection.find_one(
-                {"external_ids.id": source["issn_l"]})
+            if source["issn_l"]:
+                source_db = collection.find_one(
+                    {"external_ids.id": source["issn_l"]})
     if source_db:
         oa_found = False
-        for up in source_db["updated"]:
-            if up["source"] == "openalex":
+        for ext in source_db["external_ids"]:
+            if ext["id"] == source["id"]:
                 oa_found = True
                 break
         if oa_found:
             client.close()
             return
 
-        source_db["updated"].append(
-            {"source": "openalex", "time": int(time())})
-        source_db["external_ids"].append(
-            {"source": "openalex", "id": source["id"]})
-        source_db["types"].append(
-            {"source": "openalex", "type": source["type"]})
-        source_db["names"].append(
-            {"name": source["display_name"], "lang": "en", "source": "openalex"})
+        for upd in source_db["updated"]:
+            if upd["source"] == "openalex":
+                upd["time"] = int(time())
+                oa_found = True
+        if not oa_found:
+            source_db["updated"].append(
+                {"source": "openalex", "time": int(time())})
+
+        ext_found = False
+        for ext in source_db["external_ids"]:
+            if ext["id"] == source["id"]:
+                ext_found = True
+                break
+        if not ext_found:
+            source_db["external_ids"].append(
+                {"source": "openalex", "id": source["id"]})
+
+        if "type" in source.keys():
+            if source["type"]:
+                type_found = False
+                for typ in source_db["types"]:
+                    if typ["source"] == "openalex":
+                        type_found = True
+                        break
+                if not type_found:
+                    source_db["types"].append(
+                        {"source": "openalex", "type": source["type"]})
+        name_found = False
+        for name in source_db["names"]:
+            if name["name"] == source["display_name"]:
+                name_found = True
+                break
+        if not name_found:
+            source_db["names"].append(
+                {"name": source["display_name"], "lang": "en", "source": "openalex"})
 
         collection.update_one({"_id": source_db["_id"]}, {"$set": {
             "updated": source_db["updated"],
@@ -52,13 +81,17 @@ def process_one(source, url, db_name, empty_source):
         entry["external_ids"].append(
             {"source": "openalex", "id": source["id"]})
         if "issn" in source.keys():
-            entry["external_ids"].append(
-                {"source": "issn", "id": source["issn"]})
+            if source["issn"]:
+                entry["external_ids"].append(
+                    {"source": "issn", "id": source["issn"]})
         if "issn_l" in source.keys():
-            entry["external_ids"].append(
-                {"source": "issn_l", "id": source["issn_l"]})
-        entry["types"].append(
-            {"source": "openalex", "type": source["type"]})
+            if source["issn_l"]:
+                entry["external_ids"].append(
+                    {"source": "issn_l", "id": source["issn_l"]})
+        if "type" in source.keys():
+            if source["type"]:
+                entry["types"].append(
+                    {"source": "openalex", "type": source["type"]})
         if "publisher" in source.keys():
             if source["publisher"]:
                 entry["publisher"] = {
@@ -101,22 +134,27 @@ class Kahi_openalex_sources(KahiBase):
 
         self.collection.create_index("external_ids.id")
 
-        self.collection.create_index("external_ids.id")
-
         self.openalex_client = MongoClient(
             config["openalex_sources"]["database_url"])
+
+        if config["openalex_sources"]["database_name"] not in self.openalex_client.list_database_names():
+            raise RuntimeError(
+                f'''Database {config["openalex_sources"]["database_name"]} was not found''')
+
         self.openalex_db = self.openalex_client[config["openalex_sources"]
                                                 ["database_name"]]
+
+        if config["openalex_sources"]["collection_name"] not in self.openalex_db.list_collection_names():
+            raise RuntimeError(
+                f'''Collection {config["openalex_sources"]["collection_name"]} was not found on database {config["openalex_sources"]["database_name"]}''')
+
         self.openalex_collection = self.openalex_db[config["openalex_sources"]
                                                     ["collection_name"]]
 
         self.n_jobs = config["openalex_sources"]["num_jobs"]
 
-        self.already_processed = []
-
     def process_openalex(self):
-        source_list = list(self.openalex_collection.find(
-            {"id": {"$nin": self.already_processed}}))
+        source_list = list(self.openalex_collection.find())
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
