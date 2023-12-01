@@ -331,15 +331,37 @@ def process_one(scienti_reg, url, db_name, empty_work, verbose=0):
                     "name": name
                 }
             else:
-                if len(entry["source"]["external_ids"]) == 0:
-                    print(
-                        f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
+                if "external_ids" in entry["source"].keys():
+                    if len(entry["source"]["external_ids"]) == 0:
+                        if verbose > 4:
+                            if "title" in entry["source"].keys():
+                                print(
+                                    f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with name: {entry["source"]["title"]}')
+                            else:
+                                print(
+                                    f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
+                    else:
+                        if verbose > 4:
+                            print(
+                                f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with {entry["source"]["external_ids"]["source"]}: {entry["source"]["external_ids"]["id"]}')
                 else:
-                    print("No source found for\n\t",
-                          entry["source"]["external_ids"])
+                    if "title" in entry["source"].keys():
+                        if entry["source"]["title"] == "":
+                            if verbose > 4:
+                                print(
+                                    f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
+                        else:
+                            if verbose > 4:
+                                print(
+                                    f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with name: {entry["source"]["title"]}')
+                    else:
+                        if verbose > 4:
+                            print(
+                                f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source')
+
                 entry["source"] = {
                     "id": "",
-                    "name": entry["source"]["title"]
+                    "name": entry["source"]["title"] if "title" in entry["source"].keys() else ""
                 }
 
             # search authors and affiliations in db
