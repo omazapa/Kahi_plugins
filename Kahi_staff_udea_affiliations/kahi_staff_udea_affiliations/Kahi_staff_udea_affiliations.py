@@ -66,7 +66,7 @@ class Kahi_staff_udea_affiliations(KahiBase):
             ]
             self.collection.insert_one(udea_reg)
             self.udea_reg = self.collection.find_one(
-                {"names.name": "Universidad de Atioquia"})
+                {"names.name": "Universidad de Antioquia"})
 
     def fix_names(self, name):  # reg["Nombre fac"]
         name = name.strip()
