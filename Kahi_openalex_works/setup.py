@@ -83,12 +83,12 @@ def main():
             'kahi',
             'pymongo',
             'joblib',
-            'langid',
-            'lingua-language-detector',
-            'pycld2',
-            'langdetect',
-            'fastspell',
-            'iso639'
+            'langid==1.1.6',
+            'lingua-language-detector==1.3.3',
+            'pycld2==0.41',
+            'langdetect==1.0.7',
+            'fastspell==0.8.0',
+            'iso639==0.1.4'
         ],
     )
 
