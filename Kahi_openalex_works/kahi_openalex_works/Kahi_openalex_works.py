@@ -15,6 +15,7 @@ import iso639
 
 fast_spell = FastSpell("en", mode="cons")
 
+
 def lang_poll(text, verbose=0):
     text = text.lower()
     text = text.replace("\n", "")
