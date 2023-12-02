@@ -19,6 +19,10 @@ pip3 install kahi_openalex_works
 ## Dependencies
 Software dependencies will automatically be installed when installing the plugin.
 For the data dependencies the user must have a copy of the openalex dump with the collection of works of interest (take a subset since this database is huge) which can be downloaded at [OpenAlex data dump website](https://docs.openalex.org/download-all-data/openalex-snapshot "OpenAlex data dump website") and import it on a mongodb database.
+C++ library libhunspell-dev must be installed on your system. On ubuntu you can do it by typing
+```shell
+$ sudo apt install libhunspell-dev
+```
 
 # Usage
 To use this plugin you must have kahi installed in your system and construct a yaml file such as
