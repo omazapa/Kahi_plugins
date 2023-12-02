@@ -87,7 +87,7 @@ def main():
             'lingua-language-detector',
             'pycld2',
             'langdetect',
-            'fasttext-langdetect',
+            'fastspell',
             'iso639'
         ],
     )

@@ -8,11 +8,12 @@ import unidecode
 
 from langid import classify
 import pycld2 as cld2
-from langdetect import detect
-import ftlangdetect as fd
+from langdetect import DetectorFactory, PROFILES_DIRECTORY
+from fastspell import FastSpell
 from lingua import LanguageDetectorBuilder
 import iso639
 
+fast_spell = FastSpell("en", mode="cons")
 
 def lang_poll(text, verbose=0):
     text = text.lower()
@@ -40,18 +41,22 @@ def lang_poll(text, verbose=0):
         lang_list.append(detected_language[0][-1].lower())
 
     try:
-        lang_list.append(detect(text).lower())
+        _factory = DetectorFactory()
+        _factory.load_profile(PROFILES_DIRECTORY)
+        detector = _factory.create()
+        detector.append(text)
+        lang_list.append(detector.detect().lower())
     except Exception as e:
         if verbose > 4:
             print("Language detection error using langdetect")
             print(e)
 
     try:
-        result = fd.detect(text=text)  # low_memory breaks the function
-        lang_list.append(result["lang"].lower())
+        result = fast_spell.getlang(text)  # low_memory breaks the function
+        lang_list.append(result.lower())
     except Exception as e:
         if verbose > 4:
-            print("Language detection error using ftlangdetect")
+            print("Language detection error using fastSpell")
             print(e)
 
     detector = LanguageDetectorBuilder.from_all_languages().build()
