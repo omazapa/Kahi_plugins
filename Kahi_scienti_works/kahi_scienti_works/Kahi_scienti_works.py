@@ -165,7 +165,7 @@ def parse_scienti(reg, empty_work, verbose=0):
         entry["types"].append({"source": "scienti", "type": typ})
 
     # details only for articles
-    if "details" in reg.keys() and len(reg["details"]) > 1 and "article" in reg["details"][0].keys():
+    if "details" in reg.keys() and len(reg["details"]) > 0 and "article" in reg["details"][0].keys():
         details = reg["details"][0]["article"][0]
         try:
             if "TXT_PAGINA_INICIAL" in details.keys():
