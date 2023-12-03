@@ -19,6 +19,10 @@ pip3 install kahi_openalex_works
 ## Dependencies
 Software dependencies will automatically be installed when installing the plugin.
 The user must have at least one database obtained from minciencias and previously processed by [kayPacha](https://github.com/colav/KayPacha "KayPacha") and uploaded on a mongodb database.
+C++ library libhunspell-dev must be installed on your system. On ubuntu you can do it by typing
+```shell
+$ sudo apt install libhunspell-dev
+```
 
 
 # Usage
