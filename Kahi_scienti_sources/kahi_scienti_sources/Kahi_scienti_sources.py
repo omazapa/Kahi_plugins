@@ -119,7 +119,11 @@ class Kahi_scienti_sources(KahiBase):
                 config["collection_name"]))
 
         self.scienti_collection = self.scienti_db[config["collection_name"]]
-        for issn in self.scienti_collection.distinct("details.article.journal.TXT_ISSN_SEP"):
+        issn_list = list(self.scienti_collection.distinct(
+            "details.article.journal.TXT_ISSN_SEP"))
+        issn_list.extend(self.scienti_collection.distinct(
+            "details.article.journal_others.TXT_ISSN"))
+        for issn in set(issn_list):
             reg_db = self.collection.find_one({"external_ids.id": issn})
             if reg_db:
                 reg_scienti = self.scienti_collection.find_one(
@@ -129,6 +133,9 @@ class Kahi_scienti_sources(KahiBase):
             else:
                 reg_scienti = self.scienti_collection.find_one(
                     {"details.article.journal.TXT_ISSN_SEP": issn})
+                if not reg_scienti:
+                    reg_scienti = self.scienti_collection.find_one(
+                        {"details.article.journal_others.TXT_ISSN_SEP": issn})
                 if reg_scienti:
                     journal = None
                     for detail in reg_scienti["details"]:
@@ -136,6 +143,9 @@ class Kahi_scienti_sources(KahiBase):
                             paper = detail["article"][0]
                             if "journal" in paper.keys():
                                 journal = paper["journal"][0]
+                                break
+                            elif "journal_others" in paper.keys():
+                                journal = paper["journal_others"][0]
                                 break
                     if not journal:
                         continue
