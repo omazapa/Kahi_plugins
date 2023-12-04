@@ -94,7 +94,7 @@ class Kahi_doaj_sources(KahiBase):
 
     def process_doaj(self, verbose=0):
         reg_list = list(self.doaj_collection.find())
-        for oldreg in reg_list:
+        for i, oldreg in enumerate(reg_list):
             reg = oldreg["bibjson"]
             if "eissn" in reg.keys():
                 reg_db = self.collection.find_one(
@@ -172,11 +172,17 @@ class Kahi_doaj_sources(KahiBase):
             entry["waiver"] = reg["waiver"]
 
             self.collection.insert_one(entry)
-            if verbose >= 4:
-                print(
-                    f"""Inserted  {len(self.already_in_db)} of {len(reg_list)}""")
+            if verbose > 4:
+                if i%1000==0:
+                    print(
+                        f"""Processed  {i} of {len(reg_list)}""")
             for ext in entry["external_ids"]:
                 self.already_in_db.append(ext["id"])
+
+        if verbose >= 4:
+            print(
+                f"""Inserted {self.collection.count_documents({"updated.source":"doaj"})} sources""")
+
         self.client.close()
 
     def run(self):
