@@ -29,10 +29,6 @@ class Kahi_doaj_sources(KahiBase):
         self.already_in_db = []
 
     def update_doaj(self, reg, entry):
-        """
-        TODO:
-        - Check if every field on entry could be updated
-        """
         for upd in entry["updated"]:
             if upd["source"] == "doaj":
                 return
@@ -110,11 +106,6 @@ class Kahi_doaj_sources(KahiBase):
                     if reg_db:
                         _id = reg_db["_id"]
                         self.already_in_db.append(reg["eissn"])
-                        if verbose > 4:
-                            print("Already in db: " + reg["eissn"])
-                        if verbose > 0:
-                            print("Total already found: ",
-                                  len(self.already_in_db))
                         entry = self.update_doaj(reg, reg_db)
                         if entry:
                             self.collection.update_one(
