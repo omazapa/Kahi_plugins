@@ -359,7 +359,7 @@ def process_one(scienti_reg, url, db_name, empty_work, verbose=0):
                     else:
                         if verbose > 4:
                             print(
-                                f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with {entry["source"]["external_ids"]["source"]}: {entry["source"]["external_ids"]["id"]}')
+                                f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with {entry["source"]["external_ids"][0]["source"]}: {entry["source"]["external_ids"][0]["id"]}')
                 else:
                     if "title" in entry["source"].keys():
                         if entry["source"]["title"] == "":
