@@ -130,12 +130,17 @@ class Kahi_scienti_sources(KahiBase):
                     {"details.article.journal.TXT_ISSN_SEP": issn})
                 if reg_scienti:
                     self.update_scienti(reg_scienti, reg_db, issn)
+                else:
+                    reg_scienti = self.scienti_collection.find_one(
+                        {"details.article.journal_others.TXT_ISSN": issn})
+                    if reg_scienti:
+                        self.update_scienti(reg_scienti, reg_db, issn)
             else:
                 reg_scienti = self.scienti_collection.find_one(
                     {"details.article.journal.TXT_ISSN_SEP": issn})
                 if not reg_scienti:
                     reg_scienti = self.scienti_collection.find_one(
-                        {"details.article.journal_others.TXT_ISSN_SEP": issn})
+                        {"details.article.journal_others.TXT_ISSN": issn})
                 if reg_scienti:
                     journal = None
                     for detail in reg_scienti["details"]:
@@ -156,7 +161,7 @@ class Kahi_scienti_sources(KahiBase):
                     entry["names"] = [
                         {"lang": lang, "name": journal["TXT_NME_REVISTA"], "source": "scienti"}]
                     entry["external_ids"].append(
-                        {"source": "issn", "id": journal["TXT_ISSN_SEP"]})
+                        {"source": "issn", "id": journal["TXT_ISSN_SEP"] if "TXT_ISSN_SEP" in journal.keys() else journal["TXT_ISSN"]})
                     entry["external_ids"].append(
                         {"source": "scienti", "id": journal["COD_REVISTA"]})
                     if "TPO_REVISTA" in journal.keys():
