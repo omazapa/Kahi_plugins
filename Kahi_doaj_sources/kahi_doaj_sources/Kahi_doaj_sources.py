@@ -25,6 +25,8 @@ class Kahi_doaj_sources(KahiBase):
         self.doaj_collection = self.doaj_db[config["doaj_sources"]
                                             ["collection_name"]]
 
+        self.verbose = self.config["doaj_sources"]["verbose"]
+
         self.already_in_db = []
 
     def update_doaj(self, reg, entry):
@@ -170,7 +172,7 @@ class Kahi_doaj_sources(KahiBase):
             entry["waiver"] = reg["waiver"]
 
             self.collection.insert_one(entry)
-            if verbose < 4:
+            if verbose >= 4:
                 print(
                     f"""Inserted  {len(self.already_in_db)} of {len(reg_list)}""")
             for ext in entry["external_ids"]:
@@ -178,5 +180,5 @@ class Kahi_doaj_sources(KahiBase):
         self.client.close()
 
     def run(self):
-        self.process_doaj(verbose=5)
+        self.process_doaj(verbose=self.verbose)
         return 0
