@@ -173,7 +173,7 @@ class Kahi_doaj_sources(KahiBase):
 
             self.collection.insert_one(entry)
             if verbose > 4:
-                if i%1000==0:
+                if i % 1000 == 0:
                     print(
                         f"""Processed  {i} of {len(reg_list)}""")
             for ext in entry["external_ids"]:
