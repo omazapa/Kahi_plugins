@@ -37,10 +37,34 @@ class Kahi_scienti_affiliations(KahiBase):
             self.collection.create_index([("names.name", TEXT)])
             print("Text index created on names.name field")
 
+    def check_date_format(self, date_str):
+        if date_str is None:
+            return ""
+        ymdhms_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+        dmyhms_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+        ymd_format = r"\d{4}-\d{2}-\d{2}"
+        dmy_format = r"\d{2}-\d{2}-\d{4}"
+        ym_format = r"\d{4}-\d{2}"
+        my_format = r"\d{2}-\d{4}"
+        if match(ymdhms_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
+        elif match(dmyhms_format, date_str):
+            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
+        elif match(ymd_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m-%d").timestamp())
+        elif match(dmy_format, date_str):
+            return int(dt.strptime(date_str, "%d-%m-%Y").timestamp())
+        elif match(ym_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m").timestamp())
+        elif match(my_format, date_str):
+            return int(dt.strptime(date_str, "%m-%Y").timestamp())
+        return ""
+
     def process_scienti_institutions(self, config, verbose=0):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
+        scienti.create_index("group.institution.TXT_NIT")
         for cod_inst in scienti.distinct("group.institution.TXT_NIT"):
             if not cod_inst:
                 continue
@@ -152,24 +176,11 @@ class Kahi_scienti_affiliations(KahiBase):
             self.extract_subject(subjects, data["knowledge_area"][0])
         return subjects
 
-    def check_date_format(self, date_str):
-        if date_str is None:
-            return ""
-        ymd_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
-        dmy_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
-        ym_format = r"\d{4}-\d{2}"
-        if match(ymd_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
-        elif match(dmy_format, date_str):
-            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
-        elif match(ym_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m").timestamp())
-        return ""
-
     def process_scienti_groups(self, config, verbose=0):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
+        scienti.create_index("group.COD_ID_GRUPO")
         for group_id in scienti.distinct("group.COD_ID_GRUPO"):
             db_reg = self.collection.find_one({"external_ids.id": group_id})
             if db_reg:
