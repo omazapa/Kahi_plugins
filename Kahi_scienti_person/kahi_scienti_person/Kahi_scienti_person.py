@@ -29,21 +29,31 @@ class Kahi_scienti_person(KahiBase):
     def check_date_format(self, date_str):
         if date_str is None:
             return ""
-        ymd_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
-        dmy_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+        ymdhms_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+        dmyhms_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+        ymd_format = r"\d{4}-\d{2}-\d{2}"
+        dmy_format = r"\d{2}-\d{2}-\d{4}"
         ym_format = r"\d{4}-\d{2}"
-        if match(ymd_format, date_str):
+        my_format = r"\d{2}-\d{4}"
+        if match(ymdhms_format, date_str):
             return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
-        elif match(dmy_format, date_str):
+        elif match(dmyhms_format, date_str):
             return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
+        elif match(ymd_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m-%d").timestamp())
+        elif match(dmy_format, date_str):
+            return int(dt.strptime(date_str, "%d-%m-%Y").timestamp())
         elif match(ym_format, date_str):
             return int(dt.strptime(date_str, "%Y-%m").timestamp())
+        elif match(my_format, date_str):
+            return int(dt.strptime(date_str, "%m-%Y").timestamp())
         return ""
 
     def update_inserted(self, config, verbose=0):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
+        scienti.create_index("author.NRO_DOCUMENTO_IDENT")
         for person in self.collection.find():
             idx = None
             for ext in person["external_ids"]:
@@ -165,7 +175,7 @@ class Kahi_scienti_person(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-
+        scienti.create_index("author.COD_RH")
         for rh in scienti.distinct("author.COD_RH"):
             author_db = self.collection.find_one({"external_ids.id": rh})
             if author_db:
@@ -327,6 +337,7 @@ class Kahi_scienti_person(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
+        scienti.create_index("author_others")
         author_others = scienti.find({}, {"author_others": 1})
         for author_others_reg in author_others:
             for author in author_others_reg["author_others"]:
@@ -408,5 +419,4 @@ class Kahi_scienti_person(KahiBase):
             if self.verbose > 4:
                 print("Processing authors_others")
             self.insert_scienti_others(config, verbose=self.verbose)
-
         return 0
