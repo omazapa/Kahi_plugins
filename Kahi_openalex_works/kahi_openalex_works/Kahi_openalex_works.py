@@ -8,10 +8,12 @@ import unidecode
 
 from langid import classify
 import pycld2 as cld2
-from langdetect import detect
-import ftlangdetect as fd
+from langdetect import DetectorFactory, PROFILES_DIRECTORY
+from fastspell import FastSpell
 from lingua import LanguageDetectorBuilder
 import iso639
+
+fast_spell = FastSpell("en", mode="cons")
 
 
 def lang_poll(text, verbose=0):
@@ -40,18 +42,22 @@ def lang_poll(text, verbose=0):
         lang_list.append(detected_language[0][-1].lower())
 
     try:
-        lang_list.append(detect(text).lower())
+        _factory = DetectorFactory()
+        _factory.load_profile(PROFILES_DIRECTORY)
+        detector = _factory.create()
+        detector.append(text)
+        lang_list.append(detector.detect().lower())
     except Exception as e:
         if verbose > 4:
             print("Language detection error using langdetect")
             print(e)
 
     try:
-        result = fd.detect(text=text)  # low_memory breaks the function
-        lang_list.append(result["lang"].lower())
+        result = fast_spell.getlang(text)  # low_memory breaks the function
+        lang_list.append(result.lower())
     except Exception as e:
         if verbose > 4:
-            print("Language detection error using ftlangdetect")
+            print("Language detection error using fastSpell")
             print(e)
 
     detector = LanguageDetectorBuilder.from_all_languages().build()
@@ -252,13 +258,13 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
         if colav_reg:  # update the register
-            entry = parse_openalex(oa_reg, empty_work.copy(), verbose=verbose)
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "openalex":
                     client.close()
                     return None  # Register already on db
                     # Could be updated with new information when openalex database changes
+            entry = parse_openalex(oa_reg, empty_work.copy(), verbose=verbose)
             colav_reg["updated"].append(
                 {"source": "openalex", "time": int(time())})
             # titles
@@ -365,7 +371,7 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
                           entry["source"]["external_ids"])
                 entry["source"] = {
                     "id": "",
-                    "name": entry["source"]["title"]
+                    "name": entry["source"]["name"]
                 }
             for subjects in entry["subjects"]:
                 for i, subj in enumerate(subjects["subjects"]):
