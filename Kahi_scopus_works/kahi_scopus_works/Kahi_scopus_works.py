@@ -253,7 +253,8 @@ def parse_scopus(reg, empty_work, verbose=0):
                             {"source": "scopus", "id": ids[i]}] if ids[i] else []
                     except Exception as e:
                         if verbose > 4:
-                            print("Error parsing author ids in doi ", reg["DOI"])
+                            print("Error parsing author ids in doi ",
+                                  reg["DOI"])
                             print(e)
                 entry["authors"].append(author_entry)
 
