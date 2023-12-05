@@ -4,16 +4,19 @@ from time import time
 from joblib import Parallel, delayed
 from re import sub, split, UNICODE
 import unidecode
+from math import isnan
 
 from langid import classify
 import pycld2 as cld2
-from langdetect import detect
-import ftlangdetect as fd
+from langdetect import DetectorFactory, PROFILES_DIRECTORY
+from fastspell import FastSpell
 from lingua import LanguageDetectorBuilder
 import iso639
 
+fast_spell = FastSpell("en", mode="cons")
 
-def lang_poll(text):
+
+def lang_poll(text, verbose=0):
     text = text.lower()
     text = text.replace("\n", "")
     lang_list = []
@@ -24,23 +27,38 @@ def lang_poll(text):
     try:
         _, _, _, detected_language = cld2.detect(text, returnVectors=True)
     except Exception as e:
-        print(e)
-        text = str(unidecode.unidecode(text).encode("ascii", "ignore"))
-        _, _, _, detected_language = cld2.detect(text, returnVectors=True)
+        if verbose > 4:
+            print("Language detection error using cld2, trying without ascii")
+            print(e)
+        try:
+            text = str(unidecode.unidecode(text).encode("ascii", "ignore"))
+            _, _, _, detected_language = cld2.detect(text, returnVectors=True)
+        except Exception as e:
+            if verbose > 4:
+                print("Language detection error using cld2")
+                print(e)
 
     if detected_language:
         lang_list.append(detected_language[0][-1].lower())
 
     try:
-        lang_list.append(detect(text).lower())
+        _factory = DetectorFactory()
+        _factory.load_profile(PROFILES_DIRECTORY)
+        detector = _factory.create()
+        detector.append(text)
+        lang_list.append(detector.detect().lower())
     except Exception as e:
-        print(e)
+        if verbose > 4:
+            print("Language detection error using langdetect")
+            print(e)
 
     try:
-        result = fd.detect(text=text)  # low_memory breaks the function
-        lang_list.append(result["lang"].lower())
+        result = fast_spell.getlang(text)  # low_memory breaks the function
+        lang_list.append(result.lower())
     except Exception as e:
-        print(e)
+        if verbose > 4:
+            print("Language detection error using fastSpell")
+            print(e)
 
     detector = LanguageDetectorBuilder.from_all_languages().build()
     res = detector.detect_language_of(text)
@@ -129,7 +147,7 @@ def split_names(s, exceptions=['GIL', 'LEW', 'LIZ', 'PAZ', 'REY', 'RIO', 'ROA', 
     return d
 
 
-def parse_scopus(reg, empty_work):
+def parse_scopus(reg, empty_work, verbose=0):
     entry = empty_work.copy()
     entry["updated"] = [{"source": "scopus", "time": int(time())}]
     lang = lang_poll(reg["Title"])
@@ -182,17 +200,19 @@ def parse_scopus(reg, empty_work):
             entry["bibliographic_info"]["end_page"] = reg["Page end"]
 
     if "Cited by" in reg.keys():
-        if reg["Cited by"]:
+        if not isnan(reg["Cited by"]):
             try:
                 entry["citations_count"].append(
                     {"source": "scopus", "count": int(reg["Cited by"])})
             except Exception as e:
-                print(e)
+                if verbose > 4:
+                    print("Error parsing citations count in doi ", reg["DOI"])
+                    print(e)
 
     source = {"external_ids": []}
     if "Source title" in reg.keys():
         if reg["Source title"] and reg["Source title"] == reg["Source title"]:
-            source["title"] = reg["Source title"]
+            source["name"] = reg["Source title"]
     if "ISSN" in reg.keys():
         if reg["ISSN"] and reg["ISSN"] == reg["ISSN"] and isinstance(reg["ISSN"], str):
             source["external_ids"].append(
@@ -230,15 +250,17 @@ def parse_scopus(reg, empty_work):
                 if ids:
                     try:
                         author_entry["external_ids"] = [
-                            {"source": "scopus", "id": ids[i]}]
+                            {"source": "scopus", "id": ids[i]}] if ids[i] else []
                     except Exception as e:
-                        print(e)
+                        if verbose > 4:
+                            print("Error parsing author ids in doi ", reg["DOI"])
+                            print(e)
                 entry["authors"].append(author_entry)
 
     return entry
 
 
-def process_one(scopus_reg, url, db_name, empty_work):
+def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
@@ -251,18 +273,17 @@ def process_one(scopus_reg, url, db_name, empty_work):
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
         if colav_reg:  # update the register
-            entry = parse_scopus(scopus_reg, empty_work.copy())
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "scopus":
                     return None  # Register already on db
                     # Could be updated with new information when scopus database changes
+            entry = parse_scopus(
+                scopus_reg, empty_work.copy(), verbose=verbose)
             colav_reg["updated"].append(
                 {"source": "scopus", "time": int(time())})
             # titles
-            lang = lang_poll(entry["titles"][0]["title"])
-            entry["titles"].append(
-                {"title": entry["titles"][0]["title"], "lang": lang, "source": "scopus"})
+            colav_reg["titles"].extend(entry["titles"])
             # external_ids
             ext_ids = [ext["id"] for ext in colav_reg["external_ids"]]
             for ext in entry["external_ids"]:
@@ -300,21 +321,22 @@ def process_one(scopus_reg, url, db_name, empty_work):
                     "types": colav_reg["types"],
                     "bibliographic_info": colav_reg["bibliographic_info"],
                     "external_urls": colav_reg["external_urls"],
-                    "subjects": colav_reg["subjects"],
                     "citations_count": colav_reg["citations_count"],
                     "citations_by_year": colav_reg["citations_by_year"]
                 }}
             )
         else:  # insert a new register
             # parse
-            entry = parse_scopus(scopus_reg, empty_work.copy())
+            entry = parse_scopus(
+                scopus_reg, empty_work.copy(), verbose=verbose)
             # link
             source_db = None
-            for ext in entry["source"]["external_ids"]:
-                source_db = db["sources"].find_one(
-                    {"external_ids.id": ext["id"]})
-                if source_db:
-                    break
+            if "external_ids" in entry["source"].keys():
+                for ext in entry["source"]["external_ids"]:
+                    source_db = db["sources"].find_one(
+                        {"external_ids.id": ext["id"]})
+                    if source_db:
+                        break
             if source_db:
                 name = source_db["names"][0]["name"]
                 for n in source_db["names"]:
@@ -328,31 +350,19 @@ def process_one(scopus_reg, url, db_name, empty_work):
                     "name": name
                 }
             else:
-                print("No source found for\n\t",
-                      entry["source"]["external_ids"])
+                if len(entry["source"]["external_ids"]) == 0:
+                    if verbose > 4:
+                        print(
+                            f'Register with doi: {scopus_reg["DOI"]} does not provide a source')
+                else:
+                    if verbose > 4:
+                        print("No source found for\n\t",
+                              entry["source"]["external_ids"])
                 entry["source"] = {
                     "id": "",
-                    "name": entry["source"]["title"]
+                    "name": entry["source"]["name"]
                 }
-            for subjects in entry["subjects"]:
-                for i, subj in enumerate(subjects["subjects"]):
-                    for ext in subj["external_ids"]:
-                        sub_db = db["subjects"].find_one(
-                            {"external_ids.id": ext["id"]})
-                        if sub_db:
-                            name = sub_db["names"][0]["name"]
-                            for n in sub_db["names"]:
-                                if n["lang"] == "en":
-                                    name = n["name"]
-                                    break
-                                elif n["lang"] == "es":
-                                    name = n["name"]
-                            entry["subjects"][0]["subjects"][i] = {
-                                "id": sub_db["_id"],
-                                "name": name,
-                                "level": sub_db["level"]
-                            }
-                            break
+
             # search authors and affiliations in db
             for i, author in enumerate(entry["authors"]):
                 author_db = None
@@ -498,7 +508,8 @@ class Kahi_scopus_works(KahiBase):
                 paper,
                 self.mongodb_url,
                 self.config["database_name"],
-                self.empty_work()
+                self.empty_work(),
+                verbose=self.verbose
             ) for paper in paper_list
         )
 
