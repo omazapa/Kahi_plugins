@@ -537,6 +537,7 @@ def process_one(wos_reg, url, db_name, empty_work, verbose=0):
     else:  # does not have a doi identifier
         # elasticsearch section
         pass
+    client.close()
 
 
 class Kahi_wos_works(KahiBase):
