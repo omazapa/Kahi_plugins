@@ -249,8 +249,12 @@ def parse_scopus(reg, empty_work, verbose=0):
                 }
                 if ids:
                     try:
-                        author_entry["external_ids"] = [
-                            {"source": "scopus", "id": ids[i]}] if ids[i] else []
+                        if i < len(ids):
+                            author_entry["external_ids"] = [
+                                {"source": "scopus", "id": ids[i]}] if ids[i] else []
+                        else:
+                            print("Not all authors have ids in doi ",
+                                  reg["DOI"])
                     except Exception as e:
                         if verbose > 4:
                             print("Error parsing author ids in doi ",
