@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, TEXT
+from pymongo import MongoClient, ASCENDING, TEXT
 from datetime import datetime as dt
 from time import time
 from thefuzz import fuzz
@@ -37,6 +37,23 @@ class Kahi_scienti_affiliations(KahiBase):
             self.collection.create_index([("names.name", TEXT)])
             print("Text index created on names.name field")
 
+        self.create_source_indexes()
+
+    def create_source_indexes(self):
+        for db_info in self.config["scienti_affiliations"]["databases"]:
+            database_url = db_info.get('database_url', '')
+            database_name = db_info.get('database_name', '')
+            collection_name = db_info.get('collection_name', '')
+
+            if database_url and database_name and collection_name:
+                client = MongoClient(database_url)
+                db = client[database_name]
+                collection = db[collection_name]
+
+                collection.create_index([('group.institution.TXT_NIT', ASCENDING)])
+                collection.create_index([('group.COD_ID_GRUPO', ASCENDING)])
+                client.close()
+
     def check_date_format(self, date_str):
         if date_str is None:
             return ""
@@ -64,7 +81,6 @@ class Kahi_scienti_affiliations(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-        scienti.create_index("group.institution.TXT_NIT")
         for cod_inst in scienti.distinct("group.institution.TXT_NIT"):
             if not cod_inst:
                 continue
@@ -180,7 +196,6 @@ class Kahi_scienti_affiliations(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-        scienti.create_index("group.COD_ID_GRUPO")
         for group_id in scienti.distinct("group.COD_ID_GRUPO"):
             db_reg = self.collection.find_one({"external_ids.id": group_id})
             if db_reg:
@@ -257,8 +272,13 @@ class Kahi_scienti_affiliations(KahiBase):
 
     def run(self):
         for config in self.config["scienti_affiliations"]["databases"]:
+            if self.verbose > 4:
+                start_time = time()
             if self.verbose > 0:
                 print("Processing {} database".format(config["database_name"]))
             self.process_scienti_institutions(config, verbose=self.verbose)
             self.process_scienti_groups(config, verbose=self.verbose)
+        if self.verbose > 4:
+            print("Execution time: {} minutes".format(
+                round((time() - start_time) / 60, 2)))
         return 0
