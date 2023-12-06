@@ -263,6 +263,8 @@ def parse_wos(reg, empty_work, verbose=0):
                         try:
                             name, rid = res.split("/")[-2:]
                         except Exception as e:
+                            print(
+                                f"""Error parsing researcherid for {reg["DI"]}""")
                             print(e)
                         ratio = fuzz.partial_ratio(name, author)
                         if ratio > 90:
@@ -286,6 +288,7 @@ def parse_wos(reg, empty_work, verbose=0):
                         try:
                             name, rid = res.split("/")[-2:]
                         except Exception as e:
+                            print(f"""Error parsing orcid for {reg["DI"]}""")
                             print(e)
                         ratio = fuzz.partial_ratio(name, author)
                         if ratio > 90:
@@ -534,6 +537,7 @@ def process_one(wos_reg, url, db_name, empty_work, verbose=0):
     else:  # does not have a doi identifier
         # elasticsearch section
         pass
+    client.close()
 
 
 class Kahi_wos_works(KahiBase):
