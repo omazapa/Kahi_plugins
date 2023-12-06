@@ -200,7 +200,11 @@ def parse_scopus(reg, empty_work, verbose=0):
             entry["bibliographic_info"]["end_page"] = reg["Page end"]
 
     if "Cited by" in reg.keys():
-        if not isnan(reg["Cited by"]):
+        if isinstance(reg["Cited by"], str):
+            if verbose > 4:
+                print("Error parsing citations count in doi ", reg["DOI"])
+                print("Cited by is a string instead of a integer")
+        elif not isnan(reg["Cited by"]):
             try:
                 entry["citations_count"].append(
                     {"source": "scopus", "count": int(reg["Cited by"])})
