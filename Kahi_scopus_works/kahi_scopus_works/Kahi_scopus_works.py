@@ -285,6 +285,7 @@ def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "scopus":
+                    client.close()
                     return None  # Register already on db
                     # Could be updated with new information when scopus database changes
             entry = parse_scopus(
@@ -474,6 +475,7 @@ def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
     else:  # does not have a doi identifier
         # elasticsearch section
         pass
+    client.close()
 
 
 class Kahi_scopus_works(KahiBase):
