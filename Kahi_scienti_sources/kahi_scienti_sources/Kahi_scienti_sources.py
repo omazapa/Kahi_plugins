@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient
+from pymongo import MongoClient, ASCENDING
 from datetime import datetime as dt
 from time import time
 from langid import classify
@@ -22,6 +22,23 @@ class Kahi_scienti_sources(KahiBase):
         self.collection.create_index("external_ids.id")
 
         self.already_in_db = []
+
+        self.create_source_indexes()
+
+    def create_source_indexes(self):
+        for db_info in self.config["scienti_sources"]:
+            database_url = db_info.get('database_url', '')
+            database_name = db_info.get('database_name', '')
+            collection_name = db_info.get('collection_name', '')
+
+            if database_url and database_name and collection_name:
+                client = MongoClient(database_url)
+                db = client[database_name]
+                collection = db[collection_name]
+
+                collection.create_index([("details.article.journal_others.TXT_ISSN", ASCENDING)])
+                collection.create_index([("details.article.journal.TXT_ISSN_SEP", ASCENDING)])
+                client.close()
 
     def update_scienti(self, reg, entry, issn):
         updated_scienti = False
@@ -263,7 +280,9 @@ class Kahi_scienti_sources(KahiBase):
                     self.collection.insert_one(entry)
 
     def run(self):
+        start_time = time()
         for config in self.config["scienti_sources"]:
             print("Processing {} database".format(config["database_name"]))
             self.process_scienti(config, verbose=5)
+        print("Execution time: {} minutes".format(round((time() - start_time) / 60, 2)))
         return 0
