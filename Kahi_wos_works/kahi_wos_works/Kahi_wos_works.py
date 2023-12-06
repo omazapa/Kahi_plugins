@@ -336,6 +336,7 @@ def process_one(wos_reg, url, db_name, empty_work, verbose=0):
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "wos":
+                    client.close()
                     return None  # Register already on db
                     # Could be updated with new information when wos database changes
             entry = parse_wos(
