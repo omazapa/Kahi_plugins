@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, TEXT
+from pymongo import MongoClient, ASCENDING, TEXT
 from datetime import datetime as dt
 from time import time
 from re import match
@@ -25,6 +25,24 @@ class Kahi_scienti_person(KahiBase):
 
         self.verbose = config["scienti_person"]["verbose"] if "verbose" in config["scienti_person"].keys(
         ) else 0
+
+        self.create_source_indexes()
+
+    def create_source_indexes(self):
+        for db_info in self.config["scienti_person"]["databases"]:
+            database_url = db_info.get('database_url', '')
+            database_name = db_info.get('database_name', '')
+            collection_name = db_info.get('collection_name', '')
+
+            if database_url and database_name and collection_name:
+                client = MongoClient(database_url)
+                db = client[database_name]
+                collection = db[collection_name]
+
+                collection.create_index([('author.NRO_DOCUMENTO_IDENT', ASCENDING)])
+                collection.create_index([('author.COD_RH', ASCENDING)])
+                collection.create_index([('author_others', ASCENDING)])
+                client.close()
 
     def check_date_format(self, date_str):
         if date_str is None:
@@ -53,7 +71,6 @@ class Kahi_scienti_person(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-        scienti.create_index("author.NRO_DOCUMENTO_IDENT")
         for person in self.collection.find():
             idx = None
             for ext in person["external_ids"]:
@@ -175,7 +192,6 @@ class Kahi_scienti_person(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-        scienti.create_index("author.COD_RH")
         for rh in scienti.distinct("author.COD_RH"):
             author_db = self.collection.find_one({"external_ids.id": rh})
             if author_db:
@@ -337,7 +353,6 @@ class Kahi_scienti_person(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-        scienti.create_index("author_others")
         author_others = scienti.find({}, {"author_others": 1})
         for author_others_reg in author_others:
             for author in author_others_reg["author_others"]:
@@ -411,6 +426,7 @@ class Kahi_scienti_person(KahiBase):
             if self.verbose > 0:
                 print("Processing {} database".format(config["database_name"]))
             if self.verbose > 4:
+                start_time = time()
                 print("Updating already inserted entries")
             self.update_inserted(config, verbose=self.verbose)
             if self.verbose > 4:
@@ -419,4 +435,7 @@ class Kahi_scienti_person(KahiBase):
             if self.verbose > 4:
                 print("Processing authors_others")
             self.insert_scienti_others(config, verbose=self.verbose)
+        if self.verbose > 4:
+            print("Execution time: {} minutes".format(
+                round((time() - start_time) / 60, 2)))
         return 0
