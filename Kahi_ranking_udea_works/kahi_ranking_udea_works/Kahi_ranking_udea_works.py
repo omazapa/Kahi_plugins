@@ -157,13 +157,13 @@ def parse_ranking_udea(reg, affiliation, empty_work):
         entry["external_ids"].append(
             {"source": "doi", "id": reg["DOI"].lower()})
     if reg["issn"]:
-        if isinstance(reg["issn"],str):
+        if isinstance(reg["issn"], str):
             for issn in reg["issn"].strip().split():
                 if "-" not in issn:
                     continue
-                issn=issn.strip()
+                issn = issn.strip()
                 entry["source"] = {"name": reg["nombre rev o premio"],
-                                "external_ids": [{"source": "issn", "id": issn}]}
+                                   "external_ids": [{"source": "issn", "id": issn}]}
     if not entry["source"]:
         entry["source"] = {
             "name": reg["nombre rev o premio"], "external_ids": []}
@@ -191,7 +191,7 @@ def parse_ranking_udea(reg, affiliation, empty_work):
     return entry
 
 
-def process_one(ranking_udea_reg, url, db_name, affiliation,empty_work, verbose=0):
+def process_one(ranking_udea_reg, url, db_name, affiliation, empty_work, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
@@ -393,7 +393,8 @@ class Kahi_ranking_udea_works(KahiBase):
         self.collection.create_index("authors.id")
         self.collection.create_index([("titles.title", TEXT)])
 
-        self.ranking = read_excel(config["ranking_udea_works"]["file_path"], dtype={"cedula": str, "DOI": str}).to_dict(orient="records")
+        self.ranking = read_excel(config["ranking_udea_works"]["file_path"], dtype={
+                                  "cedula": str, "DOI": str}).to_dict(orient="records")
 
         self.n_jobs = config["ranking_udea_works"]["num_jobs"] if "num_jobs" in config["ranking_udea_works"].keys(
         ) else 1
@@ -404,7 +405,7 @@ class Kahi_ranking_udea_works(KahiBase):
             {"names.name": "University of Antioquia"})
         if not self.udea_reg:
             self.udea_reg = self.collection.find_one(
-            {"names.name": "Universidad de Antioquia"})
+                {"names.name": "Universidad de Antioquia"})
         if not self.udea_reg:
             print(
                 "University of Antioquia not found in database. Creating it with minimal information...")
