@@ -264,7 +264,7 @@ def parse_wos(reg, empty_work, verbose=0):
                             name, rid = res.split("/")[-2:]
                         except Exception as e:
                             print(
-                                f"""Error parsing researcherid for {reg["DI"]}""")
+                                f"""{reg["DI"]} does not provide researcherid """)
                             print(e)
                         ratio = fuzz.partial_ratio(name, author)
                         if ratio > 90:
@@ -288,7 +288,7 @@ def parse_wos(reg, empty_work, verbose=0):
                         try:
                             name, rid = res.split("/")[-2:]
                         except Exception as e:
-                            print(f"""Error parsing orcid for {reg["DI"]}""")
+                            print(f"""{reg["DI"]} does not provide orcid""")
                             print(e)
                         ratio = fuzz.partial_ratio(name, author)
                         if ratio > 90:
