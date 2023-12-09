@@ -35,6 +35,8 @@ config:
 workflow:
   ranking_udea_works:
     file_path: /current/data/colombia/udea/produccion 2018-2022 al 27 oct 2022.xlsx
+    verbose: 5
+    num_jobs: 5
 ```
 
 * WARNING *. This process could take several hours
