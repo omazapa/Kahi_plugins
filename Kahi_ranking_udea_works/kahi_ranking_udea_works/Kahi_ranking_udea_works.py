@@ -207,6 +207,7 @@ def process_one(ranking_udea_reg, url, db_name, affiliation, empty_work, verbose
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "ranking_udea":
+                    client.close()
                     return None  # Register already on db
                     # Could be updated with new information when ranking file updates
             entry = parse_ranking_udea(
