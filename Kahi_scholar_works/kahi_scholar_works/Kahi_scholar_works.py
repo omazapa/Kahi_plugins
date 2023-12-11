@@ -4,7 +4,7 @@ from time import time
 from joblib import Parallel, delayed
 from re import sub, split, UNICODE
 import unidecode
-from math import isnan
+from thefuzz import fuzz
 
 from langid import classify
 import pycld2 as cld2
@@ -147,151 +147,141 @@ def split_names(s, exceptions=['GIL', 'LEW', 'LIZ', 'PAZ', 'REY', 'RIO', 'ROA', 
     return d
 
 
-def parse_scopus(reg, empty_work, verbose=0):
+def parse_scholar(reg, empty_work, verbose=0):
     entry = empty_work.copy()
-    entry["updated"] = [{"source": "scopus", "time": int(time())}]
-    lang = lang_poll(reg["Title"])
+    entry["updated"] = [{"source": "scholar", "time": int(time())}]
+    lang = lang_poll(reg["title"])
     entry["titles"].append(
-        {"title": reg["Title"], "lang": lang, "source": "scopus"})
-    if "Abstract" in reg.keys():
-        if reg["Abstract"] and reg["Abstract"] == reg["Abstract"]:
-            entry["abstract"] = reg["Abstract"]
-    if "Year" in reg.keys():
-        entry["year_published"] = reg["Year"]
-
-    if "Document Type" in reg.keys():
-        entry["types"].append(
-            {"source": "scopus", "type": reg["Document Type"]})
-    if "Index Keywords" in reg.keys():
-        if reg["Index Keywords"] and reg["Index Keywords"] == reg["Index Keywords"]:
-            entry["keywords"].extend(reg["Index Keywords"].lower().split("; "))
-    if "Author Keywords" in reg.keys():
-        if reg["Author Keywords"] and reg["Author Keywords"] == reg["Author Keywords"]:
-            entry["keywords"].extend(
-                reg["Author Keywords"].lower().split("; "))
-
-    if "DOI" in reg.keys():
-        entry["external_ids"].append(
-            {"source": "doi", "id": reg["DOI"].lower()})
-    if "EID" in reg.keys():
-        entry["external_ids"].append({"source": "scopus", "id": reg["EID"]})
-    if "Pubmed ID" in reg.keys():
-        entry["external_ids"].append(
-            {"source": "pubmed", "id": reg["Pubmed ID"]})
-    if reg["ISBN"] and reg["ISBN"] == reg["ISBN"] and isinstance(reg["ISBN"], str):
-        entry["external_ids"].append(
-            {"source": "isbn", "id": reg["ISBN"]})
-
-    if "Link" in reg.keys():
-        entry["external_urls"].append({"source": "scopus", "url": reg["Link"]})
-
-    if "Volume" in reg.keys():
-        if reg["Volume"] and reg["Volume"] == reg["Volume"]:
-            entry["bibliographic_info"]["volume"] = reg["Volume"]
-    if "Issue" in reg.keys():
-        if reg["Issue"] and reg["Issue"] == reg["Issue"]:
-            entry["bibliographic_info"]["issue"] = reg["Issue"]
-    if "Page start" in reg.keys():
-        # checking for NaN in the second criteria
-        if reg["Page start"] and reg["Page start"] == reg["Page start"]:
-            entry["bibliographic_info"]["start_page"] = reg["Page start"]
-    if "Page end" in reg.keys():
-        if reg["Page end"] and reg["Page end"] == reg["Page end"]:
-            entry["bibliographic_info"]["end_page"] = reg["Page end"]
-
-    if "Cited by" in reg.keys():
-        if isinstance(reg["Cited by"], str):
+        {"title": reg["title"], "lang": lang, "source": "scholar"})
+    if "year" in reg.keys():
+        year = ""
+        try:
+            if reg["year"][-1] == "\n":
+                reg["year"] = reg["year"][:-1]
+            year = int(reg["year"])
+        except Exception as e:
             if verbose > 4:
-                print("Error parsing citations count in doi ", reg["DOI"])
-                print("Cited by is a string instead of a integer")
-        elif not isnan(reg["Cited by"]):
-            try:
-                entry["citations_count"].append(
-                    {"source": "scopus", "count": int(reg["Cited by"])})
-            except Exception as e:
-                if verbose > 4:
-                    print("Error parsing citations count in doi ", reg["DOI"])
-                    print(e)
+                print(f"""Could not convert year to int in {reg["doi"]}""")
+                print(e)
+        entry["year_published"] = year
+    if "doi" in reg.keys():
+        entry["external_ids"].append(
+            {"source": "doi", "id": reg["doi"].lower()})
+    if "cid" in reg.keys():
+        entry["external_ids"] = [{"source": "scholar", "id": reg["cid"]}]
+    if "abstract" in reg.keys():
+        entry["abstract"] = reg["abstract"]
+    if "volume" in reg.keys():
+        volume = ""
+        try:
+            if reg["volume"][-1] == "\n":
+                reg["volume"] = reg["volume"][:-1]
+            volume = int(reg["volume"])
+            entry["bibliographic_info"]["volume"] = volume
+        except Exception as e:
+            if verbose > 4:
+                print(f"""Could not convert volume to int in {reg["doi"]}""")
+                print(e)
+    if "issue" in reg.keys():
+        issue = ""
+        try:
+            if reg["issue"][-1] == "\n":
+                reg["issue"] = reg["issue"][:-1]
+            issue = int(reg["issue"])
+            entry["bibliographic_info"]["issue"] = issue
+        except Exception as e:
+            if verbose > 4:
+                print(f"""Could not convert issue to int in {reg["doi"]}""")
+                print(e)
+    if "pages" in reg.keys():
+        pages = ""
+        try:
+            if reg["pages"][-1] == "\n":
+                reg["pages"] = reg["pages"][:-1]
+            pages = int(reg["pages"])
+            entry["bibliographic_info"]["pages"] = pages
+        except Exception as e:
+            if verbose > 4:
+                print(f"""Could not convert pages to int in {reg["doi"]}""")
+                print(e)
+    if "bibtex" in reg.keys():
+        entry["bibliographic_info"]["bibtex"] = reg["bibtex"]
+        typ = reg["bibtex"].split("{")[0].replace("@", "")
+        entry["types"].append({"source": "scholar", "type": typ})
+    if "cites" in reg.keys():
+        entry["citations_count"].append(
+            {"source": "scholar", "count": int(reg["cites"])})
+    if "cites_link" in reg.keys():
+        entry["external_urls"].append(
+            {"source": "scholar citations", "url": reg["cites_link"]})
+    if "pdf" in reg.keys():
+        entry["external_urls"].append({"source": "pdf", "url": reg["pdf"]})
 
-    source = {"external_ids": []}
-    if "Source title" in reg.keys():
-        if reg["Source title"] and reg["Source title"] == reg["Source title"]:
-            source["name"] = reg["Source title"]
-    if "ISSN" in reg.keys():
-        if reg["ISSN"] and reg["ISSN"] == reg["ISSN"] and isinstance(reg["ISSN"], str):
-            source["external_ids"].append(
-                {"source": "issn", "id": reg["ISSN"][:4] + "-" + reg["ISSN"][4:]})
-        if reg["CODEN"] and reg["CODEN"] == reg["CODEN"] and isinstance(reg["CODEN"], str):
-            source["external_ids"].append(
-                {"source": "coden", "id": reg["CODEN"]})
-    entry["source"] = source
+    if "journal" in reg.keys():
+        entry["source"] = {"name": reg["journal"], "external_ids": []}
 
     # authors section
-    ids = None
-
-    if "Authors with affiliations" in reg.keys():
-        if reg["Authors with affiliations"] and reg["Authors with affiliations"] == reg["Authors with affiliations"]:
-            if "Author(s) ID" in reg.keys():
-                ids = reg["Author(s) ID"].split(";")
-            auwaf_list = reg["Authors with affiliations"].split("; ")
-            for i in range(len(auwaf_list)):
-                auaf = split('(^[\w\-\s\.]+,\s+[\w\s\.\-]+,\s)',  # noqa: W605
-                             auwaf_list[i], UNICODE)
-                if len(auaf) == 1:
-                    author = auaf[0]
-                    aff_name = ""
-                else:
-                    author = auaf[1]
-                    affiliations = auaf[-1]
-                    aff_name = affiliations.split(
-                        ",")[-3].strip() if len(affiliations.split(",")) > 2 else affiliations.strip()
-                author_entry = {
-                    "full_name": author.replace("-", " ").strip(),
-                    "types": [],
-                    "affiliations": [{"name": aff_name}],
-                    "external_ids": []
-                }
-                if ids:
-                    try:
-                        if i < len(ids):
-                            author_entry["external_ids"] = [
-                                {"source": "scopus", "id": ids[i]}] if ids[i] else []
-                        else:
-                            print("Not all authors have ids in doi ",
-                                  reg["DOI"])
-                    except Exception as e:
-                        if verbose > 4:
-                            print("Error parsing author ids in doi ",
-                                  reg["DOI"])
-                            print(e)
-                entry["authors"].append(author_entry)
+    full_name_list = []
+    if "author" in reg.keys():
+        for author in reg["author"].strip().split(" and "):
+            if "others" in author:
+                continue
+            author_entry = {}
+            names_list = author.split(", ")
+            last_names = ""
+            first_names = ""
+            if len(names_list) > 0:
+                last_names = names_list[0].strip()
+            if len(names_list) > 1:
+                first_names = names_list[1].strip()
+            full_name = first_names + " " + last_names
+            author_entry["full_name"] = full_name
+            author_entry["affiliations"] = []
+            author_entry["external_ids"] = []
+            entry["authors"].append(author_entry)
+            full_name_list.append(full_name)
+    if "profiles" in reg.keys():
+        if reg["profiles"]:
+            for name in reg["profiles"].keys():
+                for i, author in enumerate(full_name_list):
+                    score = fuzz.ratio(name, author)
+                    if score >= 80:
+                        entry["authors"][i]["external_ids"] = [
+                            {"source": "scholar", "id": reg["profiles"][name]}]
+                        break
+                    elif score > 70:
+                        score = fuzz.partial_ratio(name, author)
+                        if score >= 90:
+                            entry["authors"][i]["external_ids"] = [
+                                {"source": "scholar", "id": reg["profiles"][name]}]
+                            break
 
     return entry
 
 
-def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
+def process_one(scholar_reg, url, db_name, empty_work, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
     doi = None
     # register has doi
-    if scopus_reg["DOI"]:
-        if isinstance(scopus_reg["DOI"], str):
-            doi = scopus_reg["DOI"].lower().strip()
+    if scholar_reg["doi"]:
+        if isinstance(scholar_reg["doi"], str):
+            doi = scholar_reg["doi"].lower().strip()
     if doi:
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
         if colav_reg:  # update the register
             # updated
             for upd in colav_reg["updated"]:
-                if upd["source"] == "scopus":
+                if upd["source"] == "scholar":
                     client.close()
                     return None  # Register already on db
-                    # Could be updated with new information when scopus database changes
-            entry = parse_scopus(
-                scopus_reg, empty_work.copy(), verbose=verbose)
+                    # Could be updated with new information when scholar database changes
+            entry = parse_scholar(
+                scholar_reg, empty_work.copy(), verbose=verbose)
             colav_reg["updated"].append(
-                {"source": "scopus", "time": int(time())})
+                {"source": "scholar", "time": int(time())})
             # titles
             colav_reg["titles"].extend(entry["titles"])
             # external_ids
@@ -301,15 +291,21 @@ def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
                     colav_reg["external_ids"].append(ext)
                     ext_ids.append(ext["id"])
             # types
-            colav_reg["types"].append(
-                {"source": "scopus", "type": entry["types"][0]["type"]})
-            # open access
-            if "is_open_acess" not in colav_reg["bibliographic_info"].keys():
-                if "is_open_access" in entry["bibliographic_info"].keys():
-                    colav_reg["bibliographic_info"]["is_open_acess"] = entry["bibliographic_info"]["is_open_access"]
-            if "open_access_status" not in colav_reg["bibliographic_info"].keys():
-                if "open_access_status" in entry["bibliographic_info"].keys():
-                    colav_reg["bibliographic_info"]["open_access_status"] = entry["bibliographic_info"]["open_access_status"]
+            colav_reg["types"].extend(entry["types"])
+            # bibliographic info
+            if "start_page" not in colav_reg["bibliographic_info"].keys():
+                if "start_page" in entry["bibliographic_info"].keys():
+                    colav_reg["bibliographic_info"]["start_page"] = entry["bibliographic_info"]["start_page"]
+            if "end_page" not in colav_reg["bibliographic_info"].keys():
+                if "end_page" in entry["bibliographic_info"].keys():
+                    colav_reg["bibliographic_info"]["end_page"] = entry["bibliographic_info"]["end_page"]
+            if "volume" not in colav_reg["bibliographic_info"].keys():
+                if "volume" in entry["bibliographic_info"].keys():
+                    colav_reg["bibliographic_info"]["volume"] = entry["bibliographic_info"]["volume"]
+            if "issue" not in colav_reg["bibliographic_info"].keys():
+                if "issue" in entry["bibliographic_info"].keys():
+                    colav_reg["bibliographic_info"]["issue"] = entry["bibliographic_info"]["issue"]
+
             # external urls
             urls_sources = [url["source"]
                             for url in colav_reg["external_urls"]]
@@ -331,14 +327,13 @@ def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
                     "types": colav_reg["types"],
                     "bibliographic_info": colav_reg["bibliographic_info"],
                     "external_urls": colav_reg["external_urls"],
-                    "citations_count": colav_reg["citations_count"],
-                    "citations_by_year": colav_reg["citations_by_year"]
+                    "citations_count": colav_reg["citations_count"]
                 }}
             )
         else:  # insert a new register
             # parse
-            entry = parse_scopus(
-                scopus_reg, empty_work.copy(), verbose=verbose)
+            entry = parse_scholar(
+                scholar_reg, empty_work.copy(), verbose=verbose)
             # link
             source_db = None
             if "external_ids" in entry["source"].keys():
@@ -363,7 +358,7 @@ def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
                 if len(entry["source"]["external_ids"]) == 0:
                     if verbose > 4:
                         print(
-                            f'Register with doi: {scopus_reg["DOI"]} does not provide a source')
+                            f'Register with doi: {scholar_reg["doi"]} does not provide a source')
                 else:
                     if verbose > 4:
                         print("No source found for\n\t",
@@ -478,7 +473,7 @@ def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
     client.close()
 
 
-class Kahi_scopus_works(KahiBase):
+class Kahi_scholar_works(KahiBase):
 
     config = {}
 
@@ -492,25 +487,26 @@ class Kahi_scopus_works(KahiBase):
         self.db = self.client[config["database_name"]]
         self.collection = self.db["works"]
 
+        self.collection.create_index("external_ids.id")
         self.collection.create_index("year_published")
         self.collection.create_index("authors.affiliations.id")
         self.collection.create_index("authors.id")
         self.collection.create_index([("titles.title", TEXT)])
 
-        self.scopus_client = MongoClient(
-            config["scopus_works"]["database_url"])
-        self.scopus_db = self.scopus_client[config["scopus_works"]
-                                            ["database_name"]]
-        self.scopus_collection = self.scopus_db[config["scopus_works"]
-                                                ["collection_name"]]
+        self.scholar_client = MongoClient(
+            config["scholar_works"]["database_url"])
+        self.scholar_db = self.scholar_client[config["scholar_works"]
+                                              ["database_name"]]
+        self.scholar_collection = self.scholar_db[config["scholar_works"]
+                                                  ["collection_name"]]
 
-        self.n_jobs = config["scopus_works"]["num_jobs"] if "num_jobs" in config["scopus_works"].keys(
+        self.n_jobs = config["scholar_works"]["num_jobs"] if "num_jobs" in config["scholar_works"].keys(
         ) else 1
-        self.verbose = config["scopus_works"]["verbose"] if "verbose" in config["scopus_works"].keys(
+        self.verbose = config["scholar_works"]["verbose"] if "verbose" in config["scholar_works"].keys(
         ) else 0
 
-    def process_scopus(self):
-        paper_list = list(self.scopus_collection.find())
+    def process_scholar(self):
+        paper_list = list(self.scholar_collection.find())
         Parallel(
             n_jobs=self.n_jobs,
             verbose=self.verbose,
@@ -525,5 +521,5 @@ class Kahi_scopus_works(KahiBase):
         )
 
     def run(self):
-        self.process_scopus()
+        self.process_scholar()
         return 0
