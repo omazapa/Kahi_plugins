@@ -275,6 +275,7 @@ def process_one(scholar_reg, url, db_name, empty_work, verbose=0):
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "scholar":
+                    client.close()
                     return None  # Register already on db
                     # Could be updated with new information when scholar database changes
             entry = parse_scholar(
