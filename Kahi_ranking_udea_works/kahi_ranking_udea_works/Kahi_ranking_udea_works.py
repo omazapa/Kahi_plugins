@@ -4,7 +4,7 @@ from time import time
 from joblib import Parallel, delayed
 from re import sub, split, UNICODE
 import unidecode
-from math import isnan
+from pandas import read_excel
 
 from langid import classify
 import pycld2 as cld2
@@ -147,151 +147,73 @@ def split_names(s, exceptions=['GIL', 'LEW', 'LIZ', 'PAZ', 'REY', 'RIO', 'ROA', 
     return d
 
 
-def parse_scopus(reg, empty_work, verbose=0):
+def parse_ranking_udea(reg, affiliation, empty_work):
     entry = empty_work.copy()
-    entry["updated"] = [{"source": "scopus", "time": int(time())}]
-    lang = lang_poll(reg["Title"])
+    entry["updated"] = [{"source": "ranking_udea", "time": int(time())}]
+    lang = lang_poll(reg["titulo"])
     entry["titles"].append(
-        {"title": reg["Title"], "lang": lang, "source": "scopus"})
-    if "Abstract" in reg.keys():
-        if reg["Abstract"] and reg["Abstract"] == reg["Abstract"]:
-            entry["abstract"] = reg["Abstract"]
-    if "Year" in reg.keys():
-        entry["year_published"] = reg["Year"]
-
-    if "Document Type" in reg.keys():
-        entry["types"].append(
-            {"source": "scopus", "type": reg["Document Type"]})
-    if "Index Keywords" in reg.keys():
-        if reg["Index Keywords"] and reg["Index Keywords"] == reg["Index Keywords"]:
-            entry["keywords"].extend(reg["Index Keywords"].lower().split("; "))
-    if "Author Keywords" in reg.keys():
-        if reg["Author Keywords"] and reg["Author Keywords"] == reg["Author Keywords"]:
-            entry["keywords"].extend(
-                reg["Author Keywords"].lower().split("; "))
-
-    if "DOI" in reg.keys():
+        {"title": reg["titulo"], "lang": lang, "source": "ranking_udea"})
+    if reg["DOI"]:
         entry["external_ids"].append(
             {"source": "doi", "id": reg["DOI"].lower()})
-    if "EID" in reg.keys():
-        entry["external_ids"].append({"source": "scopus", "id": reg["EID"]})
-    if "Pubmed ID" in reg.keys():
-        entry["external_ids"].append(
-            {"source": "pubmed", "id": reg["Pubmed ID"]})
-    if reg["ISBN"] and reg["ISBN"] == reg["ISBN"] and isinstance(reg["ISBN"], str):
-        entry["external_ids"].append(
-            {"source": "isbn", "id": reg["ISBN"]})
-
-    if "Link" in reg.keys():
-        entry["external_urls"].append({"source": "scopus", "url": reg["Link"]})
-
-    if "Volume" in reg.keys():
-        if reg["Volume"] and reg["Volume"] == reg["Volume"]:
-            entry["bibliographic_info"]["volume"] = reg["Volume"]
-    if "Issue" in reg.keys():
-        if reg["Issue"] and reg["Issue"] == reg["Issue"]:
-            entry["bibliographic_info"]["issue"] = reg["Issue"]
-    if "Page start" in reg.keys():
-        # checking for NaN in the second criteria
-        if reg["Page start"] and reg["Page start"] == reg["Page start"]:
-            entry["bibliographic_info"]["start_page"] = reg["Page start"]
-    if "Page end" in reg.keys():
-        if reg["Page end"] and reg["Page end"] == reg["Page end"]:
-            entry["bibliographic_info"]["end_page"] = reg["Page end"]
-
-    if "Cited by" in reg.keys():
-        if isinstance(reg["Cited by"], str):
-            if verbose > 4:
-                print("Error parsing citations count in doi ", reg["DOI"])
-                print("Cited by is a string instead of a integer")
-        elif not isnan(reg["Cited by"]):
-            try:
-                entry["citations_count"].append(
-                    {"source": "scopus", "count": int(reg["Cited by"])})
-            except Exception as e:
-                if verbose > 4:
-                    print("Error parsing citations count in doi ", reg["DOI"])
-                    print(e)
-
-    source = {"external_ids": []}
-    if "Source title" in reg.keys():
-        if reg["Source title"] and reg["Source title"] == reg["Source title"]:
-            source["name"] = reg["Source title"]
-    if "ISSN" in reg.keys():
-        if reg["ISSN"] and reg["ISSN"] == reg["ISSN"] and isinstance(reg["ISSN"], str):
-            source["external_ids"].append(
-                {"source": "issn", "id": reg["ISSN"][:4] + "-" + reg["ISSN"][4:]})
-        if reg["CODEN"] and reg["CODEN"] == reg["CODEN"] and isinstance(reg["CODEN"], str):
-            source["external_ids"].append(
-                {"source": "coden", "id": reg["CODEN"]})
-    entry["source"] = source
-
-    # authors section
-    ids = None
-
-    if "Authors with affiliations" in reg.keys():
-        if reg["Authors with affiliations"] and reg["Authors with affiliations"] == reg["Authors with affiliations"]:
-            if "Author(s) ID" in reg.keys():
-                ids = reg["Author(s) ID"].split(";")
-            auwaf_list = reg["Authors with affiliations"].split("; ")
-            for i in range(len(auwaf_list)):
-                auaf = split('(^[\w\-\s\.]+,\s+[\w\s\.\-]+,\s)',  # noqa: W605
-                             auwaf_list[i], UNICODE)
-                if len(auaf) == 1:
-                    author = auaf[0]
-                    aff_name = ""
-                else:
-                    author = auaf[1]
-                    affiliations = auaf[-1]
-                    aff_name = affiliations.split(
-                        ",")[-3].strip() if len(affiliations.split(",")) > 2 else affiliations.strip()
-                author_entry = {
-                    "full_name": author.replace("-", " ").strip(),
-                    "types": [],
-                    "affiliations": [{"name": aff_name}],
-                    "external_ids": []
-                }
-                if ids:
-                    try:
-                        if i < len(ids):
-                            author_entry["external_ids"] = [
-                                {"source": "scopus", "id": ids[i]}] if ids[i] else []
-                        else:
-                            print("Not all authors have ids in doi ",
-                                  reg["DOI"])
-                    except Exception as e:
-                        if verbose > 4:
-                            print("Error parsing author ids in doi ",
-                                  reg["DOI"])
-                            print(e)
-                entry["authors"].append(author_entry)
-
+    if reg["issn"]:
+        if isinstance(reg["issn"], str):
+            for issn in reg["issn"].strip().split():
+                if "-" not in issn:
+                    continue
+                issn = issn.strip()
+                entry["source"] = {"name": reg["nombre rev o premio"],
+                                   "external_ids": [{"source": "issn", "id": issn}]}
+    if not entry["source"]:
+        entry["source"] = {
+            "name": reg["nombre rev o premio"], "external_ids": []}
+    entry["year_published"] = int(reg["año realiz"])
+    name = split_names(reg["nombre"])
+    aff = {
+        "id": affiliation["_id"],
+        "name": affiliation["names"][0]["name"],
+        "types": affiliation["types"]
+    }
+    for affname in affiliation["names"]:
+        if affname["lang"] == "es":
+            aff["name"] = affname["name"]
+            break
+        elif affname["lang"] == "en":
+            aff["name"] = affname["name"]
+        elif affname["source"] == "ror":
+            aff["name"] = affname["name"]
+    entry["authors"].append({
+        "external_ids": [{"source": "Cédula de Ciudadanía", "id": reg["cedula"]}],
+        "full_name": name["NOMBRE COMPLETO"],
+        "types": [],
+        "affiliations": [aff]
+    })
     return entry
 
 
-def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
+def process_one(ranking_udea_reg, url, db_name, affiliation, empty_work, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
     doi = None
     # register has doi
-    if scopus_reg["DOI"]:
-        if isinstance(scopus_reg["DOI"], str):
-            doi = scopus_reg["DOI"].lower().strip()
+    if ranking_udea_reg["DOI"]:
+        if isinstance(ranking_udea_reg["DOI"], str):
+            doi = ranking_udea_reg["DOI"].lower().strip()
     if doi:
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
         if colav_reg:  # update the register
             # updated
             for upd in colav_reg["updated"]:
-                if upd["source"] == "scopus":
+                if upd["source"] == "ranking_udea":
                     client.close()
                     return None  # Register already on db
-                    # Could be updated with new information when scopus database changes
-            entry = parse_scopus(
-                scopus_reg, empty_work.copy(), verbose=verbose)
+                    # Could be updated with new information when ranking file updates
+            entry = parse_ranking_udea(
+                ranking_udea_reg, affiliation, empty_work.copy())
             colav_reg["updated"].append(
-                {"source": "scopus", "time": int(time())})
+                {"source": "ranking_udea", "time": int(time())})
             # titles
             colav_reg["titles"].extend(entry["titles"])
             # external_ids
@@ -300,45 +222,19 @@ def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
                 if ext["id"] not in ext_ids:
                     colav_reg["external_ids"].append(ext)
                     ext_ids.append(ext["id"])
-            # types
-            colav_reg["types"].append(
-                {"source": "scopus", "type": entry["types"][0]["type"]})
-            # open access
-            if "is_open_acess" not in colav_reg["bibliographic_info"].keys():
-                if "is_open_access" in entry["bibliographic_info"].keys():
-                    colav_reg["bibliographic_info"]["is_open_acess"] = entry["bibliographic_info"]["is_open_access"]
-            if "open_access_status" not in colav_reg["bibliographic_info"].keys():
-                if "open_access_status" in entry["bibliographic_info"].keys():
-                    colav_reg["bibliographic_info"]["open_access_status"] = entry["bibliographic_info"]["open_access_status"]
-            # external urls
-            urls_sources = [url["source"]
-                            for url in colav_reg["external_urls"]]
-            for ext in entry["external_urls"]:
-                if ext["url"] not in urls_sources:
-                    colav_reg["external_urls"].append(ext)
-                    urls_sources.append(ext["url"])
-
-            # citations count
-            if entry["citations_count"]:
-                colav_reg["citations_count"].extend(entry["citations_count"])
 
             collection.update_one(
                 {"_id": colav_reg["_id"]},
                 {"$set": {
                     "updated": colav_reg["updated"],
                     "titles": colav_reg["titles"],
-                    "external_ids": colav_reg["external_ids"],
-                    "types": colav_reg["types"],
-                    "bibliographic_info": colav_reg["bibliographic_info"],
-                    "external_urls": colav_reg["external_urls"],
-                    "citations_count": colav_reg["citations_count"],
-                    "citations_by_year": colav_reg["citations_by_year"]
+                    "external_ids": colav_reg["external_ids"]
                 }}
             )
         else:  # insert a new register
             # parse
-            entry = parse_scopus(
-                scopus_reg, empty_work.copy(), verbose=verbose)
+            entry = parse_ranking_udea(
+                ranking_udea_reg, affiliation, empty_work.copy())
             # link
             source_db = None
             if "external_ids" in entry["source"].keys():
@@ -363,7 +259,7 @@ def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
                 if len(entry["source"]["external_ids"]) == 0:
                     if verbose > 4:
                         print(
-                            f'Register with doi: {scopus_reg["DOI"]} does not provide a source')
+                            f'Register with doi: {ranking_udea_reg["DOI"]} does not provide a source')
                 else:
                     if verbose > 4:
                         print("No source found for\n\t",
@@ -478,7 +374,7 @@ def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
     client.close()
 
 
-class Kahi_scopus_works(KahiBase):
+class Kahi_ranking_udea_works(KahiBase):
 
     config = {}
 
@@ -492,25 +388,62 @@ class Kahi_scopus_works(KahiBase):
         self.db = self.client[config["database_name"]]
         self.collection = self.db["works"]
 
+        self.collection.create_index("external_ids.id")
         self.collection.create_index("year_published")
         self.collection.create_index("authors.affiliations.id")
         self.collection.create_index("authors.id")
         self.collection.create_index([("titles.title", TEXT)])
 
-        self.scopus_client = MongoClient(
-            config["scopus_works"]["database_url"])
-        self.scopus_db = self.scopus_client[config["scopus_works"]
-                                            ["database_name"]]
-        self.scopus_collection = self.scopus_db[config["scopus_works"]
-                                                ["collection_name"]]
+        self.ranking = read_excel(config["ranking_udea_works"]["file_path"], dtype={
+                                  "cedula": str, "DOI": str}).to_dict(orient="records")
 
-        self.n_jobs = config["scopus_works"]["num_jobs"] if "num_jobs" in config["scopus_works"].keys(
+        self.n_jobs = config["ranking_udea_works"]["num_jobs"] if "num_jobs" in config["ranking_udea_works"].keys(
         ) else 1
-        self.verbose = config["scopus_works"]["verbose"] if "verbose" in config["scopus_works"].keys(
+        self.verbose = config["ranking_udea_works"]["verbose"] if "verbose" in config["ranking_udea_works"].keys(
         ) else 0
 
-    def process_scopus(self):
-        paper_list = list(self.scopus_collection.find())
+        self.udea_reg = self.collection.find_one(
+            {"names.name": "University of Antioquia"})
+        if not self.udea_reg:
+            self.udea_reg = self.collection.find_one(
+                {"names.name": "Universidad de Antioquia"})
+        if not self.udea_reg:
+            print(
+                "University of Antioquia not found in database. Creating it with minimal information...")
+            udea_reg = self.empty_affiliation()
+            udea_reg["updated"].append(
+                {"time": int(time()), "source": "manual"})
+            udea_reg["names"] = [
+                {"name": 'Universidad de Antioquia',
+                    "lang": 'es', "source": "staff_udea"}
+            ]
+            udea_reg["abbreviations"] = ['UdeA']
+            udea_reg["year_established"] = 1803
+            udea_reg["addresses"] = [
+                {
+                    "lat": 6.267417,
+                    "lng": -75.568389,
+                    "postcode": '',
+                    "state": "Antioquia",
+                    "city": 'Medellín',
+                    "country": 'Colombia',
+                    "country_code": 'CO'
+                }
+            ]
+            udea_reg["external_ids"] = [
+                {"source": 'isni', "id": '0000 0000 8882 5269'},
+                {"source": 'fundref', "id": '501100005278'},
+                {"source": 'orgref', "id": '2696975'},
+                {"source": 'wikidata', "id": 'Q1258413'},
+                {"source": 'ror', "id": 'https://ror.org/03bp5hc83'},
+                {"source": 'minciencias', "id": '007300000887'},
+                {"source": 'nit', "id": '890980040-8'}
+            ]
+            self.collection.insert_one(udea_reg)
+            self.udea_reg = self.collection.find_one(
+                {"names.name": "Universidad de Antioquia"})
+
+    def process_ranking_udea(self):
         Parallel(
             n_jobs=self.n_jobs,
             verbose=self.verbose,
@@ -519,11 +452,12 @@ class Kahi_scopus_works(KahiBase):
                 paper,
                 self.mongodb_url,
                 self.config["database_name"],
+                self.udea_reg,
                 self.empty_work(),
                 verbose=self.verbose
-            ) for paper in paper_list
+            ) for paper in self.ranking
         )
 
     def run(self):
-        self.process_scopus()
+        self.process_ranking_udea()
         return 0
