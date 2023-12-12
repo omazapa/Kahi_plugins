@@ -172,38 +172,39 @@ def parse_scholar(reg, empty_work, verbose=0):
     if "abstract" in reg.keys():
         entry["abstract"] = reg["abstract"]
     if "volume" in reg.keys():
-        volume = ""
-        try:
+        if reg["volume"]:
             if reg["volume"][-1] == "\n":
                 reg["volume"] = reg["volume"][:-1]
-            volume = int(reg["volume"])
-            entry["bibliographic_info"]["volume"] = volume
-        except Exception as e:
-            if verbose > 4:
-                print(f"""Could not convert volume to int in {reg["doi"]}""")
-                print(e)
+            entry["bibliographic_info"]["volume"] = reg["volume"]
     if "issue" in reg.keys():
-        issue = ""
-        try:
+        if reg["issue"]:
             if reg["issue"][-1] == "\n":
                 reg["issue"] = reg["issue"][:-1]
-            issue = int(reg["issue"])
-            entry["bibliographic_info"]["issue"] = issue
-        except Exception as e:
-            if verbose > 4:
-                print(f"""Could not convert issue to int in {reg["doi"]}""")
-                print(e)
+            entry["bibliographic_info"]["issue"] = reg["issue"]
     if "pages" in reg.keys():
         pages = ""
-        try:
+        if reg["pages"]:
             if reg["pages"][-1] == "\n":
                 reg["pages"] = reg["pages"][:-1]
-            pages = int(reg["pages"])
-            entry["bibliographic_info"]["pages"] = pages
-        except Exception as e:
-            if verbose > 4:
-                print(f"""Could not convert pages to int in {reg["doi"]}""")
-                print(e)
+            if "--" in reg["pages"]:
+                reg["pages"].replace("\n", "")
+                pages = reg["pages"].split("--")
+                entry["bibliographic_info"]["start_page"] = pages[0]
+                entry["bibliographic_info"]["end_page"] = pages[1]
+                try:
+                    entry["bibliographic_info"]["pages"] = str(int(
+                        entry["bibliographic_info"]["end_page"])-int(entry["bibliographic_info"]["start_page"])+1)
+                except Exception as e:
+                    if verbose > 4:
+                        print(
+                            f"""Could not cast pages to substract in {reg["doi"]}""")
+                        print(e)
+            else:
+                if verbose > 4:
+                    print(
+                        f"""Malformed pages in source database for {reg["doi"]}. Inserting anyway""")
+                entry["bibliographic_info"]["pages"] = reg["pages"]
+                entry["bibliographic_info"]["start_page"] = reg["pages"]
     if "bibtex" in reg.keys():
         entry["bibliographic_info"]["bibtex"] = reg["bibtex"]
         typ = reg["bibtex"].split("{")[0].replace("@", "")
