@@ -193,7 +193,7 @@ def parse_scholar(reg, empty_work, verbose=0):
                 entry["bibliographic_info"]["end_page"] = pages[1]
                 try:
                     entry["bibliographic_info"]["pages"] = str(int(
-                        entry["bibliographic_info"]["end_page"]) - int(entry["bibliographic_info"]["start_page"])+1)
+                        entry["bibliographic_info"]["end_page"]) - int(entry["bibliographic_info"]["start_page"]))
                 except Exception as e:
                     if verbose > 4:
                         print(
