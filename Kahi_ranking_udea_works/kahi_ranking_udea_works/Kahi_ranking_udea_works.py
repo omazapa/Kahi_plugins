@@ -402,10 +402,10 @@ class Kahi_ranking_udea_works(KahiBase):
         self.verbose = config["ranking_udea_works"]["verbose"] if "verbose" in config["ranking_udea_works"].keys(
         ) else 0
 
-        self.udea_reg = self.collection.find_one(
+        self.udea_reg = self.db["affiliations"].find_one(
             {"names.name": "University of Antioquia"})
         if not self.udea_reg:
-            self.udea_reg = self.collection.find_one(
+            self.udea_reg = self.db["affiliations"].find_one(
                 {"names.name": "Universidad de Antioquia"})
         if not self.udea_reg:
             print(
@@ -439,8 +439,8 @@ class Kahi_ranking_udea_works(KahiBase):
                 {"source": 'minciencias', "id": '007300000887'},
                 {"source": 'nit', "id": '890980040-8'}
             ]
-            self.collection.insert_one(udea_reg)
-            self.udea_reg = self.collection.find_one(
+            self.db["affiliations"].insert_one(udea_reg)
+            self.udea_reg = self.db["affiliations"].find_one(
                 {"names.name": "Universidad de Antioquia"})
 
     def process_ranking_udea(self):
