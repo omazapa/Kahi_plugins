@@ -1,5 +1,6 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient
+from math import isnan
 
 from mohan.Similarity import Similarity
 
@@ -38,46 +39,68 @@ class Kahi_elasticsearch_works(KahiBase):
 
         self.verbose = config["elasticsearch_works"]["verbose"] if "verbose" in config["elasticsearch_works"].keys(
         ) else 0
+        self.bulk_size = config["elasticsearch_works"]["bulk_size"] if "bulk_size" in config["elasticsearch_works"].keys(
+        ) else 100
 
         self.inserted_ids = []
 
     def bulk_insert(self):
-        bulk_size = 100
         es_entries = []
         count = 0
         paper_list = self.collection.find(
             {}, {"titles": 1, "source": 1, "year_published": 1, "bibliographic_info": 1, "authors.full_name": 1})
         for reg in paper_list:
-            work = {}
+            work = {
+                "title": "",
+                "source": "",
+                "year": "",
+                "volume": "",
+                "issue": "",
+                "start_page": "",
+                "end_page": "",
+                "authors": []
+            }
             if "titles" not in reg.keys():
                 continue
             if len(reg["titles"]) < 1:
                 continue
             work["title"] = reg["titles"][0]["title"]
-            work["source"] = reg["source"]["name"] if "name" in reg["source"].keys(
-            ) else ""
-            work["year"] = reg["year_published"]
-            work["volume"] = reg["bibliographic_info"]["volume"] if "volume" in reg["bibliographic_info"].keys(
-            ) else ""
-            work["issue"] = reg["bibliographic_info"]["issue"] if "issue" in reg["bibliographic_info"].keys(
-            ) else ""
-            work["start_page"] = reg["bibliographic_info"]["start_page"] if "start_page" in reg["bibliographic_info"].keys(
-            ) else ""
-            work["end_page"] = reg["bibliographic_info"]["end_page"] if "end_page" in reg["bibliographic_info"].keys(
-            ) else ""
+            if "name" in reg["source"].keys():
+                work["source"] = reg["source"]["name"] if reg["source"]["name"] else ""
+            if "year_published" in reg.keys():
+                work["year"] = reg["year_published"] if reg["year_published"] else ""
+            if "volume" in reg["bibliographic_info"].keys():
+                work["volume"] = reg["bibliographic_info"]["volume"] if reg["bibliographic_info"]["volume"] else ""
+            if "issue" in reg["bibliographic_info"].keys():
+                work["issue"] = reg["bibliographic_info"]["issue"] if reg["bibliographic_info"]["issue"] else ""
+            if "start_page" in reg["bibliographic_info"].keys():
+                work["start_page"] = reg["bibliographic_info"]["start_page"] if reg["bibliographic_info"]["start_page"] else ""
+            if "end_page" in reg["bibliographic_info"].keys():
+                work["end_page"] = reg["bibliographic_info"]["end_page"] if reg["bibliographic_info"]["end_page"] else ""
             authors = []
             for author in reg["authors"]:
                 authors.append(author["full_name"])
+                if len(authors) == 5:
+                    break
             work["authors"] = authors
+            # double checking for nan
+            for key, val in work.items():
+                if isinstance(val, float) and isnan(val):
+                    work[key] = ""
             entry = {
                 "_index": self.index,
                 "_id": str(reg["_id"]),
                 "_source": work
             }
             es_entries.append(entry)
-            if len(es_entries) == bulk_size:
-                self.es_client.insert_bulk(es_entries)
-                count += bulk_size
+            if len(es_entries) == self.bulk_size:
+                try:
+                    self.es_client.insert_bulk(es_entries)
+                except Exception as e:
+                    print(e)
+                    print(es_entries)
+                    raise
+                count += self.bulk_size
                 es_entries = []
                 if self.verbose > 4:
                     print(f"""{count} entries inserted""")
