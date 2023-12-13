@@ -152,6 +152,7 @@ class Kahi_openalex_sources(KahiBase):
                                                     ["collection_name"]]
 
         self.n_jobs = config["openalex_sources"]["num_jobs"]
+        self.client.close()
 
     def process_openalex(self):
         source_list = list(self.openalex_collection.find())

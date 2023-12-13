@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, TEXT
+from pymongo import MongoClient, ASCENDING, TEXT
 from datetime import datetime as dt
 from time import time
 from thefuzz import fuzz
@@ -37,11 +37,53 @@ class Kahi_scienti_affiliations(KahiBase):
             self.collection.create_index([("names.name", TEXT)])
             print("Text index created on names.name field")
 
+        self.create_source_indexes()
+
+    def create_source_indexes(self):
+        for db_info in self.config["scienti_affiliations"]["databases"]:
+            database_url = db_info.get('database_url', '')
+            database_name = db_info.get('database_name', '')
+            collection_name = db_info.get('collection_name', '')
+
+            if database_url and database_name and collection_name:
+                client = MongoClient(database_url)
+                db = client[database_name]
+                collection = db[collection_name]
+
+                collection.create_index([('group.institution.TXT_NIT', ASCENDING)])
+                collection.create_index([('group.COD_ID_GRUPO', ASCENDING)])
+                client.close()
+
+    def check_date_format(self, date_str):
+        if date_str is None:
+            return ""
+        ymdhms_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+        dmyhms_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+        ymd_format = r"\d{4}-\d{2}-\d{2}"
+        dmy_format = r"\d{2}-\d{2}-\d{4}"
+        ym_format = r"\d{4}-\d{2}"
+        my_format = r"\d{2}-\d{4}"
+        if match(ymdhms_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
+        elif match(dmyhms_format, date_str):
+            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
+        elif match(ymd_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m-%d").timestamp())
+        elif match(dmy_format, date_str):
+            return int(dt.strptime(date_str, "%d-%m-%Y").timestamp())
+        elif match(ym_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m").timestamp())
+        elif match(my_format, date_str):
+            return int(dt.strptime(date_str, "%m-%Y").timestamp())
+        return ""
+
     def process_scienti_institutions(self, config, verbose=0):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
         for cod_inst in scienti.distinct("group.institution.TXT_NIT"):
+            if not cod_inst:
+                continue
             reg_scienti = scienti.find_one(
                 {"group.institution.TXT_NIT": cod_inst})
             for inst in reg_scienti["group"][0]["institution"]:
@@ -150,17 +192,6 @@ class Kahi_scienti_affiliations(KahiBase):
             self.extract_subject(subjects, data["knowledge_area"][0])
         return subjects
 
-    def check_date_format(self, date_str):
-        if date_str is None:
-            return ""
-        ymd_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
-        dmy_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
-        if match(ymd_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
-        elif match(dmy_format, date_str):
-            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
-        return ""
-
     def process_scienti_groups(self, config, verbose=0):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
@@ -183,8 +214,7 @@ class Kahi_scienti_affiliations(KahiBase):
                     {"source": "scienti", "id": group["NRO_ID_GRUPO"]})
                 entry["names"].append(
                     {"name": group["NME_GRUPO"], "lang": "es", "source": "scienti"})
-                entry["birthdate"] = int(dt.strptime(
-                    str(group["ANO_FORMACAO"]) + "-" + str(group["MES_FORMACAO"]), "%Y-%m").timestamp())
+                entry["birthdate"] = self.check_date_format(str(group["ANO_FORMACAO"]) + "-" + str(group["MES_FORMACAO"]))
                 if group["STA_ELIMINADO"] == "F":
                     entry["status"].append(
                         {"source": "minciencias", "status": "activo"})
@@ -221,6 +251,8 @@ class Kahi_scienti_affiliations(KahiBase):
 
                 for reg in scienti.find({"group.COD_ID_GRUPO": group_id}):
                     for inst in reg["group"][0]["institution"]:
+                        if not inst["TXT_NIT"] or not inst["TXT_DIGITO_VERIFICADOR"]:
+                            continue
                         db_inst = self.collection.find_one(
                             {"external_ids.id": inst["TXT_NIT"] + "-" + inst["TXT_DIGITO_VERIFICADOR"]})
                         if db_inst:
@@ -240,8 +272,13 @@ class Kahi_scienti_affiliations(KahiBase):
 
     def run(self):
         for config in self.config["scienti_affiliations"]["databases"]:
+            if self.verbose > 4:
+                start_time = time()
             if self.verbose > 0:
                 print("Processing {} database".format(config["database_name"]))
             self.process_scienti_institutions(config, verbose=self.verbose)
             self.process_scienti_groups(config, verbose=self.verbose)
+        if self.verbose > 4:
+            print("Execution time: {} minutes".format(
+                round((time() - start_time) / 60, 2)))
         return 0

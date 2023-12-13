@@ -186,5 +186,7 @@ class Kahi_doaj_sources(KahiBase):
         self.client.close()
 
     def run(self):
+        start_time = time()
         self.process_doaj(verbose=self.verbose)
+        print("Execution time: {} minutes".format(round((time() - start_time) / 60, 2)))
         return 0

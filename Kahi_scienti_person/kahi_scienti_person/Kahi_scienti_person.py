@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, TEXT
+from pymongo import MongoClient, ASCENDING, TEXT
 from datetime import datetime as dt
 from time import time
 from re import match
@@ -26,18 +26,45 @@ class Kahi_scienti_person(KahiBase):
         self.verbose = config["scienti_person"]["verbose"] if "verbose" in config["scienti_person"].keys(
         ) else 0
 
+        self.create_source_indexes()
+
+    def create_source_indexes(self):
+        for db_info in self.config["scienti_person"]["databases"]:
+            database_url = db_info.get('database_url', '')
+            database_name = db_info.get('database_name', '')
+            collection_name = db_info.get('collection_name', '')
+
+            if database_url and database_name and collection_name:
+                client = MongoClient(database_url)
+                db = client[database_name]
+                collection = db[collection_name]
+
+                collection.create_index([('author.NRO_DOCUMENTO_IDENT', ASCENDING)])
+                collection.create_index([('author.COD_RH', ASCENDING)])
+                collection.create_index([('author_others', ASCENDING)])
+                client.close()
+
     def check_date_format(self, date_str):
         if date_str is None:
             return ""
-        ymd_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
-        dmy_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+        ymdhms_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+        dmyhms_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+        ymd_format = r"\d{4}-\d{2}-\d{2}"
+        dmy_format = r"\d{2}-\d{2}-\d{4}"
         ym_format = r"\d{4}-\d{2}"
-        if match(ymd_format, date_str):
+        my_format = r"\d{2}-\d{4}"
+        if match(ymdhms_format, date_str):
             return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
-        elif match(dmy_format, date_str):
+        elif match(dmyhms_format, date_str):
             return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
+        elif match(ymd_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m-%d").timestamp())
+        elif match(dmy_format, date_str):
+            return int(dt.strptime(date_str, "%d-%m-%Y").timestamp())
         elif match(ym_format, date_str):
             return int(dt.strptime(date_str, "%Y-%m").timestamp())
+        elif match(my_format, date_str):
+            return int(dt.strptime(date_str, "%m-%Y").timestamp())
         return ""
 
     def update_inserted(self, config, verbose=0):
@@ -165,7 +192,6 @@ class Kahi_scienti_person(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-
         for rh in scienti.distinct("author.COD_RH"):
             author_db = self.collection.find_one({"external_ids.id": rh})
             if author_db:
@@ -400,6 +426,7 @@ class Kahi_scienti_person(KahiBase):
             if self.verbose > 0:
                 print("Processing {} database".format(config["database_name"]))
             if self.verbose > 4:
+                start_time = time()
                 print("Updating already inserted entries")
             self.update_inserted(config, verbose=self.verbose)
             if self.verbose > 4:
@@ -408,5 +435,7 @@ class Kahi_scienti_person(KahiBase):
             if self.verbose > 4:
                 print("Processing authors_others")
             self.insert_scienti_others(config, verbose=self.verbose)
-
+        if self.verbose > 4:
+            print("Execution time: {} minutes".format(
+                round((time() - start_time) / 60, 2)))
         return 0
