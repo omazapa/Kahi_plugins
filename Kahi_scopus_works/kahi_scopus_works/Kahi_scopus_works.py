@@ -509,6 +509,8 @@ class Kahi_scopus_works(KahiBase):
         self.verbose = config["scopus_works"]["verbose"] if "verbose" in config["scopus_works"].keys(
         ) else 0
 
+        self.client.close()
+
     def process_scopus(self):
         paper_list = list(self.scopus_collection.find())
         Parallel(

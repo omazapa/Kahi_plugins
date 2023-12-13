@@ -92,6 +92,7 @@ class Kahi_ror_affiliations(KahiBase):
         self.collection.create_index([("names.name", TEXT)])
 
         self.n_jobs = config["ror_affiliations"]["num_jobs"]
+        self.client.close()
 
     def process_ror(self):
         inst_list = list(self.ror_collection.find())

@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, ASCENDING
+from pymongo import MongoClient
 from time import time
 
 
@@ -24,10 +24,6 @@ class Kahi_doaj_sources(KahiBase):
                                         ["database_name"]]
         self.doaj_collection = self.doaj_db[config["doaj_sources"]
                                             ["collection_name"]]
-
-        if self.doaj_collection:
-            self.doaj_collection.create_index("bibjson.eissn", ASCENDING)
-            self.doaj_collection.create_index("bibjson.pissn", ASCENDING)
 
         self.verbose = self.config["doaj_sources"]["verbose"]
 
@@ -190,5 +186,7 @@ class Kahi_doaj_sources(KahiBase):
         self.client.close()
 
     def run(self):
+        start_time = time()
         self.process_doaj(verbose=self.verbose)
+        print("Execution time: {} minutes".format(round((time() - start_time) / 60, 2)))
         return 0
