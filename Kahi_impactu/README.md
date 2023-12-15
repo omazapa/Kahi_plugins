@@ -9,7 +9,7 @@ This helps to install the different plugins for kahi with the corresponding vers
 # Installation
 
 ## Dependencies
-Please take a look at the dependencies of the plugins you want to install.
+Please take a look at the dependencies of the plugins you want to run.
 
 ## Package
 Install it with pip:
