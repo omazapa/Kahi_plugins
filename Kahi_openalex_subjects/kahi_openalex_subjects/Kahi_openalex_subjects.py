@@ -98,7 +98,6 @@ class Kahi_openalex_subjects(KahiBase):
                 self.inserted_concepts_ids_tuples.append((reg["_id"], oa_id))
                 if reg["relations"] != []:
                     self.relations_inserted_ids.append(oa_id)
-        self.client.close()
 
     def process_openalex(self):
         openalex_subjects = list(self.openalex_collection.find(
