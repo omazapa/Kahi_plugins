@@ -1,2 +1,0 @@
-recursive-include kahi_works/ *.py
-recursive-include kahi_works/ *.*
