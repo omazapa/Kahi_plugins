@@ -81,6 +81,7 @@ def main():
         # put you packages here
         install_requires=[
             'kahi',
+            "mohan",
             'pymongo',
             'joblib',
             'thefuzz',

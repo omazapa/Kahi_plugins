@@ -13,6 +13,8 @@ from fastspell import FastSpell
 from lingua import LanguageDetectorBuilder
 import iso639
 
+from mohan.Similarity import Similarity
+
 fast_spell = FastSpell("en", mode="cons")
 
 
@@ -260,7 +262,239 @@ def parse_scholar(reg, empty_work, verbose=0):
     return entry
 
 
-def process_one(scholar_reg, url, db_name, empty_work, verbose=0):
+def update_register(scholar_reg, colav_reg, url, db_name, empty_work, verbose=0):
+    client = MongoClient(url)
+    db = client[db_name]
+    collection = db["works"]
+
+    # updated
+    for upd in colav_reg["updated"]:
+        if upd["source"] == "scholar":
+            client.close()
+            return None  # Register already on db
+            # Could be updated with new information when scholar database changes
+    entry = parse_scholar(
+        scholar_reg, empty_work.copy(), verbose=verbose)
+    colav_reg["updated"].append(
+        {"source": "scholar", "time": int(time())})
+    # titles
+    colav_reg["titles"].extend(entry["titles"])
+    # external_ids
+    ext_ids = [ext["id"] for ext in colav_reg["external_ids"]]
+    for ext in entry["external_ids"]:
+        if ext["id"] not in ext_ids:
+            colav_reg["external_ids"].append(ext)
+            ext_ids.append(ext["id"])
+    # types
+    colav_reg["types"].extend(entry["types"])
+    # bibliographic info
+    if "start_page" not in colav_reg["bibliographic_info"].keys():
+        if "start_page" in entry["bibliographic_info"].keys():
+            colav_reg["bibliographic_info"]["start_page"] = entry["bibliographic_info"]["start_page"]
+    if "end_page" not in colav_reg["bibliographic_info"].keys():
+        if "end_page" in entry["bibliographic_info"].keys():
+            colav_reg["bibliographic_info"]["end_page"] = entry["bibliographic_info"]["end_page"]
+    if "volume" not in colav_reg["bibliographic_info"].keys():
+        if "volume" in entry["bibliographic_info"].keys():
+            colav_reg["bibliographic_info"]["volume"] = entry["bibliographic_info"]["volume"]
+    if "issue" not in colav_reg["bibliographic_info"].keys():
+        if "issue" in entry["bibliographic_info"].keys():
+            colav_reg["bibliographic_info"]["issue"] = entry["bibliographic_info"]["issue"]
+
+    # external urls
+    urls_sources = [url["source"]
+                    for url in colav_reg["external_urls"]]
+    for ext in entry["external_urls"]:
+        if ext["url"] not in urls_sources:
+            colav_reg["external_urls"].append(ext)
+            urls_sources.append(ext["url"])
+
+    # citations count
+    if entry["citations_count"]:
+        colav_reg["citations_count"].extend(entry["citations_count"])
+
+    collection.update_one(
+        {"_id": colav_reg["_id"]},
+        {"$set": {
+            "updated": colav_reg["updated"],
+            "titles": colav_reg["titles"],
+            "external_ids": colav_reg["external_ids"],
+            "types": colav_reg["types"],
+            "bibliographic_info": colav_reg["bibliographic_info"],
+            "external_urls": colav_reg["external_urls"],
+            "citations_count": colav_reg["citations_count"]
+        }}
+    )
+    client.close()
+
+
+def insert_new_register(scholar_reg, url, db_name, empty_work, es_index=None, verbose=0):
+    client = MongoClient(url)
+    db = client[db_name]
+    collection = db["works"]
+    # parse
+    entry = parse_scholar(
+        scholar_reg, empty_work.copy(), verbose=verbose)
+    # link
+    source_db = None
+    if "external_ids" in entry["source"].keys():
+        for ext in entry["source"]["external_ids"]:
+            source_db = db["sources"].find_one(
+                {"external_ids.id": ext["id"]})
+            if source_db:
+                break
+    if source_db:
+        name = source_db["names"][0]["name"]
+        for n in source_db["names"]:
+            if n["lang"] == "es":
+                name = n["name"]
+                break
+            if n["lang"] == "en":
+                name = n["name"]
+        entry["source"] = {
+            "id": source_db["_id"],
+            "name": name
+        }
+    else:
+        if len(entry["source"]["external_ids"]) == 0:
+            if verbose > 4:
+                print(
+                    f'Register with doi: {scholar_reg["doi"]} does not provide a source')
+        else:
+            if verbose > 4:
+                print("No source found for\n\t",
+                      entry["source"]["external_ids"])
+        entry["source"] = {
+            "id": "",
+            "name": entry["source"]["name"]
+        }
+
+    # search authors and affiliations in db
+    for i, author in enumerate(entry["authors"]):
+        author_db = None
+        for ext in author["external_ids"]:
+            author_db = db["person"].find_one(
+                {"external_ids.id": ext["id"]})
+            if author_db:
+                break
+        if author_db:
+            sources = [ext["source"]
+                       for ext in author_db["external_ids"]]
+            ids = [ext["id"] for ext in author_db["external_ids"]]
+            for ext in author["external_ids"]:
+                if ext["id"] not in ids:
+                    author_db["external_ids"].append(ext)
+                    sources.append(ext["source"])
+                    ids.append(ext["id"])
+            entry["authors"][i] = {
+                "id": author_db["_id"],
+                "full_name": author_db["full_name"],
+                "affiliations": author["affiliations"]
+            }
+            if "external_ids" in author.keys():
+                del (author["external_ids"])
+        else:
+            author_db = db["person"].find_one(
+                {"full_name": author["full_name"]})
+            if author_db:
+                sources = [ext["source"]
+                           for ext in author_db["external_ids"]]
+                ids = [ext["id"] for ext in author_db["external_ids"]]
+                for ext in author["external_ids"]:
+                    if ext["id"] not in ids:
+                        author_db["external_ids"].append(ext)
+                        sources.append(ext["source"])
+                        ids.append(ext["id"])
+                entry["authors"][i] = {
+                    "id": author_db["_id"],
+                    "full_name": author_db["full_name"],
+                    "affiliations": author["affiliations"]
+                }
+            else:
+                entry["authors"][i] = {
+                    "id": "",
+                    "full_name": author["full_name"],
+                    "affiliations": author["affiliations"]
+                }
+        for j, aff in enumerate(author["affiliations"]):
+            aff_db = None
+            if "external_ids" in aff.keys():
+                for ext in aff["external_ids"]:
+                    aff_db = db["affiliations"].find_one(
+                        {"external_ids.id": ext["id"]})
+                    if aff_db:
+                        break
+            if aff_db:
+                name = aff_db["names"][0]["name"]
+                for n in aff_db["names"]:
+                    if n["source"] == "ror":
+                        name = n["name"]
+                        break
+                    if n["lang"] == "en":
+                        name = n["name"]
+                    if n["lang"] == "es":
+                        name = n["name"]
+                entry["authors"][i]["affiliations"][j] = {
+                    "id": aff_db["_id"],
+                    "name": name,
+                    "types": aff_db["types"]
+                }
+            else:
+                aff_db = db["affiliations"].find_one(
+                    {"names.name": aff["name"]})
+                if aff_db:
+                    name = aff_db["names"][0]["name"]
+                    for n in aff_db["names"]:
+                        if n["source"] == "ror":
+                            name = n["name"]
+                            break
+                        if n["lang"] == "en":
+                            name = n["name"]
+                        if n["lang"] == "es":
+                            name = n["name"]
+                    entry["authors"][i]["affiliations"][j] = {
+                        "id": aff_db["_id"],
+                        "name": name,
+                        "types": aff_db["types"]
+                    }
+                else:
+                    entry["authors"][i]["affiliations"][j] = {
+                        "id": "",
+                        "name": aff["name"],
+                        "types": []
+                    }
+
+    entry["author_count"] = len(entry["authors"])
+    # insert in mongo
+    response = collection.insert_one(entry)
+    client.close()
+
+    # insert in elasticsearch
+    if es_index:
+        es_handler = Similarity(
+            es_index, es_uri="http://localhost:9200", es_auth=('elastic', 'colav'))
+        work = {}
+        work["title"] = entry["titles"][0]["title"]
+        work["source"] = entry["source"]["name"]
+        work["year"] = entry["year_published"]
+        work["volume"] = entry["bibliographic_info"]["volume"] if "volume" in entry["bibliographic_info"].keys() else ""
+        work["issue"] = entry["bibliographic_info"]["issue"] if "issue" in entry["bibliographic_info"].keys() else ""
+        work["first_page"] = entry["bibliographic_info"]["first_page"] if "first_page" in entry["bibliographic_info"].keys() else ""
+        work["last_page"] = entry["bibliographic_info"]["last_page"] if "last_page" in entry["bibliographic_info"].keys() else ""
+        authors = []
+        for author in entry['authors']:
+            if len(authors) >= 5:
+                break
+            if "full_name" in author["author"].keys():
+                authors.append(author["author"]["full_name"])
+        work["authors"] = authors
+        es_handler.insert_work(_id=str(response.inserted_id), work=work)
+    else:
+        if verbose > 4:
+            print("No elasticsearch index provided")
+
+
+def process_one_with_doi(scholar_reg, url, db_name, empty_work, es_index=None, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
@@ -269,209 +503,69 @@ def process_one(scholar_reg, url, db_name, empty_work, verbose=0):
     if scholar_reg["doi"]:
         if isinstance(scholar_reg["doi"], str):
             doi = scholar_reg["doi"].lower().strip()
-    if doi:
-        # is the doi in colavdb?
-        colav_reg = collection.find_one({"external_ids.id": doi})
-        if colav_reg:  # update the register
-            # updated
-            for upd in colav_reg["updated"]:
-                if upd["source"] == "scholar":
-                    client.close()
-                    return None  # Register already on db
-                    # Could be updated with new information when scholar database changes
-            entry = parse_scholar(
-                scholar_reg, empty_work.copy(), verbose=verbose)
-            colav_reg["updated"].append(
-                {"source": "scholar", "time": int(time())})
-            # titles
-            colav_reg["titles"].extend(entry["titles"])
-            # external_ids
-            ext_ids = [ext["id"] for ext in colav_reg["external_ids"]]
-            for ext in entry["external_ids"]:
-                if ext["id"] not in ext_ids:
-                    colav_reg["external_ids"].append(ext)
-                    ext_ids.append(ext["id"])
-            # types
-            colav_reg["types"].extend(entry["types"])
-            # bibliographic info
-            if "start_page" not in colav_reg["bibliographic_info"].keys():
-                if "start_page" in entry["bibliographic_info"].keys():
-                    colav_reg["bibliographic_info"]["start_page"] = entry["bibliographic_info"]["start_page"]
-            if "end_page" not in colav_reg["bibliographic_info"].keys():
-                if "end_page" in entry["bibliographic_info"].keys():
-                    colav_reg["bibliographic_info"]["end_page"] = entry["bibliographic_info"]["end_page"]
-            if "volume" not in colav_reg["bibliographic_info"].keys():
-                if "volume" in entry["bibliographic_info"].keys():
-                    colav_reg["bibliographic_info"]["volume"] = entry["bibliographic_info"]["volume"]
-            if "issue" not in colav_reg["bibliographic_info"].keys():
-                if "issue" in entry["bibliographic_info"].keys():
-                    colav_reg["bibliographic_info"]["issue"] = entry["bibliographic_info"]["issue"]
 
-            # external urls
-            urls_sources = [url["source"]
-                            for url in colav_reg["external_urls"]]
-            for ext in entry["external_urls"]:
-                if ext["url"] not in urls_sources:
-                    colav_reg["external_urls"].append(ext)
-                    urls_sources.append(ext["url"])
-
-            # citations count
-            if entry["citations_count"]:
-                colav_reg["citations_count"].extend(entry["citations_count"])
-
-            collection.update_one(
-                {"_id": colav_reg["_id"]},
-                {"$set": {
-                    "updated": colav_reg["updated"],
-                    "titles": colav_reg["titles"],
-                    "external_ids": colav_reg["external_ids"],
-                    "types": colav_reg["types"],
-                    "bibliographic_info": colav_reg["bibliographic_info"],
-                    "external_urls": colav_reg["external_urls"],
-                    "citations_count": colav_reg["citations_count"]
-                }}
-            )
-        else:  # insert a new register
-            # parse
-            entry = parse_scholar(
-                scholar_reg, empty_work.copy(), verbose=verbose)
-            # link
-            source_db = None
-            if "external_ids" in entry["source"].keys():
-                for ext in entry["source"]["external_ids"]:
-                    source_db = db["sources"].find_one(
-                        {"external_ids.id": ext["id"]})
-                    if source_db:
-                        break
-            if source_db:
-                name = source_db["names"][0]["name"]
-                for n in source_db["names"]:
-                    if n["lang"] == "es":
-                        name = n["name"]
-                        break
-                    if n["lang"] == "en":
-                        name = n["name"]
-                entry["source"] = {
-                    "id": source_db["_id"],
-                    "name": name
-                }
-            else:
-                if len(entry["source"]["external_ids"]) == 0:
-                    if verbose > 4:
-                        print(
-                            f'Register with doi: {scholar_reg["doi"]} does not provide a source')
-                else:
-                    if verbose > 4:
-                        print("No source found for\n\t",
-                              entry["source"]["external_ids"])
-                entry["source"] = {
-                    "id": "",
-                    "name": entry["source"]["name"]
-                }
-
-            # search authors and affiliations in db
-            for i, author in enumerate(entry["authors"]):
-                author_db = None
-                for ext in author["external_ids"]:
-                    author_db = db["person"].find_one(
-                        {"external_ids.id": ext["id"]})
-                    if author_db:
-                        break
-                if author_db:
-                    sources = [ext["source"]
-                               for ext in author_db["external_ids"]]
-                    ids = [ext["id"] for ext in author_db["external_ids"]]
-                    for ext in author["external_ids"]:
-                        if ext["id"] not in ids:
-                            author_db["external_ids"].append(ext)
-                            sources.append(ext["source"])
-                            ids.append(ext["id"])
-                    entry["authors"][i] = {
-                        "id": author_db["_id"],
-                        "full_name": author_db["full_name"],
-                        "affiliations": author["affiliations"]
-                    }
-                    if "external_ids" in author.keys():
-                        del (author["external_ids"])
-                else:
-                    author_db = db["person"].find_one(
-                        {"full_name": author["full_name"]})
-                    if author_db:
-                        sources = [ext["source"]
-                                   for ext in author_db["external_ids"]]
-                        ids = [ext["id"] for ext in author_db["external_ids"]]
-                        for ext in author["external_ids"]:
-                            if ext["id"] not in ids:
-                                author_db["external_ids"].append(ext)
-                                sources.append(ext["source"])
-                                ids.append(ext["id"])
-                        entry["authors"][i] = {
-                            "id": author_db["_id"],
-                            "full_name": author_db["full_name"],
-                            "affiliations": author["affiliations"]
-                        }
-                    else:
-                        entry["authors"][i] = {
-                            "id": "",
-                            "full_name": author["full_name"],
-                            "affiliations": author["affiliations"]
-                        }
-                for j, aff in enumerate(author["affiliations"]):
-                    aff_db = None
-                    if "external_ids" in aff.keys():
-                        for ext in aff["external_ids"]:
-                            aff_db = db["affiliations"].find_one(
-                                {"external_ids.id": ext["id"]})
-                            if aff_db:
-                                break
-                    if aff_db:
-                        name = aff_db["names"][0]["name"]
-                        for n in aff_db["names"]:
-                            if n["source"] == "ror":
-                                name = n["name"]
-                                break
-                            if n["lang"] == "en":
-                                name = n["name"]
-                            if n["lang"] == "es":
-                                name = n["name"]
-                        entry["authors"][i]["affiliations"][j] = {
-                            "id": aff_db["_id"],
-                            "name": name,
-                            "types": aff_db["types"]
-                        }
-                    else:
-                        aff_db = db["affiliations"].find_one(
-                            {"names.name": aff["name"]})
-                        if aff_db:
-                            name = aff_db["names"][0]["name"]
-                            for n in aff_db["names"]:
-                                if n["source"] == "ror":
-                                    name = n["name"]
-                                    break
-                                if n["lang"] == "en":
-                                    name = n["name"]
-                                if n["lang"] == "es":
-                                    name = n["name"]
-                            entry["authors"][i]["affiliations"][j] = {
-                                "id": aff_db["_id"],
-                                "name": name,
-                                "types": aff_db["types"]
-                            }
-                        else:
-                            entry["authors"][i]["affiliations"][j] = {
-                                "id": "",
-                                "name": aff["name"],
-                                "types": []
-                            }
-
-            entry["author_count"] = len(entry["authors"])
-            # insert in mongo
-            collection.insert_one(entry)
-            # insert in elasticsearch
-    else:  # does not have a doi identifier
-        # elasticsearch section
-        pass
+    # is the doi in colavdb?
+    colav_reg = collection.find_one({"external_ids.id": doi})
     client.close()
+    if colav_reg:  # update the register
+        update_register(scholar_reg, colav_reg, url,
+                        db_name, empty_work, verbose)
+    else:  # insert a new register
+        insert_new_register(scholar_reg, url, db_name,
+                            empty_work, es_index=None, verbose=0)
+
+
+def process_one_witout_doi(scholar_reg, url, db_name, empty_work, es_index=None, verbose=0):
+    client = MongoClient(url)
+    db = client[db_name]
+    collection = db["works"]
+
+    if es_index:
+        # Search in elasticsearch
+        es_handler = Similarity(
+            es_index, es_uri="http://localhost:9200", es_auth=('elastic', 'colav'))
+
+        response = es_handler.search_work(
+            title=scholar_reg["title"],
+            source=scholar_reg["journal"],
+            year=scholar_reg["year"],
+            authors=[auth.split(", ")[-1] + " " + auth.split(", ")[0]
+                     for auth in scholar_reg["author"].split(" and ")],
+            volume=scholar_reg["volume"] if "volume" in scholar_reg.keys(
+            ) else "",
+            issue=scholar_reg["issue"] if "issue" in scholar_reg.keys(
+            ) else "",
+            page_start=scholar_reg["pages"].split(
+                "--")[0] if "pages" in scholar_reg.keys() else "",
+            page_end=scholar_reg["pages"].split(
+                "--")[-1] if "pages" in scholar_reg.keys() else "",
+        )
+
+        if response:  # register already on db... update accordingly
+            colav_reg = collection.find_one({"_id": response["_id"]})
+            client.close()
+            update_register(scholar_reg, colav_reg, url,
+                            db_name, empty_work, verbose)
+        else:  # insert new register
+            insert_new_register(scholar_reg, url, db_name,
+                                empty_work, es_index, verbose)
+    else:
+        if verbose > 4:
+            print("No elasticsearch index provided")
+
+
+def process_one(scholar_reg, url, db_name, empty_work, es_index=None, verbose=0):
+    doi = None
+    # register has doi
+    if scholar_reg["doi"]:
+        if isinstance(scholar_reg["doi"], str):
+            doi = scholar_reg["doi"].lower().strip()
+    if doi:
+        process_one_with_doi(scholar_reg, url, db_name,
+                             empty_work, es_index, verbose)
+    else:  # does not have a doi identifier
+        process_one_witout_doi(scholar_reg, url, db_name,
+                               empty_work, es_index, verbose)
 
 
 class Kahi_scholar_works(KahiBase):
