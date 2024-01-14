@@ -328,7 +328,7 @@ def update_register(scholar_reg, colav_reg, url, db_name, empty_work, verbose=0)
     client.close()
 
 
-def insert_new_register(scholar_reg, url, db_name, empty_work, es_index=None, verbose=0):
+def insert_new_register(scholar_reg, url, db_name, empty_work, es_config=None, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
@@ -470,9 +470,14 @@ def insert_new_register(scholar_reg, url, db_name, empty_work, es_index=None, ve
     client.close()
 
     # insert in elasticsearch
-    if es_index:
+    if es_config:
+        es_index = es_config["es_index"] if "es_index" in es_config.keys(
+        ) else None
+        es_url = es_config["es_url"] if "es_url" in es_config.keys() else None
+        es_auth = (es_config["es_user"], es_config["es_password"]) if "es_user" in es_config.keys(
+        ) and "es_password" in es_config.keys() else None
         es_handler = Similarity(
-            es_index, es_uri="http://localhost:9200", es_auth=('elastic', 'colav'))
+            es_index, es_uri=es_url, es_auth=es_auth)
         work = {}
         work["title"] = entry["titles"][0]["title"]
         work["source"] = entry["source"]["name"]
@@ -494,7 +499,7 @@ def insert_new_register(scholar_reg, url, db_name, empty_work, es_index=None, ve
             print("No elasticsearch index provided")
 
 
-def process_one_with_doi(scholar_reg, url, db_name, empty_work, es_index=None, verbose=0):
+def process_one_with_doi(scholar_reg, url, db_name, empty_work, es_config=None, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
@@ -512,18 +517,21 @@ def process_one_with_doi(scholar_reg, url, db_name, empty_work, es_index=None, v
                         db_name, empty_work, verbose)
     else:  # insert a new register
         insert_new_register(scholar_reg, url, db_name,
-                            empty_work, es_index=None, verbose=0)
+                            empty_work, es_config=es_config, verbose=verbose)
 
 
-def process_one_witout_doi(scholar_reg, url, db_name, empty_work, es_index=None, verbose=0):
+def process_one_without_doi(scholar_reg, url, db_name, empty_work, es_config=None, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
 
-    if es_index:
+    if es_config:
         # Search in elasticsearch
+        es_index = es_config["es_index"]
+        es_url = es_config["es_url"]
+        es_auth = (es_config["es_user"], es_config["es_password"])
         es_handler = Similarity(
-            es_index, es_uri="http://localhost:9200", es_auth=('elastic', 'colav'))
+            es_index, es_uri=es_url, es_aut=es_auth)
 
         response = es_handler.search_work(
             title=scholar_reg["title"],
@@ -548,13 +556,13 @@ def process_one_witout_doi(scholar_reg, url, db_name, empty_work, es_index=None,
                             db_name, empty_work, verbose)
         else:  # insert new register
             insert_new_register(scholar_reg, url, db_name,
-                                empty_work, es_index, verbose)
+                                empty_work, es_config, verbose)
     else:
         if verbose > 4:
             print("No elasticsearch index provided")
 
 
-def process_one(scholar_reg, url, db_name, empty_work, es_index=None, verbose=0):
+def process_one(scholar_reg, url, db_name, empty_work, es_config=None, verbose=0):
     doi = None
     # register has doi
     if scholar_reg["doi"]:
@@ -562,10 +570,10 @@ def process_one(scholar_reg, url, db_name, empty_work, es_index=None, verbose=0)
             doi = scholar_reg["doi"].lower().strip()
     if doi:
         process_one_with_doi(scholar_reg, url, db_name,
-                             empty_work, es_index, verbose)
+                             empty_work, es_config, verbose)
     else:  # does not have a doi identifier
-        process_one_witout_doi(scholar_reg, url, db_name,
-                               empty_work, es_index, verbose)
+        process_one_without_doi(scholar_reg, url, db_name,
+                                empty_work, es_config, verbose)
 
 
 class Kahi_scholar_works(KahiBase):
@@ -595,6 +603,15 @@ class Kahi_scholar_works(KahiBase):
         self.scholar_collection = self.scholar_db[config["scholar_works"]
                                                   ["collection_name"]]
 
+        self.es_config = None
+        if "es_index" in config.keys() and "es_url" in config.keys() and "es_user" in config.keys() and "es_password" in config.keys():
+            self.es_config = {
+                "es_index": config["es_index"],
+                "es_url": config["es_url"],
+                "es_user": config["es_user"],
+                "es_password": config["es_password"]
+            }
+
         self.n_jobs = config["scholar_works"]["num_jobs"] if "num_jobs" in config["scholar_works"].keys(
         ) else 1
         self.verbose = config["scholar_works"]["verbose"] if "verbose" in config["scholar_works"].keys(
@@ -611,6 +628,7 @@ class Kahi_scholar_works(KahiBase):
                 self.mongodb_url,
                 self.config["database_name"],
                 self.empty_work(),
+                es_config=self.es_config,
                 verbose=self.verbose
             ) for paper in paper_list
         )
