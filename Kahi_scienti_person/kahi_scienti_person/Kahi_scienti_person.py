@@ -126,38 +126,39 @@ class Kahi_scienti_person(KahiBase):
                 for prod in scienti.find({"author.NRO_DOCUMENTO_IDENT": idx}):
                     group_entry = {}
                     if "group" in prod.keys():
-                        group_db = db["affiliations"].find_one(
-                            {"external_ids.id": prod["group"][0]["COD_ID_GRUPO"]})
-                        if group_db:
-                            name = group_db["names"][0]["name"]
-                            for n in group_db["names"]:
-                                if n["lang"] == "es":
-                                    name = n["name"]
-                                    break
-                                elif n["lang"] == "en":
-                                    name = n["name"]
-                            aff_found = False
-                            for aff in person["affiliations"]:
-                                if group_db["_id"] == aff["id"]:
-                                    aff_found = True
-                                    break
-                            if aff_found:
-                                continue
-                            time_str = ""
-                            if len(str(prod["NRO_ANO_PRESENTA"])) == 4:
-                                time_str += str(prod["NRO_ANO_PRESENTA"])
-                            else:
-                                continue
-                            if len(str(prod["NRO_MES_PRESENTA"])) < 2:
-                                time_str += "-0" + \
-                                    str(prod["NRO_MES_PRESENTA"])
-                            elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
-                                time_str += "-" + str(prod["NRO_MES_PRESENTA"])
-                            aff_time = self.check_date_format(time_str)
-                            group_entry = {
-                                "id": group_db["_id"], "name": name, "types": group_db["types"], "start_date": aff_time, "end_date": -1}
-                            if group_entry not in person["affiliations"]:
-                                person["affiliations"].append(group_entry)
+                        for group in prod["group"]:
+                            group_db = self.db["affiliations"].find_one(
+                                {"external_ids.id": group["COD_ID_GRUPO"]})
+                            if group_db:
+                                name = group_db["names"][0]["name"]
+                                for n in group_db["names"]:
+                                    if n["lang"] == "es":
+                                        name = n["name"]
+                                        break
+                                    elif n["lang"] == "en":
+                                        name = n["name"]
+                                aff_found = False
+                                for aff in person["affiliations"]:
+                                    if group_db["_id"] == aff["id"]:
+                                        aff_found = True
+                                        break
+                                if aff_found:
+                                    continue
+                                time_str = ""
+                                if len(str(prod["NRO_ANO_PRESENTA"])) == 4:
+                                    time_str += str(prod["NRO_ANO_PRESENTA"])
+                                else:
+                                    continue
+                                if len(str(prod["NRO_MES_PRESENTA"])) < 2:
+                                    time_str += "-0" + \
+                                        str(prod["NRO_MES_PRESENTA"])
+                                elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
+                                    time_str += "-" + str(prod["NRO_MES_PRESENTA"])
+                                aff_time = self.check_date_format(time_str)
+                                group_entry = {
+                                    "id": group_db["_id"], "name": name, "types": group_db["types"], "start_date": aff_time, "end_date": -1}
+                                if group_entry not in person["affiliations"]:
+                                    person["affiliations"].append(group_entry)
 
                     au = prod["author"][0]
                     if "TPO_PERFIL" not in au.keys():
@@ -295,39 +296,40 @@ class Kahi_scienti_person(KahiBase):
                     rank = []
                     ranks = []
                     for prod in scienti.find({"author.COD_RH": rh}):
-                        group_entry = {}
-                        group_db = db["affiliations"].find_one(
-                            {"external_ids.id": prod["group"][0]["COD_ID_GRUPO"]})
-                        if group_db:
-                            name = group_db["names"][0]["name"]
-                            for n in group_db["names"]:
-                                if n["lang"] == "es":
-                                    name = n["name"]
-                                    break
-                                elif n["lang"] == "en":
-                                    name = n["name"]
-                            aff_found = False
-                            for aff in entry["affiliations"]:
-                                if group_db["_id"] == aff["id"]:
-                                    aff_found = True
-                                    break
-                            if aff_found:
-                                continue
-                            time_str = ""
-                            if len(str(prod["NRO_ANO_PRESENTA"])) == 4:
-                                time_str += str(prod["NRO_ANO_PRESENTA"])
-                            else:
-                                continue
-                            if len(str(prod["NRO_MES_PRESENTA"])) < 2:
-                                time_str += "-0" + \
-                                    str(prod["NRO_MES_PRESENTA"])
-                            elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
-                                time_str += "-" + str(prod["NRO_MES_PRESENTA"])
-                            aff_time = self.check_date_format(time_str)
-                            group_entry = {
-                                "id": group_db["_id"], "name": name, "types": group_db["types"], "start_date": aff_time, "end_date": -1}
-                            if group_entry not in entry["affiliations"]:
-                                entry["affiliations"].append(group_entry)
+                        for group in prod["group"]:
+                            group_entry = {}
+                            group_db = self.db["affiliations"].find_one(
+                                {"external_ids.id": group["COD_ID_GRUPO"]})
+                            if group_db:
+                                name = group_db["names"][0]["name"]
+                                for n in group_db["names"]:
+                                    if n["lang"] == "es":
+                                        name = n["name"]
+                                        break
+                                    elif n["lang"] == "en":
+                                        name = n["name"]
+                                aff_found = False
+                                for aff in entry["affiliations"]:
+                                    if group_db["_id"] == aff["id"]:
+                                        aff_found = True
+                                        break
+                                if aff_found:
+                                    continue
+                                time_str = ""
+                                if len(str(prod["NRO_ANO_PRESENTA"])) == 4:
+                                    time_str += str(prod["NRO_ANO_PRESENTA"])
+                                else:
+                                    continue
+                                if len(str(prod["NRO_MES_PRESENTA"])) < 2:
+                                    time_str += "-0" + \
+                                        str(prod["NRO_MES_PRESENTA"])
+                                elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
+                                    time_str += "-" + str(prod["NRO_MES_PRESENTA"])
+                                aff_time = self.check_date_format(time_str)
+                                group_entry = {
+                                    "id": group_db["_id"], "name": name, "types": group_db["types"], "start_date": aff_time, "end_date": -1}
+                                if group_entry not in entry["affiliations"]:
+                                    entry["affiliations"].append(group_entry)
 
                         au = prod["author"][0]
                         if "TPO_PERFIL" not in au.keys():
