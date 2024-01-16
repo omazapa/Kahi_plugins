@@ -45,7 +45,7 @@ def main():
         name="Kahi_impactu",
 
         # Version number (initial):
-        version="0.0.1",
+        version="0.0.2",
 
         # Application author details:
         author="Colav",
@@ -79,7 +79,7 @@ def main():
             'Kahi_openalex_person==0.1.0b0',
             'Kahi_openalex_sources==0.1.0b0',
             'Kahi_openalex_subjects==0.1.1b0',
-            'Kahi_openalex_works==0.1.0b0',
+            'Kahi_openalex_works==0.1.1b0',
             'Kahi_ranking_udea_works==0.1.0b0',
             'Kahi_ror_affiliations==0.1.0b0',
             'Kahi_scholar_works==0.1.0b0',
@@ -89,7 +89,7 @@ def main():
             'Kahi_scienti_works==0.1.0b0',
             'Kahi_scimago_sources==0.1.0b0',
             'Kahi_scopus_works==0.1.0b0',
-            'Kahi_staff_udea_affiliations==0.1.0b0',
+            'Kahi_staff_udea_affiliations==0.1.1b0',
             'Kahi_staff_udea_person==0.1.0b0',
             'Kahi_wos_works==0.1.0b0',
         ],
