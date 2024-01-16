@@ -241,7 +241,6 @@ def parse_openalex(reg, empty_work, verbose=0):
         }
         subjects.append(sub_entry)
     entry["subjects"].append({"source": "openalex", "subjects": subjects})
-
     return entry
 
 
@@ -259,6 +258,34 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
         colav_reg = collection.find_one({"external_ids.id": doi})
         if colav_reg:  # update the register
             # updated
+            # adding openalex authorships
+            for author in oa_reg["authorships"]:
+                if not author["author"]:
+                    continue
+                affs = []
+                for inst in author["institutions"]:
+                    if inst:
+                        aff_entry = {
+                            "external_ids": [{"source": "openalex", "id": inst["id"]}],
+                            "name": inst["display_name"]
+                        }
+                        if "ror" in inst.keys():
+                            aff_entry["external_ids"].append(
+                                {"source": "ror", "id": inst["ror"]})
+                        affs.append(aff_entry)
+                author = author["author"]
+                author_entry = {
+                    "external_ids": [{"source": "openalex", "id": author["id"]}],
+                    "full_name": author["display_name"],
+                    "types": [],
+                    "affiliations": affs
+                }
+                if author["orcid"]:
+                    author_entry["external_ids"].append(
+                        {"source": "orcid", "id": author["orcid"].replace("https://orcid.org/", "")})
+                if author_entry not in colav_reg["authors"]:
+                    colav_reg["authors"].append(author_entry)
+            
             for upd in colav_reg["updated"]:
                 if upd["source"] == "openalex":
                     client.close()
@@ -337,7 +364,9 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
                     "external_urls": colav_reg["external_urls"],
                     "subjects": colav_reg["subjects"],
                     "citations_count": colav_reg["citations_count"],
-                    "citations_by_year": colav_reg["citations_by_year"]
+                    "citations_by_year": colav_reg["citations_by_year"],
+                    "authors": colav_reg["authors"],
+                    "author_count": len(colav_reg["authors"])
                 }}
             )
         else:  # insert a new register
@@ -497,7 +526,7 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
                 print(entry)
                 print(e)
                 print(doi)
-                print(entry["autrhors_count"])
+                print(entry["author_count"])
                 raise
 
             # insert in elasticsearch
