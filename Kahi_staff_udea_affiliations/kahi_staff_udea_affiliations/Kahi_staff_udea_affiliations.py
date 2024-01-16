@@ -139,7 +139,7 @@ class Kahi_staff_udea_affiliations(KahiBase):
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
-                        {"name": reg["Nombre fac"], "lang": "es", "source": "staff_udea"})
+                        {"name": name, "lang": "es", "source": "staff_udea"})
                     entry["types"].append(
                         {"source": "staff", "type": "faculty"})
                     entry["relations"].append(

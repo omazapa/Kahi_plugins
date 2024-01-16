@@ -297,7 +297,8 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
                     colav_reg["external_urls"].append(
                         {"source": "oa", "url": entry["external_urls"][0]["url"]})
             # citations by year
-            colav_reg["citations_by_year"] = entry["counts_by_year"]
+            if "counts_by_year" in entry.keys():
+                colav_reg["citations_by_year"] = entry["counts_by_year"]
             # citations count
             if entry["citations_count"]:
                 colav_reg["citations_count"].extend(entry["citations_count"])
