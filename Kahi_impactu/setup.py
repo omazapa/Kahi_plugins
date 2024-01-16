@@ -45,7 +45,7 @@ def main():
         name="Kahi_impactu",
 
         # Version number (initial):
-        version="0.0.2",
+        version="0.0.3",
 
         # Application author details:
         author="Colav",
@@ -84,7 +84,7 @@ def main():
             'Kahi_ror_affiliations==0.1.0b0',
             'Kahi_scholar_works==0.1.0b0',
             'Kahi_scienti_affiliations==0.1.0b0',
-            'Kahi_scienti_person==0.1.0b0',
+            'Kahi_scienti_person==0.1.1b0',
             'Kahi_scienti_sources==0.1.0b0',
             'Kahi_scienti_works==0.1.0b0',
             'Kahi_scimago_sources==0.1.0b0',
