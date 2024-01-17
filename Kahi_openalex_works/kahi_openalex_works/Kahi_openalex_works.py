@@ -241,13 +241,14 @@ def parse_openalex(reg, empty_work, verbose=0):
         }
         subjects.append(sub_entry)
     entry["subjects"].append({"source": "openalex", "subjects": subjects})
+
     return entry
 
 
-def process_one(oa_reg, url, db_name, empty_work, verbose=0):
-    client = MongoClient(url)
-    db = client[db_name]
-    collection = db["works"]
+def process_one(oa_reg, db, collection, empty_work, verbose=0):
+    # client = MongoClient(url)
+    # db = client[db_name]
+    # collection = db["works"]
     doi = None
     # register has doi
     if "doi" in oa_reg.keys():
@@ -258,37 +259,9 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
         colav_reg = collection.find_one({"external_ids.id": doi})
         if colav_reg:  # update the register
             # updated
-            # adding openalex authorships
-            for author in oa_reg["authorships"]:
-                if not author["author"]:
-                    continue
-                affs = []
-                for inst in author["institutions"]:
-                    if inst:
-                        aff_entry = {
-                            "external_ids": [{"source": "openalex", "id": inst["id"]}],
-                            "name": inst["display_name"]
-                        }
-                        if "ror" in inst.keys():
-                            aff_entry["external_ids"].append(
-                                {"source": "ror", "id": inst["ror"]})
-                        affs.append(aff_entry)
-                author = author["author"]
-                author_entry = {
-                    "external_ids": [{"source": "openalex", "id": author["id"]}],
-                    "full_name": author["display_name"],
-                    "types": [],
-                    "affiliations": affs
-                }
-                if author["orcid"]:
-                    author_entry["external_ids"].append(
-                        {"source": "orcid", "id": author["orcid"].replace("https://orcid.org/", "")})
-                if author_entry not in colav_reg["authors"]:
-                    colav_reg["authors"].append(author_entry)
-            
             for upd in colav_reg["updated"]:
                 if upd["source"] == "openalex":
-                    client.close()
+                    # client.close()
                     return None  # Register already on db
                     # Could be updated with new information when openalex database changes
             entry = parse_openalex(oa_reg, empty_work.copy(), verbose=verbose)
@@ -364,9 +337,7 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
                     "external_urls": colav_reg["external_urls"],
                     "subjects": colav_reg["subjects"],
                     "citations_count": colav_reg["citations_count"],
-                    "citations_by_year": colav_reg["citations_by_year"],
-                    "authors": colav_reg["authors"],
-                    "author_count": len(colav_reg["authors"])
+                    "citations_by_year": colav_reg["citations_by_year"]
                 }}
             )
         else:  # insert a new register
@@ -522,18 +493,18 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
             try:
                 collection.insert_one(entry)
             except Exception as e:
-                client.close()
+                # client.close()
                 print(entry)
                 print(e)
                 print(doi)
-                print(entry["author_count"])
+                print(entry["autrhors_count"])
                 raise
 
             # insert in elasticsearch
     else:  # does not have a doi identifier
         # elasticsearch section
         pass
-    client.close()
+    # client.close()
 
 
 class Kahi_openalex_works(KahiBase):
@@ -569,18 +540,23 @@ class Kahi_openalex_works(KahiBase):
 
     def process_openalex(self):
         paper_list = list(self.openalex_collection.find())
-        Parallel(
-            n_jobs=self.n_jobs,
-            verbose=self.verbose,
-            backend="threading")(
-            delayed(process_one)(
-                paper,
-                self.mongodb_url,
-                self.config["database_name"],
-                self.empty_work(),
-                verbose=self.verbose
-            ) for paper in paper_list
-        )
+
+        with MongoClient(self.mongodb_url) as client:
+            db = client[self.config["database_name"]]
+            works_collection = db["works"]
+
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(process_one)(
+                    paper,
+                    db,
+                    works_collection,
+                    self.empty_work(),
+                    verbose=self.verbose
+                ) for paper in paper_list
+            )
 
     def run(self):
         self.process_openalex()
