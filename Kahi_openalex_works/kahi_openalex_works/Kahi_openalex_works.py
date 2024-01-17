@@ -245,10 +245,10 @@ def parse_openalex(reg, empty_work, verbose=0):
     return entry
 
 
-def process_one(oa_reg, url, db_name, empty_work, verbose=0):
-    client = MongoClient(url)
-    db = client[db_name]
-    collection = db["works"]
+def process_one(oa_reg, db, collection, empty_work, verbose=0):
+    # client = MongoClient(url)
+    # db = client[db_name]
+    # collection = db["works"]
     doi = None
     # register has doi
     if "doi" in oa_reg.keys():
@@ -261,7 +261,7 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "openalex":
-                    client.close()
+                    # client.close()
                     return None  # Register already on db
                     # Could be updated with new information when openalex database changes
             entry = parse_openalex(oa_reg, empty_work.copy(), verbose=verbose)
@@ -493,7 +493,7 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
             try:
                 collection.insert_one(entry)
             except Exception as e:
-                client.close()
+                # client.close()
                 print(entry)
                 print(e)
                 print(doi)
@@ -504,7 +504,7 @@ def process_one(oa_reg, url, db_name, empty_work, verbose=0):
     else:  # does not have a doi identifier
         # elasticsearch section
         pass
-    client.close()
+    # client.close()
 
 
 class Kahi_openalex_works(KahiBase):
@@ -540,18 +540,23 @@ class Kahi_openalex_works(KahiBase):
 
     def process_openalex(self):
         paper_list = list(self.openalex_collection.find())
-        Parallel(
-            n_jobs=self.n_jobs,
-            verbose=self.verbose,
-            backend="threading")(
-            delayed(process_one)(
-                paper,
-                self.mongodb_url,
-                self.config["database_name"],
-                self.empty_work(),
-                verbose=self.verbose
-            ) for paper in paper_list
-        )
+
+        with MongoClient(self.mongodb_url) as client:
+            db = client[self.config["database_name"]]
+            works_collection = db["works"]
+
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(process_one)(
+                    paper,
+                    db,
+                    works_collection,
+                    self.empty_work(),
+                    verbose=self.verbose
+                ) for paper in paper_list
+            )
 
     def run(self):
         self.process_openalex()
