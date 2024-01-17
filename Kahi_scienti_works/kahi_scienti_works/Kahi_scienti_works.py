@@ -264,8 +264,9 @@ def parse_scienti(reg, empty_work, verbose=0):
     return entry
 
 
-def process_one(scienti_reg, url, db_name, empty_work, verbose=0):
-    client = MongoClient(url)
+def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multiprocessing=False):
+    if multiprocessing:
+        client = MongoClient(url) #TODO: fix multiprocessing support if possible
     db = client[db_name]
     collection = db["works"]
     doi = None
@@ -283,6 +284,8 @@ def process_one(scienti_reg, url, db_name, empty_work, verbose=0):
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "scienti":
+                    if multiprocessing:
+                        client.close()
                     return None  # Register already on db
                     # Could be updated with new information when scienti database changes
             colav_reg["updated"].append(
@@ -482,8 +485,8 @@ def process_one(scienti_reg, url, db_name, empty_work, verbose=0):
     else:  # does not have a doi identifier
         # elasticsearch section
         pass
-
-    client.close()
+    if multiprocessing:
+        client.close()
 
 
 class Kahi_scienti_works(KahiBase):
@@ -516,18 +519,23 @@ class Kahi_scienti_works(KahiBase):
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
         paper_list = list(scienti.find())
+        client.close()
+        if self.verbose > 0:
+            print("Processing {} papers".format(len(paper_list)))
         Parallel(
             n_jobs=self.n_jobs,
             verbose=self.verbose,
             backend="threading")(
             delayed(process_one)(
                 paper,
+                self.client,
                 self.mongodb_url,
                 self.config["database_name"],
                 self.empty_work(),
                 verbose=self.verbose
             ) for paper in paper_list
         )
+
 
     def run(self):
         for config in self.config["scienti_works"]["databases"]:
@@ -538,4 +546,5 @@ class Kahi_scienti_works(KahiBase):
             print(config)
             print(type(config))
             self.process_scienti(config)
+        self.client.close()
         return 0
