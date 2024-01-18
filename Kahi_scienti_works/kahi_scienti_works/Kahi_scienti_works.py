@@ -266,7 +266,8 @@ def parse_scienti(reg, empty_work, verbose=0):
 
 def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multiprocessing=False):
     if multiprocessing:
-        client = MongoClient(url) #TODO: fix multiprocessing support if possible
+        # TODO: fix multiprocessing support if possible
+        client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
     doi = None
@@ -535,7 +536,6 @@ class Kahi_scienti_works(KahiBase):
                 verbose=self.verbose
             ) for paper in paper_list
         )
-
 
     def run(self):
         for config in self.config["scienti_works"]["databases"]:
