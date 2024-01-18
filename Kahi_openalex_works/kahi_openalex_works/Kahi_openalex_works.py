@@ -396,13 +396,15 @@ def process_one(oa_reg, db, collection, empty_work, verbose=0):
             # search authors and affiliations in db
             for i, author in enumerate(entry["authors"]):
                 author_db = None
-                for ext in author["external_ids"]:#given priority to scienti person
-                    author_db = db["person"].find_one({"external_ids.id": ext["id"],"affiliations.types.source":"scienti"})
+                for ext in author["external_ids"]:  # given priority to scienti person
+                    author_db = db["person"].find_one(
+                        {"external_ids.id": ext["id"], "affiliations.types.source": "scienti"})
                     if author_db:
                         break
-                if not author_db:# if not found ids with scienti, let search it with other sources
+                if not author_db:  # if not found ids with scienti, let search it with other sources
                     for ext in author["external_ids"]:
-                        author_db = db["person"].find_one({"external_ids.id": ext["id"]})
+                        author_db = db["person"].find_one(
+                            {"external_ids.id": ext["id"]})
                         if author_db:
                             break
                 if author_db:
