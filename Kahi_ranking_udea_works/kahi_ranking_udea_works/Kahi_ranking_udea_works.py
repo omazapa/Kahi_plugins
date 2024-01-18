@@ -191,10 +191,10 @@ def parse_ranking_udea(reg, affiliation, empty_work):
     return entry
 
 
-def process_one(ranking_udea_reg, url, db_name, affiliation, empty_work, verbose=0):
-    client = MongoClient(url)
-    db = client[db_name]
-    collection = db["works"]
+def process_one(ranking_udea_reg, db, collection, affiliation, empty_work, verbose=0):
+    # client = MongoClient(url)
+    # db = client[db_name]
+    # collection = db["works"]
     doi = None
     # register has doi
     if ranking_udea_reg["DOI"]:
@@ -207,7 +207,7 @@ def process_one(ranking_udea_reg, url, db_name, affiliation, empty_work, verbose
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "ranking_udea":
-                    client.close()
+                    # client.close()
                     return None  # Register already on db
                     # Could be updated with new information when ranking file updates
             entry = parse_ranking_udea(
@@ -371,7 +371,7 @@ def process_one(ranking_udea_reg, url, db_name, affiliation, empty_work, verbose
     else:  # does not have a doi identifier
         # elasticsearch section
         pass
-    client.close()
+    # client.close()
 
 
 class Kahi_ranking_udea_works(KahiBase):
@@ -444,19 +444,23 @@ class Kahi_ranking_udea_works(KahiBase):
                 {"names.name": "Universidad de Antioquia"})
 
     def process_ranking_udea(self):
-        Parallel(
-            n_jobs=self.n_jobs,
-            verbose=self.verbose,
-            backend="threading")(
-            delayed(process_one)(
-                paper,
-                self.mongodb_url,
-                self.config["database_name"],
-                self.udea_reg,
-                self.empty_work(),
-                verbose=self.verbose
-            ) for paper in self.ranking
-        )
+        with MongoClient(self.mongodb_url) as client:
+            db = client[self.config["database_name"]]
+            collection = db["works"]
+
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(process_one)(
+                    paper,
+                    db,
+                    collection,
+                    self.udea_reg,
+                    self.empty_work(),
+                    verbose=self.verbose
+                ) for paper in self.ranking
+            )
 
     def run(self):
         self.process_ranking_udea()
