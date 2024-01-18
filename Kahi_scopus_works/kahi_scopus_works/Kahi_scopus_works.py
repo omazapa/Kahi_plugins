@@ -269,10 +269,10 @@ def parse_scopus(reg, empty_work, verbose=0):
     return entry
 
 
-def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
-    client = MongoClient(url)
-    db = client[db_name]
-    collection = db["works"]
+def process_one(scopus_reg, db, collection, empty_work, verbose=0):
+    # client = MongoClient(url)
+    # db = client[db_name]
+    # collection = db["works"]
     doi = None
     # register has doi
     if scopus_reg["DOI"]:
@@ -285,7 +285,7 @@ def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
             # updated
             for upd in colav_reg["updated"]:
                 if upd["source"] == "scopus":
-                    client.close()
+                    # client.close()
                     return None  # Register already on db
                     # Could be updated with new information when scopus database changes
             entry = parse_scopus(
@@ -475,7 +475,7 @@ def process_one(scopus_reg, url, db_name, empty_work, verbose=0):
     else:  # does not have a doi identifier
         # elasticsearch section
         pass
-    client.close()
+    # client.close()
 
 
 class Kahi_scopus_works(KahiBase):
@@ -513,18 +513,22 @@ class Kahi_scopus_works(KahiBase):
 
     def process_scopus(self):
         paper_list = list(self.scopus_collection.find())
-        Parallel(
-            n_jobs=self.n_jobs,
-            verbose=self.verbose,
-            backend="threading")(
-            delayed(process_one)(
-                paper,
-                self.mongodb_url,
-                self.config["database_name"],
-                self.empty_work(),
-                verbose=self.verbose
-            ) for paper in paper_list
-        )
+        with MongoClient(self.mongodb_url) as client:
+            db = client[self.config["database_name"]]
+            collection = db["works"]
+
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(process_one)(
+                    paper,
+                    db,
+                    collection,
+                    self.empty_work(),
+                    verbose=self.verbose
+                ) for paper in paper_list
+            )
 
     def run(self):
         self.process_scopus()
