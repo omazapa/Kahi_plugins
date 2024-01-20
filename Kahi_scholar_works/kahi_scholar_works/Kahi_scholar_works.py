@@ -4,7 +4,7 @@ from time import time
 from joblib import Parallel, delayed
 from re import sub, split, UNICODE
 import unidecode
-from thefuzz import fuzz
+from thefuzz import fuzz, process
 
 from langid import classify
 import pycld2 as cld2
@@ -19,6 +19,20 @@ fast_spell = FastSpell("en", mode="cons")
 
 
 def lang_poll(text, verbose=0):
+    """"
+    Detects the language of a text using several methods and returns the most voted language
+
+    Parameters
+    ----------
+    text : str
+        Text to detect language
+    verbose : int
+        Verbosity level
+    Returns
+    -------
+    str
+        Most voted language
+    """
     text = text.lower()
     text = text.replace("\n", "")
     lang_list = []
@@ -313,6 +327,76 @@ def update_register(scholar_reg, colav_reg, url, db_name, empty_work, verbose=0)
     if entry["citations_count"]:
         colav_reg["citations_count"].extend(entry["citations_count"])
 
+    # authors
+    authors_list = [au["full_name"]
+                    for au in colav_reg["authors"] if au["full_name"]]  # list of names from authors in db register
+    # loop over authors in scholar register (already parsed)
+    for author in entry["authors"]:
+        idx = None
+        match, score = process.extractOne(
+            author["full_name"], authors_list, scorer=fuzz.ratio)
+        # print("Ratio: ",score,author["full_name"],match)
+        if score >= 70:
+            idx = authors_list.index(match)
+        elif score > 50:
+            match, score = process.extractOne(
+                author["full_name"], authors_list, scorer=fuzz.partial_ratio)
+            # print("Partial ratio: ",score,author["full_name"],match)
+            if score >= 80:
+                idx = authors_list.index(match)
+            elif score > 60:
+                match, score = process.extractOne(
+                    author["full_name"], authors_list, scorer=fuzz.token_sort_ratio)
+                # print("Token sort ratio: ",score,author["full_name"],match)
+                if score >= 99:
+                    idx = authors_list.index(match)
+        if idx:  # if author already on db
+            # Get the sources and ids of the external ids of the author
+            sources = [ext["source"]
+                       for ext in colav_reg["authors"][idx]["external_ids"]]
+            ids = [ext["id"]
+                   for ext in colav_reg["authors"][idx]["external_ids"]]
+            # Add the new external ids to the author
+            for ext in author["external_ids"]:
+                if ext["id"] not in ids:
+                    colav_reg["authors"][idx]["external_ids"].append(ext)
+                    sources.append(ext["source"])
+                    ids.append(ext["id"])
+            # Create the same loop as above to improve affiliations
+            aff_name_list = [aff["name"] for aff in colav_reg["authors"][idx]
+                             ["affiliations"] if "affiliations" in colav_reg["authors"][idx].keys()]
+            if "affiliations" in author.keys():
+                for aff in author["affiliations"]:
+                    jdx = None
+                    match, score = process.extractOne(
+                        aff["name"], aff_name_list, scorer=fuzz.ratio)
+                    # print("Ratio: ",score,author["full_name"],match)
+                    if score >= 70:
+                        jdx = aff_name_list.index(match)
+                    elif score > 50:
+                        match, score = process.extractOne(
+                            aff["name"], aff_name_list, scorer=fuzz.partial_ratio)
+                        # print("Partial ratio: ",score,author["full_name"],match)
+                        if score >= 80:
+                            jdx = aff_name_list.index(match)
+                        elif score > 60:
+                            match, score = process.extractOne(
+                                aff["full_name"], aff_name_list, scorer=fuzz.token_sort_ratio)
+                            # print("Token sort ratio: ",score,author["full_name"],match)
+                            if score >= 99:
+                                jdx = aff_name_list.index(match)
+                    if jdx:
+                        sources = [ext["source"] for ext in colav_reg["authors"]
+                                   [idx]["affiliations"][jdx]["external_ids"]]
+                        ids = [ext["id"] for ext in colav_reg["authors"]
+                               [idx]["affiliations"][jdx]["external_ids"]]
+                        for ext in author["affiliations"][jdx]["external_ids"]:
+                            if ext["id"] not in ids:
+                                colav_reg["authors"][idx]["affiliations"][jdx]["external_ids"].append(
+                                    ext)
+                                sources.append(ext["source"])
+                                ids.append(ext["id"])
+
     collection.update_one(
         {"_id": colav_reg["_id"]},
         {"$set": {
@@ -322,13 +406,14 @@ def update_register(scholar_reg, colav_reg, url, db_name, empty_work, verbose=0)
             "types": colav_reg["types"],
             "bibliographic_info": colav_reg["bibliographic_info"],
             "external_urls": colav_reg["external_urls"],
-            "citations_count": colav_reg["citations_count"]
+            "citations_count": colav_reg["citations_count"],
+            "authors": colav_reg["authors"]
         }}
     )
     client.close()
 
 
-def insert_new_register(scholar_reg, url, db_name, empty_work, es_config=None, verbose=0):
+def insert_new_register(scholar_reg, url, db_name, empty_work, es_handler=None, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
@@ -470,14 +555,7 @@ def insert_new_register(scholar_reg, url, db_name, empty_work, es_config=None, v
     client.close()
 
     # insert in elasticsearch
-    if es_config:
-        es_index = es_config["es_index"] if "es_index" in es_config.keys(
-        ) else None
-        es_url = es_config["es_url"] if "es_url" in es_config.keys() else None
-        es_auth = (es_config["es_user"], es_config["es_password"]) if "es_user" in es_config.keys(
-        ) and "es_password" in es_config.keys() else None
-        es_handler = Similarity(
-            es_index, es_uri=es_url, es_auth=es_auth)
+    if es_handler:
         work = {}
         work["title"] = entry["titles"][0]["title"]
         work["source"] = entry["source"]["name"]
@@ -490,8 +568,8 @@ def insert_new_register(scholar_reg, url, db_name, empty_work, es_config=None, v
         for author in entry['authors']:
             if len(authors) >= 5:
                 break
-            if "full_name" in author["author"].keys():
-                authors.append(author["author"]["full_name"])
+            if "full_name" in author.keys():
+                authors.append(author["full_name"])
         work["authors"] = authors
         es_handler.insert_work(_id=str(response.inserted_id), work=work)
     else:
@@ -499,7 +577,7 @@ def insert_new_register(scholar_reg, url, db_name, empty_work, es_config=None, v
             print("No elasticsearch index provided")
 
 
-def process_one_with_doi(scholar_reg, url, db_name, empty_work, es_config=None, verbose=0):
+def process_one_with_doi(scholar_reg, url, db_name, empty_work, es_handler=None, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
@@ -517,21 +595,16 @@ def process_one_with_doi(scholar_reg, url, db_name, empty_work, es_config=None, 
                         db_name, empty_work, verbose)
     else:  # insert a new register
         insert_new_register(scholar_reg, url, db_name,
-                            empty_work, es_config=es_config, verbose=verbose)
+                            empty_work, es_handler=es_handler, verbose=verbose)
 
 
-def process_one_without_doi(scholar_reg, url, db_name, empty_work, es_config=None, verbose=0):
+def process_one_without_doi(scholar_reg, url, db_name, empty_work, es_handler=None, verbose=0):
     client = MongoClient(url)
     db = client[db_name]
     collection = db["works"]
 
-    if es_config:
+    if es_handler:
         # Search in elasticsearch
-        es_index = es_config["es_index"]
-        es_url = es_config["es_url"]
-        es_auth = (es_config["es_user"], es_config["es_password"])
-        es_handler = Similarity(
-            es_index, es_uri=es_url, es_aut=es_auth)
 
         response = es_handler.search_work(
             title=scholar_reg["title"],
@@ -552,28 +625,20 @@ def process_one_without_doi(scholar_reg, url, db_name, empty_work, es_config=Non
         if response:  # register already on db... update accordingly
             colav_reg = collection.find_one({"_id": response["_id"]})
             client.close()
-            update_register(scholar_reg, colav_reg, url,
-                            db_name, empty_work, verbose)
+            if colav_reg:
+                update_register(scholar_reg, colav_reg, url,
+                                db_name, empty_work, verbose)
+            else:
+                if verbose > 4:
+                    print("Register with {} not found in mongodb".format(
+                        response["_id"]))
+                    print(response)
         else:  # insert new register
             insert_new_register(scholar_reg, url, db_name,
-                                empty_work, es_config, verbose)
+                                empty_work, es_handler, verbose)
     else:
         if verbose > 4:
             print("No elasticsearch index provided")
-
-
-def process_one(scholar_reg, url, db_name, empty_work, es_config=None, verbose=0):
-    doi = None
-    # register has doi
-    if scholar_reg["doi"]:
-        if isinstance(scholar_reg["doi"], str):
-            doi = scholar_reg["doi"].lower().strip()
-    if doi:
-        process_one_with_doi(scholar_reg, url, db_name,
-                             empty_work, es_config, verbose)
-    else:  # does not have a doi identifier
-        process_one_without_doi(scholar_reg, url, db_name,
-                                empty_work, es_config, verbose)
 
 
 class Kahi_scholar_works(KahiBase):
@@ -603,14 +668,14 @@ class Kahi_scholar_works(KahiBase):
         self.scholar_collection = self.scholar_db[config["scholar_works"]
                                                   ["collection_name"]]
 
-        self.es_config = None
         if "es_index" in config.keys() and "es_url" in config.keys() and "es_user" in config.keys() and "es_password" in config.keys():
-            self.es_config = {
-                "es_index": config["es_index"],
-                "es_url": config["es_url"],
-                "es_user": config["es_user"],
-                "es_password": config["es_password"]
-            }
+            es_index = config["es_index"]
+            es_url = config["es_url"]
+            es_auth = (config["es_user"], config["es_password"])
+            self.es_handler = Similarity(
+                es_index, es_uri=es_url, es_auth=es_auth)
+
+        self.task = config["scholar_works"]["task"]
 
         self.n_jobs = config["scholar_works"]["num_jobs"] if "num_jobs" in config["scholar_works"].keys(
         ) else 1
@@ -618,20 +683,38 @@ class Kahi_scholar_works(KahiBase):
         ) else 0
 
     def process_scholar(self):
-        paper_list = list(self.scholar_collection.find())
-        Parallel(
-            n_jobs=self.n_jobs,
-            verbose=self.verbose,
-            backend="threading")(
-            delayed(process_one)(
-                paper,
-                self.mongodb_url,
-                self.config["database_name"],
-                self.empty_work(),
-                es_config=self.es_config,
-                verbose=self.verbose
-            ) for paper in paper_list
-        )
+        # selects papers with doi according to task variable
+        if self.task == "doi":
+            paper_list = list(
+                self.scholar_collection.find({"doi": {"$ne": ""}}))
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(process_one_with_doi)(
+                    paper,
+                    self.mongodb_url,
+                    self.config["database_name"],
+                    self.empty_work(),
+                    es_handler=self.es_handler,
+                    verbose=self.verbose
+                ) for paper in paper_list
+            )
+        else:  # By default the task processes papers without doi
+            paper_list = list(self.scholar_collection.find({"doi": ""}))
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(process_one_without_doi)(
+                    paper,
+                    self.mongodb_url,
+                    self.config["database_name"],
+                    self.empty_work(),
+                    es_handler=self.es_handler,
+                    verbose=self.verbose
+                ) for paper in paper_list
+            )
 
     def run(self):
         self.process_scholar()
