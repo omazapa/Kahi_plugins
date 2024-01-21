@@ -609,7 +609,7 @@ def process_one_without_doi(scholar_reg, url, db_name, empty_work, es_handler=No
         response = es_handler.search_work(
             title=scholar_reg["title"],
             source=scholar_reg["journal"],
-            year=scholar_reg["year"],
+            year=str(scholar_reg["year"]),
             authors=[auth.split(", ")[-1] + " " + auth.split(", ")[0]
                      for auth in scholar_reg["author"].split(" and ")],
             volume=scholar_reg["volume"] if "volume" in scholar_reg.keys(
