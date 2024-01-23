@@ -27,8 +27,17 @@ Additional parameters for kahi_run in the workflow should be here as well.
 example :
 
 ```
-template:
-    -   my_param_example: value
+config:
+  database_url: localhost:27017
+  database_name: kahi
+  log_database: kahi
+  log_collection: log
+workflow:
+  impactu_postcalculations:
+    database_url: localhost:27017
+    database_name: kahi_calculations
+    n_jobs: 6
+    verbose: 5
 ```
 Those parameters are not really needed in the workflow file, it is just for illustration.
 
