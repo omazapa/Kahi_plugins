@@ -46,7 +46,7 @@ class Kahi_impactu_postcalculations(KahiBase):
         Returns:
             bool: True if models are installed, False otherwise.
         """
-        return "en_core_web_sm" in spacy.cli.info() and "es_core_news_sm" in spacy.cli.info()
+        return "en_core_web_sm" in  spacy.cli.info()["pipelines"].keys() and "es_core_news_sm" in  spacy.cli.info()["pipelines"].keys()
 
     def install_spacy_models(self):
         """
