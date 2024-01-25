@@ -2,7 +2,7 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
-from re import sub, split, UNICODE
+from re import sub, split, search, UNICODE
 import unidecode
 from pandas import read_excel
 
@@ -89,6 +89,41 @@ def lang_poll(text, verbose=0):
     return lang
 
 
+def dois_processor(doi):
+    """
+    Process a DOI (Digital Object Identifier) and return a cleaned version.
+    Args:
+        doi (str): The DOI to be processed.
+    Returns:
+        str or bool: If a valid DOI is found, return the cleaned DOI; otherwise, return False.
+    """
+    doi_regex = r"\b10\.\d{4,}/[^\s]+"
+    match = search(doi_regex, doi)
+    if match:
+        return match.group().strip().strip('.')
+    doi_candidate = doi.replace(" ", "")
+    match = search(doi_regex, doi_candidate)
+    if match:
+        return match.group().strip().strip('.')
+    if ('http' in doi_candidate or 'www' in doi_candidate) and "10." in doi_candidate:
+        doi_candidate = doi_candidate.split("/10")[-1].replace("%2f", "/")
+        doi_candidate = "10" + doi_candidate
+        match = search(doi_regex, doi_candidate)
+        if match:
+            return match.group().strip('.')
+    doi_candidate = doi.split("/")
+    if doi_candidate[0].endswith('.'):
+        doi_candidate[0] = doi_candidate[0].strip('.')
+    if "." not in doi_candidate[0]:
+        doi_candidate[0] = doi_candidate[0].replace("10", "10.")
+    doi_candidate = '/'.join(doi_candidate)
+    match = search(doi_regex, doi_candidate)
+    if match:
+        return match.group().strip().strip('.')
+
+    return False
+
+
 def split_names(s, exceptions=['GIL', 'LEW', 'LIZ', 'PAZ', 'REY', 'RIO', 'ROA', 'RUA', 'SUS', 'ZEA']):
     """
     Extract the parts of the full name `s` in the format ([] → optional):
@@ -155,7 +190,7 @@ def parse_ranking_udea(reg, affiliation, empty_work):
         {"title": reg["titulo"], "lang": lang, "source": "ranking_udea"})
     if reg["DOI"]:
         entry["external_ids"].append(
-            {"source": "doi", "id": reg["DOI"].lower()})
+            {"source": "doi", "id": dois_processor(reg["DOI"]).lower()})
     if reg["issn"]:
         if isinstance(reg["issn"], str):
             for issn in reg["issn"].strip().split():
@@ -199,7 +234,7 @@ def process_one(ranking_udea_reg, db, collection, affiliation, empty_work, verbo
     # register has doi
     if ranking_udea_reg["DOI"]:
         if isinstance(ranking_udea_reg["DOI"], str):
-            doi = ranking_udea_reg["DOI"].lower().strip()
+            doi = dois_processor(ranking_udea_reg["DOI"]).lower()
     if doi:
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
