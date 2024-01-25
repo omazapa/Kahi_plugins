@@ -2,7 +2,7 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
-from re import sub, split, UNICODE
+from re import sub, split, search, UNICODE
 import unidecode
 from thefuzz import fuzz
 
@@ -147,6 +147,41 @@ def split_names(s, exceptions=['GIL', 'LEW', 'LIZ', 'PAZ', 'REY', 'RIO', 'ROA', 
     return d
 
 
+def dois_processor(doi):
+    """
+    Process a DOI (Digital Object Identifier) and return a cleaned version.
+    Args:
+        doi (str): The DOI to be processed.
+    Returns:
+        str or bool: If a valid DOI is found, return the cleaned DOI; otherwise, return False.
+    """
+    doi_regex = r"\b10\.\d{4,}/[^\s]+"
+    match = search(doi_regex, doi)
+    if match:
+        return match.group().strip().strip('.')
+    doi_candidate = doi.replace(" ", "")
+    match = search(doi_regex, doi_candidate)
+    if match:
+        return match.group().strip().strip('.')
+    if ('http' in doi_candidate or 'www' in doi_candidate) and "10." in doi_candidate:
+        doi_candidate = doi_candidate.split("/10")[-1].replace("%2f", "/")
+        doi_candidate = "10" + doi_candidate
+        match = search(doi_regex, doi_candidate)
+        if match:
+            return match.group().strip('.')
+    doi_candidate = doi.split("/")
+    if doi_candidate[0].endswith('.'):
+        doi_candidate[0] = doi_candidate[0].strip('.')
+    if "." not in doi_candidate[0]:
+        doi_candidate[0] = doi_candidate[0].replace("10", "10.")
+    doi_candidate = '/'.join(doi_candidate)
+    match = search(doi_regex, doi_candidate)
+    if match:
+        return match.group().strip().strip('.')
+
+    return False
+
+
 def parse_scholar(reg, empty_work, verbose=0):
     entry = empty_work.copy()
     entry["updated"] = [{"source": "scholar", "time": int(time())}]
@@ -166,7 +201,7 @@ def parse_scholar(reg, empty_work, verbose=0):
         entry["year_published"] = year
     if "doi" in reg.keys():
         entry["external_ids"].append(
-            {"source": "doi", "id": reg["doi"].lower()})
+            {"source": "doi", "id": dois_processor(reg["doi"]).lower()})
     if "cid" in reg.keys():
         entry["external_ids"] = [{"source": "scholar", "id": reg["cid"]}]
     if "abstract" in reg.keys():
@@ -268,7 +303,7 @@ def process_one(scholar_reg, db, collection, empty_work, verbose=0):
     # register has doi
     if scholar_reg["doi"]:
         if isinstance(scholar_reg["doi"], str):
-            doi = scholar_reg["doi"].lower().strip()
+            doi = dois_processor(scholar_reg["doi"]).lower()
     if doi:
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
