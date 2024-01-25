@@ -2,7 +2,7 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
-from re import sub, split, UNICODE
+from re import sub, split, search, UNICODE
 import unidecode
 
 from langid import classify
@@ -146,6 +146,41 @@ def split_names(s, exceptions=['GIL', 'LEW', 'LIZ', 'PAZ', 'REY', 'RIO', 'ROA', 
     return d
 
 
+def dois_processor(doi):
+    """
+    Process a DOI (Digital Object Identifier) and return a cleaned version.
+    Args:
+        doi (str): The DOI to be processed.
+    Returns:
+        str or bool: If a valid DOI is found, return the cleaned DOI; otherwise, return False.
+    """
+    doi_regex = r"\b10\.\d{4,}/[^\s]+"
+    match = search(doi_regex, doi)
+    if match:
+        return match.group().strip().strip('.')
+    doi_candidate = doi.replace(" ", "")
+    match = search(doi_regex, doi_candidate)
+    if match:
+        return match.group().strip().strip('.')
+    if ('http' in doi_candidate or 'www' in doi_candidate) and "10." in doi_candidate:
+        doi_candidate = doi_candidate.split("/10")[-1].replace("%2f", "/")
+        doi_candidate = "10" + doi_candidate
+        match = search(doi_regex, doi_candidate)
+        if match:
+            return match.group().strip('.')
+    doi_candidate = doi.split("/")
+    if doi_candidate[0].endswith('.'):
+        doi_candidate[0] = doi_candidate[0].strip('.')
+    if "." not in doi_candidate[0]:
+        doi_candidate[0] = doi_candidate[0].replace("10", "10.")
+    doi_candidate = '/'.join(doi_candidate)
+    match = search(doi_regex, doi_candidate)
+    if match:
+        return match.group().strip().strip('.')
+
+    return False
+
+
 def parse_scienti(reg, empty_work, verbose=0):
     entry = empty_work.copy()
     entry["updated"] = [{"source": "scienti", "time": int(time())}]
@@ -157,7 +192,7 @@ def parse_scienti(reg, empty_work, verbose=0):
         {"source": "COD_PRODUCTO", "id": reg["COD_PRODUCTO"]})
     if "TXT_DOI" in reg.keys():
         entry["external_ids"].append(
-            {"source": "doi", "id": reg["TXT_DOI"].lower()})
+            {"source": "doi", "id": dois_processor(reg["TXT_DOI"]).lower()})
     if "TXT_WEB_PRODUCTO" in reg.keys():
         entry["external_urls"].append(
             {"source": "scienti", "url": reg["TXT_WEB_PRODUCTO"]})
@@ -274,8 +309,7 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
     # register has doi
     if "TXT_DOI" in scienti_reg.keys():
         if scienti_reg["TXT_DOI"]:
-            doi = sub(r'https*\:\/\/[\w\.]+\/',
-                      '', scienti_reg["TXT_DOI"]).lower()
+            doi = dois_processor(scienti_reg["TXT_DOI"]).lower()
     if doi:
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
@@ -363,7 +397,7 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
                     else:
                         if verbose > 4:
                             print(
-                                f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with {entry["source"]["external_ids"][0]["source"]}: {entry["source"]["external_ids"][0]["id"]}')
+                                f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with {entry["source"]["external_ids"][0]["source"]}: {entry["source"]["external_ids"][0]["id"]}')  # noqa: E501
                 else:
                     if "title" in entry["source"].keys():
                         if entry["source"]["title"] == "":
@@ -478,7 +512,6 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
                                 "name": aff["name"],
                                 "types": []
                             }
-
             entry["author_count"] = len(entry["authors"])
             # insert in mongo
             collection.insert_one(entry)
