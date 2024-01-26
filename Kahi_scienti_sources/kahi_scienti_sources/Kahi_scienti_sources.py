@@ -3,6 +3,7 @@ from pymongo import MongoClient, ASCENDING
 from datetime import datetime as dt
 from time import time
 from langid import classify
+from re import match
 
 
 class Kahi_scienti_sources(KahiBase):
@@ -40,6 +41,32 @@ class Kahi_scienti_sources(KahiBase):
                 collection.create_index([("details.article.journal.TXT_ISSN_SEP", ASCENDING)])
                 client.close()
 
+    def check_date_format(self, date_str):
+        if date_str is None:
+            return ""
+        wdmyhmsz_format = r"^\w{3}, \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} \w{3}$"
+        ymdhms_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+        dmyhms_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+        ymd_format = r"\d{4}-\d{2}-\d{2}"
+        dmy_format = r"\d{2}-\d{2}-\d{4}"
+        ym_format = r"\d{4}-\d{2}"
+        my_format = r"\d{2}-\d{4}"
+        if match(wdmyhmsz_format, date_str):
+            return int(dt.strptime(date_str, "%a, %d %b %Y %H:%M:%S %Z").timestamp())
+        elif match(ymdhms_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
+        elif match(dmyhms_format, date_str):
+            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
+        elif match(ymd_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m-%d").timestamp())
+        elif match(dmy_format, date_str):
+            return int(dt.strptime(date_str, "%d-%m-%Y").timestamp())
+        elif match(ym_format, date_str):
+            return int(dt.strptime(date_str, "%Y-%m").timestamp())
+        elif match(my_format, date_str):
+            return int(dt.strptime(date_str, "%m-%Y").timestamp())
+        return ""
+
     def update_scienti(self, reg, entry, issn):
         updated_scienti = False
         for upd in entry["updated"]:
@@ -73,6 +100,8 @@ class Kahi_scienti_sources(KahiBase):
         for reg_scienti in self.scienti_collection["products"].find({"details.article.journal.TXT_ISSN_SEP": issn}):
             paper = None
             journal = None
+            if "details" not in reg_scienti.keys():
+                continue
             for detail in reg_scienti["details"]:
                 if "article" in detail.keys():
                     paper = detail["article"][0]
@@ -84,10 +113,12 @@ class Kahi_scienti_sources(KahiBase):
                 continue
             if "TPO_CLASIFICACION" not in journal.keys():
                 continue
+            DTA_CREACION = self.check_date_format(paper["DTA_CREACION"])
+            DTA_ACTUALIZACION = self.check_date_format(paper["DTA_ACTUALIZACION"])
             if not journal["TPO_CLASIFICACION"] in ranks:
                 ranking = {
-                    "from_date": int(dt.strptime(paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp()),
-                    "to_date": int(dt.strptime(paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp()),
+                    "from_date": DTA_CREACION,
+                    "to_date": DTA_ACTUALIZACION,
                     "rank": journal["TPO_CLASIFICACION"],
                     "issn": issn,
                     "order": None,
@@ -95,25 +126,25 @@ class Kahi_scienti_sources(KahiBase):
                 }
                 rankings_list.append(ranking)
                 ranks.append(journal["TPO_CLASIFICACION"])
-                dates_tuple = (
-                    int(dt.strptime(
-                        paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp()),
-                    int(dt.strptime(
-                        paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-                )
+                dates_tuple = (DTA_CREACION, DTA_ACTUALIZACION)
 
                 dates.append(dates_tuple)
             else:
                 idx = ranks.index(journal["TPO_CLASIFICACION"])
                 date1, date2 = dates[idx]
 
-                if date1 > int(dt.strptime(paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp()):
-                    date1 = int(dt.strptime(
-                        paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-                if date2 < int(dt.strptime(paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp()):
-                    date2 = int(dt.strptime(
-                        paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-                dates[idx] = (date1, date2)
+                try:
+                    if date1 > DTA_CREACION:
+                        date1 = DTA_CREACION
+                    if date2 < DTA_ACTUALIZACION:
+                        date2 = DTA_ACTUALIZACION
+                    dates[idx] = (date1, date2)
+                except Exception as e:
+                    print(e)
+                    date1 = ''
+                    date2 = ''
+
+                dates[idx] = ('', '')
 
         self.collection.update_one({"_id": entry["_id"]}, {"$set": {
             "types": entry["types"],
@@ -160,6 +191,8 @@ class Kahi_scienti_sources(KahiBase):
                         {"details.article.journal_others.TXT_ISSN": issn})
                 if reg_scienti:
                     journal = None
+                    if "details" not in reg_scienti.keys():
+                        continue
                     for detail in reg_scienti["details"]:
                         if "article" in detail.keys():
                             paper = detail["article"][0]
@@ -193,6 +226,8 @@ class Kahi_scienti_sources(KahiBase):
                     for reg_scienti in self.scienti_collection.find({"details.article.journal.TXT_ISSN_SEP": issn}):
                         paper = None
                         journal = None
+                        if "details" not in reg_scienti.keys():
+                            continue
                         for detail in reg_scienti["details"]:
                             if "article" in detail.keys():
                                 paper = detail["article"][0]
@@ -202,23 +237,12 @@ class Kahi_scienti_sources(KahiBase):
                         if journal:
                             if "TPO_CLASIFICACION" not in journal.keys():
                                 continue
+                            DTA_CREACION = self.check_date_format(paper["DTA_CREACION"])
+                            DTA_ACTUALIZACION = self.check_date_format(paper["DTA_ACTUALIZACION"])
+
                             if not journal["TPO_CLASIFICACION"] in ranks:
-                                try:
-                                    from_date = int(dt.strptime(
-                                        paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-                                    to_date = int(dt.strptime(
-                                        paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-                                except Exception as e:
-                                    print(e)
-                                    try:
-                                        from_date = int(dt.strptime(
-                                            paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
-                                        to_date = int(dt.strptime(
-                                            paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
-                                    except Exception as e:
-                                        print(e)
-                                        from_date = None
-                                        to_date = None
+                                from_date = DTA_CREACION
+                                to_date = DTA_ACTUALIZACION
                                 ranking = {
                                     "from_date": from_date,
                                     "to_date": to_date,
@@ -229,52 +253,22 @@ class Kahi_scienti_sources(KahiBase):
                                 }
                                 rankings_list.append(ranking)
                                 ranks.append(journal["TPO_CLASIFICACION"])
-                                try:
-                                    dates_tuple = (
-                                        int(dt.strptime(
-                                            paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp()),
-                                        int(dt.strptime(
-                                            paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-                                    )
-                                except Exception as e:
-                                    print(e)
-                                    try:
-                                        dates_tuple = (
-                                            int(dt.strptime(
-                                                paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp()),
-                                            int(dt.strptime(
-                                                paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
-                                        )
-                                    except Exception as e:
-                                        print(e)
-                                        dates_tuple = (
-                                            None,
-                                            None
-                                        )
-
+                                dates_tuple = (from_date, to_date)
                                 dates.append(dates_tuple)
                             else:
                                 # if is already ranked but dates changed
                                 idx = ranks.index(journal["TPO_CLASIFICACION"])
                                 date1, date2 = dates[idx]
                                 try:
-                                    if date1 > int(dt.strptime(paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp()):
-                                        date1 = int(dt.strptime(
-                                            paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-                                    if date2 < int(dt.strptime(paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp()):
-                                        date2 = int(dt.strptime(
-                                            paper["DTA_CREACION"], "%a, %d %b %Y %H:%M:%S %Z").timestamp())
+                                    if date1 > DTA_CREACION:
+                                        date1 = DTA_CREACION
+                                    if date2 < DTA_ACTUALIZACION:
+                                        date2 = DTA_ACTUALIZACION
                                 except Exception as e:
                                     print(e)
-                                    try:
-                                        if date1 > int(dt.strptime(paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp()):
-                                            date1 = int(dt.strptime(
-                                                paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
-                                        if date2 < int(dt.strptime(paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp()):
-                                            date2 = int(dt.strptime(
-                                                paper["DTA_CREACION"], "%Y-%m-%d %H:%M:%S").timestamp())
-                                    except Exception as e:
-                                        print(e)
+                                    date1 = ''
+                                    date2 = ''
+
                                 dates[idx] = (date1, date2)
                     entry["ranking"] = rankings_list
                     self.collection.insert_one(entry)
