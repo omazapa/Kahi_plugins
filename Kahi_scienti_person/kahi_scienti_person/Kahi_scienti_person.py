@@ -4,6 +4,7 @@ from datetime import datetime as dt
 from time import time
 from re import match
 
+
 class Kahi_scienti_person(KahiBase):
 
     config = {}
@@ -38,7 +39,8 @@ class Kahi_scienti_person(KahiBase):
                 db = client[database_name]
                 collection = db[collection_name]
 
-                collection.create_index([('author.NRO_DOCUMENTO_IDENT', ASCENDING)])
+                collection.create_index(
+                    [('author.NRO_DOCUMENTO_IDENT', ASCENDING)])
                 collection.create_index([('author.COD_RH', ASCENDING)])
                 collection.create_index([('author_others', ASCENDING)])
                 client.close()
@@ -153,7 +155,8 @@ class Kahi_scienti_person(KahiBase):
                                     time_str += "-0" + \
                                         str(prod["NRO_MES_PRESENTA"])
                                 elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
-                                    time_str += "-" + str(prod["NRO_MES_PRESENTA"])
+                                    time_str += "-" + \
+                                        str(prod["NRO_MES_PRESENTA"])
                                 aff_time = self.check_date_format(time_str)
                                 group_entry = {
                                     "id": group_db["_id"], "name": name, "types": group_db["types"], "start_date": aff_time, "end_date": -1}
@@ -229,7 +232,8 @@ class Kahi_scienti_person(KahiBase):
                         if author["COD_ORCID"]:
                             entry["external_ids"].append(
                                 {"source": "orcid", "id": author["COD_ORCID"]})
-                    entry["first_names"] = author["TXT_NAMES_RH"].strip().split() ##implement the right split names here
+                    # implement the right split names here
+                    entry["first_names"] = author["TXT_NAMES_RH"].strip().split()
                     entry["last_names"] = []
                     if "TXT_PRIM_APELL" in author.keys():
                         entry["last_names"].append(author["TXT_PRIM_APELL"])
@@ -327,12 +331,14 @@ class Kahi_scienti_person(KahiBase):
                                         time_str += "-0" + \
                                             str(prod["NRO_MES_PRESENTA"])
                                     elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
-                                        time_str += "-" + str(prod["NRO_MES_PRESENTA"])
+                                        time_str += "-" + \
+                                            str(prod["NRO_MES_PRESENTA"])
                                     aff_time = self.check_date_format(time_str)
                                     group_entry = {
                                         "id": group_db["_id"], "name": name, "types": group_db["types"], "start_date": aff_time, "end_date": -1}
                                     if group_entry not in entry["affiliations"]:
-                                        entry["affiliations"].append(group_entry)
+                                        entry["affiliations"].append(
+                                            group_entry)
 
                         au = prod["author"][0]
                         if "TPO_PERFIL" not in au.keys():
@@ -358,7 +364,8 @@ class Kahi_scienti_person(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-        author_others = scienti.find({"author_others":{"$exists": True}}, {"author_others": 1})
+        author_others = scienti.find(
+            {"author_others": {"$exists": True}}, {"author_others": 1})
         for author_others_reg in author_others:
             for author in author_others_reg["author_others"]:
                 if "COD_RH_REF" in author.keys():
