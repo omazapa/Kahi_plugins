@@ -196,7 +196,7 @@ class Kahi_scienti_affiliations(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-        for group_id in scienti.distinct("group.COD_ID_GRUPO"):
+        for group_id in scienti.distinct("group.COD_ID_GRUPO",{ "group.COD_ID_GRUPO" : { "$ne" : None } }):
             db_reg = self.collection.find_one({"external_ids.id": group_id})
             if db_reg:
                 continue
