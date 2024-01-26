@@ -50,7 +50,8 @@ class Kahi_scienti_affiliations(KahiBase):
                 db = client[database_name]
                 collection = db[collection_name]
 
-                collection.create_index([('group.institution.TXT_NIT', ASCENDING)])
+                collection.create_index(
+                    [('group.institution.TXT_NIT', ASCENDING)])
                 collection.create_index([('group.COD_ID_GRUPO', ASCENDING)])
                 client.close()
 
@@ -196,7 +197,7 @@ class Kahi_scienti_affiliations(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-        for group_id in scienti.distinct("group.COD_ID_GRUPO"):
+        for group_id in scienti.distinct("group.COD_ID_GRUPO", {"group.COD_ID_GRUPO": {"$ne": None}}):
             db_reg = self.collection.find_one({"external_ids.id": group_id})
             if db_reg:
                 continue
@@ -214,7 +215,8 @@ class Kahi_scienti_affiliations(KahiBase):
                     {"source": "scienti", "id": group["NRO_ID_GRUPO"]})
                 entry["names"].append(
                     {"name": group["NME_GRUPO"], "lang": "es", "source": "scienti"})
-                entry["birthdate"] = self.check_date_format(str(group["ANO_FORMACAO"]) + "-" + str(group["MES_FORMACAO"]))
+                entry["birthdate"] = self.check_date_format(
+                    str(group["ANO_FORMACAO"]) + "-" + str(group["MES_FORMACAO"]))
                 if group["STA_ELIMINADO"] == "F":
                     entry["status"].append(
                         {"source": "minciencias", "status": "activo"})
