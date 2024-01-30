@@ -668,12 +668,15 @@ class Kahi_scholar_works(KahiBase):
         self.scholar_collection = self.scholar_db[config["scholar_works"]
                                                   ["collection_name"]]
 
-        if "es_index" in config.keys() and "es_url" in config.keys() and "es_user" in config.keys() and "es_password" in config.keys():
-            es_index = config["es_index"]
-            es_url = config["es_url"]
-            es_auth = (config["es_user"], config["es_password"])
+        if "es_index" in config["scholar_works"].keys() and "es_url" in config["scholar_works"].keys() and "es_user" in config["scholar_works"].keys() and "es_password" in config["scholar_works"].keys():
+            es_index = config["scholar_works"]["es_index"]
+            es_url = config["scholar_works"]["es_url"]
+            es_auth = (config["scholar_works"]["es_user"], config["scholar_works"]["es_password"])
             self.es_handler = Similarity(
                 es_index, es_uri=es_url, es_auth=es_auth)
+        else:
+            self.es_handler = None
+            print("WARNING: No elasticsearch configuration provided")
 
         self.task = config["scholar_works"]["task"]
 
