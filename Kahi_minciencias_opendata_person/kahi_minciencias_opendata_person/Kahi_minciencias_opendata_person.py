@@ -215,7 +215,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
 
         self.collection.create_index("external_ids.id")
         self.collection.create_index("affiliations.id")
-        self.collection.create_index([("full_name.name", TEXT)])
+        self.collection.create_index([("full_name", TEXT)])
 
         self.researchers_file = config["minciencias_opendata_person"]["researchers"]
         self.cvlac_file = config["minciencias_opendata_person"]["cvlac"]
