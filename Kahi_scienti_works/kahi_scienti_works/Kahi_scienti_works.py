@@ -351,7 +351,8 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
     # register has doi
     if "TXT_DOI" in scienti_reg.keys():
         if scienti_reg["TXT_DOI"]:
-            doi = dois_processor(scienti_reg["TXT_DOI"]).lower()
+            if dois_processor(scienti_reg["TXT_DOI"]):
+                doi = dois_processor(scienti_reg["TXT_DOI"]).lower()
     if doi:
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
