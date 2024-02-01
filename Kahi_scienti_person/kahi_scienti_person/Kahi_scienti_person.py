@@ -21,7 +21,7 @@ class Kahi_scienti_person(KahiBase):
 
         self.collection.create_index("external_ids.id")
         self.collection.create_index("affiliations.id")
-        self.collection.create_index([("full_name.name", TEXT)])
+        self.collection.create_index([("full_name", TEXT)])
 
         self.verbose = config["scienti_person"]["verbose"] if "verbose" in config["scienti_person"].keys(
         ) else 0
