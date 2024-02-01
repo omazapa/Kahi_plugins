@@ -114,11 +114,10 @@ class Kahi_scienti_sources(KahiBase):
             if "TPO_CLASIFICACION" not in journal.keys():
                 continue
             DTA_CREACION = self.check_date_format(paper["DTA_CREACION"])
-            DTA_ACTUALIZACION = self.check_date_format(paper["DTA_ACTUALIZACION"])
             if not journal["TPO_CLASIFICACION"] in ranks:
                 ranking = {
                     "from_date": DTA_CREACION,
-                    "to_date": DTA_ACTUALIZACION,
+                    "to_date": DTA_CREACION,
                     "rank": journal["TPO_CLASIFICACION"],
                     "issn": issn,
                     "order": None,
@@ -126,7 +125,7 @@ class Kahi_scienti_sources(KahiBase):
                 }
                 rankings_list.append(ranking)
                 ranks.append(journal["TPO_CLASIFICACION"])
-                dates_tuple = (DTA_CREACION, DTA_ACTUALIZACION)
+                dates_tuple = (DTA_CREACION, DTA_CREACION)
 
                 dates.append(dates_tuple)
             else:
@@ -136,8 +135,8 @@ class Kahi_scienti_sources(KahiBase):
                 try:
                     if date1 > DTA_CREACION:
                         date1 = DTA_CREACION
-                    if date2 < DTA_ACTUALIZACION:
-                        date2 = DTA_ACTUALIZACION
+                    if date2 < DTA_CREACION:
+                        date2 = DTA_CREACION
                     dates[idx] = (date1, date2)
                 except Exception as e:
                     print(e)
@@ -238,11 +237,10 @@ class Kahi_scienti_sources(KahiBase):
                             if "TPO_CLASIFICACION" not in journal.keys():
                                 continue
                             DTA_CREACION = self.check_date_format(paper["DTA_CREACION"])
-                            DTA_ACTUALIZACION = self.check_date_format(paper["DTA_ACTUALIZACION"])
 
                             if not journal["TPO_CLASIFICACION"] in ranks:
                                 from_date = DTA_CREACION
-                                to_date = DTA_ACTUALIZACION
+                                to_date = DTA_CREACION
                                 ranking = {
                                     "from_date": from_date,
                                     "to_date": to_date,
@@ -262,8 +260,8 @@ class Kahi_scienti_sources(KahiBase):
                                 try:
                                     if date1 > DTA_CREACION:
                                         date1 = DTA_CREACION
-                                    if date2 < DTA_ACTUALIZACION:
-                                        date2 = DTA_ACTUALIZACION
+                                    if date2 < DTA_CREACION:
+                                        date2 = DTA_CREACION
                                 except Exception as e:
                                     print(e)
                                     date1 = ''

@@ -2,7 +2,8 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
-from re import sub, split, search, UNICODE
+from re import sub, split, search, match, UNICODE
+from datetime import datetime as dt
 import unidecode
 
 from langid import classify
@@ -154,20 +155,25 @@ def dois_processor(doi):
     Returns:
         str or bool: If a valid DOI is found, return the cleaned DOI; otherwise, return False.
     """
-    doi_regex = r"\b10\.\d{4,}/[^\s]+"
+    doi_regex = r"\b10\.\d{3,}/[^\s]+"
     match = search(doi_regex, doi)
     if match:
         return match.group().strip().strip('.')
-    doi_candidate = doi.replace(" ", "")
+    doi_candidate = doi.replace(" ", "").strip().strip('.').lower().replace("%2f", "/").replace("doi", "")
     match = search(doi_regex, doi_candidate)
     if match:
-        return match.group().strip().strip('.')
-    if ('http' in doi_candidate or 'www' in doi_candidate) and "10." in doi_candidate:
+        return match.group().strip().strip('.').lower()
+    if ('http' in doi_candidate or 'www' in doi_candidate or 'dx' in doi_candidate) and "10." in doi_candidate:
         doi_candidate = doi_candidate.split("/10")[-1].replace("%2f", "/")
         doi_candidate = "10" + doi_candidate
         match = search(doi_regex, doi_candidate)
         if match:
-            return match.group().strip('.')
+            return match.group().strip('.').lower()
+    if doi_candidate.startswith("0."):
+        doi_candidate = "1" + doi_candidate
+    match = search(doi_regex, doi_candidate)
+    if match:
+        return match.group().strip().strip('.').lower()
     doi_candidate = doi.split("/")
     if doi_candidate[0].endswith('.'):
         doi_candidate[0] = doi_candidate[0].strip('.')
@@ -176,9 +182,36 @@ def dois_processor(doi):
     doi_candidate = '/'.join(doi_candidate)
     match = search(doi_regex, doi_candidate)
     if match:
-        return match.group().strip().strip('.')
+        return match.group().strip().strip('.').lower()
 
     return False
+
+
+def check_date_format(date_str):
+    if date_str is None:
+        return ""
+    wdmyhmsz_format = r"^\w{3}, \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} \w{3}$"
+    ymdhms_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+    dmyhms_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
+    ymd_format = r"\d{4}-\d{2}-\d{2}"
+    dmy_format = r"\d{2}-\d{2}-\d{4}"
+    ym_format = r"\d{4}-\d{2}"
+    my_format = r"\d{2}-\d{4}"
+    if match(wdmyhmsz_format, date_str):
+        return int(dt.strptime(date_str, "%a, %d %b %Y %H:%M:%S %Z").timestamp())
+    elif match(ymdhms_format, date_str):
+        return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
+    elif match(dmyhms_format, date_str):
+        return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
+    elif match(ymd_format, date_str):
+        return int(dt.strptime(date_str, "%Y-%m-%d").timestamp())
+    elif match(dmy_format, date_str):
+        return int(dt.strptime(date_str, "%d-%m-%Y").timestamp())
+    elif match(ym_format, date_str):
+        return int(dt.strptime(date_str, "%Y-%m").timestamp())
+    elif match(my_format, date_str):
+        return int(dt.strptime(date_str, "%m-%Y").timestamp())
+    return ""
 
 
 def parse_scienti(reg, empty_work, verbose=0):
@@ -196,6 +229,16 @@ def parse_scienti(reg, empty_work, verbose=0):
     if "TXT_WEB_PRODUCTO" in reg.keys():
         entry["external_urls"].append(
             {"source": "scienti", "url": reg["TXT_WEB_PRODUCTO"]})
+    if "NRO_ANO_PRESENTA" in reg.keys():
+        year = reg["NRO_ANO_PRESENTA"]
+    if "NRO_MES_PRESENTA" in reg.keys():
+        month = reg["NRO_MES_PRESENTA"]
+        if len(str(month)) == 1:
+            month = f'0{month}'
+    if year and month:
+        entry["date_published"] = check_date_format(
+            f'{month}-{year}')
+        entry["year_published"] = int(year)
     if "SGL_CATEGORIA" in reg.keys():
         entry["ranking"].append(
             {"date": "", "rank": reg["SGL_CATEGORIA"], "source": "scienti"})
@@ -295,7 +338,6 @@ def parse_scienti(reg, empty_work, verbose=0):
         author_entry["external_ids"].append(
             {"source": "Cédula de Extranjería", "id": author["NRO_DOCUMENTO_IDENT"]})
     entry["authors"] = [author_entry]
-
     return entry
 
 
@@ -318,8 +360,110 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
             entry = parse_scienti(
                 scienti_reg, empty_work.copy(), verbose=verbose)
             # updated
+            if "openalex" in [upd["source"] for upd in colav_reg["updated"]]:
+                if multiprocessing:
+                    client.close()
+                return None
             for upd in colav_reg["updated"]:
                 if upd["source"] == "scienti":
+                    # adding new author and affiliations to the register
+                    for i, author in enumerate(entry["authors"]):
+                        author_db = None
+                        for ext in author["external_ids"]:
+                            author_db = db["person"].find_one(
+                                {"external_ids.id": ext["id"]})
+                            if author_db:
+                                break
+                        if author_db:
+                            sources = [ext["source"] for ext in author_db["external_ids"]]
+                            ids = [ext["id"] for ext in author_db["external_ids"]]
+                            for ext in author["external_ids"]:
+                                if ext["id"] not in ids:
+                                    author_db["external_ids"].append(ext)
+                                    sources.append(ext["source"])
+                                    ids.append(ext["id"])
+                            entry["authors"][i] = {
+                                "id": author_db["_id"],
+                                "full_name": author_db["full_name"],
+                                "affiliations": author["affiliations"]
+                            }
+                            if "external_ids" in author.keys():
+                                del (author["external_ids"])
+                        else:
+                            author_db = db["person"].find_one(
+                                {"full_name": author["full_name"]})
+                            if author_db:
+                                sources = [ext["source"] for ext in author_db["external_ids"]]
+                                ids = [ext["id"] for ext in author_db["external_ids"]]
+                                for ext in author["external_ids"]:
+                                    if ext["id"] not in ids:
+                                        author_db["external_ids"].append(ext)
+                                        sources.append(ext["source"])
+                                        ids.append(ext["id"])
+                                entry["authors"][i] = {
+                                    "id": author_db["_id"],
+                                    "full_name": author_db["full_name"],
+                                    "affiliations": author["affiliations"]
+                                }
+                            else:
+                                entry["authors"][i] = {
+                                    "id": "",
+                                    "full_name": author["full_name"],
+                                    "affiliations": author["affiliations"]
+                                }
+                        for j, aff in enumerate(author["affiliations"]):
+                            aff_db = None
+                            if "external_ids" in aff.keys():
+                                for ext in aff["external_ids"]:
+                                    aff_db = db["affiliations"].find_one(
+                                        {"external_ids.id": ext["id"]})
+                                    if aff_db:
+                                        break
+                            if aff_db:
+                                name = aff_db["names"][0]["name"]
+                                for n in aff_db["names"]:
+                                    if n["source"] == "ror":
+                                        name = n["name"]
+                                        break
+                                    if n["lang"] == "en":
+                                        name = n["name"]
+                                    if n["lang"] == "es":
+                                        name = n["name"]
+                                entry["authors"][i]["affiliations"][j] = {
+                                    "id": aff_db["_id"],
+                                    "name": name,
+                                    "types": aff_db["types"]
+                                }
+                            else:
+                                aff_db = db["affiliations"].find_one(
+                                    {"names.name": aff["name"]})
+                                if aff_db:
+                                    name = aff_db["names"][0]["name"]
+                                    for n in aff_db["names"]:
+                                        if n["source"] == "ror":
+                                            name = n["name"]
+                                            break
+                                        if n["lang"] == "en":
+                                            name = n["name"]
+                                        if n["lang"] == "es":
+                                            name = n["name"]
+                                    entry["authors"][i]["affiliations"][j] = {
+                                        "id": aff_db["_id"],
+                                        "name": name,
+                                        "types": aff_db["types"]
+                                    }
+                                else:
+                                    entry["authors"][i]["affiliations"][j] = {
+                                        "id": "",
+                                        "name": aff["name"],
+                                        "types": []
+                                    }
+
+                    collection.update_one(
+                        {"_id": colav_reg["_id"]},
+                        {"$push": {"authors": entry['authors'][0]}, "$inc": {"author_count": 1}}
+                    )
+
                     if multiprocessing:
                         client.close()
                     return None  # Register already on db
@@ -363,6 +507,7 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
                 }}
             )
         else:  # insert a new register
+            print(f'Inserting new work with DOI: {doi}')
             # parse
             entry = parse_scienti(scienti_reg, empty_work.copy())
             # link
@@ -549,27 +694,38 @@ class Kahi_scienti_works(KahiBase):
         self.verbose = config["scienti_works"]["verbose"] if "verbose" in config["scienti_works"].keys(
         ) else 0
 
+        self.pipeline = [
+            {"$match": {"TXT_DOI": {"$ne": None}}},
+            {"$project": {"doi": {"$trim": {"input": "$TXT_DOI"}}}},
+            {"$project": {"doi": {"$toLower": "$doi"}}},
+            {"$group": {"_id": "$doi", "ids": {"$push": "$_id"}}}
+        ]
+
+    def process_group(self, group, client, mongodb_url, db_name, collection, empty_work, verbose=0):
+        for i in group["ids"]:
+            reg = collection.find_one({"_id": i})
+            process_one(reg, client, mongodb_url, db_name, empty_work, verbose=verbose)
+
     def process_scienti(self, config):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-        paper_list = list(scienti.find())
-        client.close()
+        paper_groups = list(scienti.aggregate(self.pipeline))
         if self.verbose > 0:
-            print("Processing {} papers".format(len(paper_list)))
+            print("Processing {} groups of papers".format(len(paper_groups)))
         Parallel(
             n_jobs=self.n_jobs,
             verbose=self.verbose,
             backend="threading")(
-            delayed(process_one)(
-                paper,
+            delayed(self.process_group)(
+                group,
                 self.client,
                 self.mongodb_url,
                 self.config["database_name"],
+                scienti,
                 self.empty_work(),
-                verbose=self.verbose,
-                multiprocessing=True
-            ) for paper in paper_list
+                verbose=self.verbose
+            ) for group in paper_groups
         )
 
     def run(self):
