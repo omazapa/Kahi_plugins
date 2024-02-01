@@ -92,7 +92,7 @@ class Kahi_openalex_person(KahiBase):
 
         self.collection.create_index("external_ids.id")
         self.collection.create_index("affiliations.id")
-        self.collection.create_index([("full_name.name", TEXT)])
+        self.collection.create_index([("full_name", TEXT)])
 
         self.openalex_client = MongoClient(
             config["openalex_person"]["database_url"])
