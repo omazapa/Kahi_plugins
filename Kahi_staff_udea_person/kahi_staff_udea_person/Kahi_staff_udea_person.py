@@ -20,7 +20,7 @@ class Kahi_staff_udea_person(KahiBase):
 
         self.collection.create_index("external_ids.id")
         self.collection.create_index("affiliations.id")
-        self.collection.create_index([("full_name.name", TEXT)])
+        self.collection.create_index([("full_name", TEXT)])
 
         self.file_path = config["staff_udea_person"]["file_path"]
         self.data = read_excel(self.file_path, dtype={
