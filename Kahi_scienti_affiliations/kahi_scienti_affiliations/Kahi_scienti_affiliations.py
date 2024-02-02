@@ -1,9 +1,8 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, ASCENDING, TEXT
-from datetime import datetime as dt
 from time import time
 from thefuzz import fuzz
-from re import match
+from kahi_impactu_utils.Utils import check_date_format
 
 
 class Kahi_scienti_affiliations(KahiBase):
@@ -54,29 +53,6 @@ class Kahi_scienti_affiliations(KahiBase):
                     [('group.institution.TXT_NIT', ASCENDING)])
                 collection.create_index([('group.COD_ID_GRUPO', ASCENDING)])
                 client.close()
-
-    def check_date_format(self, date_str):
-        if date_str is None:
-            return ""
-        ymdhms_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
-        dmyhms_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
-        ymd_format = r"\d{4}-\d{2}-\d{2}"
-        dmy_format = r"\d{2}-\d{2}-\d{4}"
-        ym_format = r"\d{4}-\d{2}"
-        my_format = r"\d{2}-\d{4}"
-        if match(ymdhms_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
-        elif match(dmyhms_format, date_str):
-            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
-        elif match(ymd_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m-%d").timestamp())
-        elif match(dmy_format, date_str):
-            return int(dt.strptime(date_str, "%d-%m-%Y").timestamp())
-        elif match(ym_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m").timestamp())
-        elif match(my_format, date_str):
-            return int(dt.strptime(date_str, "%m-%Y").timestamp())
-        return ""
 
     def process_scienti_institutions(self, config, verbose=0):
         client = MongoClient(config["database_url"])
@@ -215,7 +191,7 @@ class Kahi_scienti_affiliations(KahiBase):
                     {"source": "scienti", "id": group["NRO_ID_GRUPO"]})
                 entry["names"].append(
                     {"name": group["NME_GRUPO"], "lang": "es", "source": "scienti"})
-                entry["birthdate"] = self.check_date_format(
+                entry["birthdate"] = check_date_format(
                     str(group["ANO_FORMACAO"]) + "-" + str(group["MES_FORMACAO"]))
                 if group["STA_ELIMINADO"] == "F":
                     entry["status"].append(
@@ -240,8 +216,8 @@ class Kahi_scienti_affiliations(KahiBase):
                     entry["ranking"].append({
                         "source": "scienti",
                         "rank": group["TXT_CLASIF"],
-                        "from_date": self.check_date_format(group["DTA_CLASIF"]),
-                        "to_date": self.check_date_format(group["DTA_FIN_CLASIF"])
+                        "from_date": check_date_format(group["DTA_CLASIF"]),
+                        "to_date": check_date_format(group["DTA_FIN_CLASIF"])
                     })
 
                 subjects = self.extract_subject([], group["knowledge_area"][0])

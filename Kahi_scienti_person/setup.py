@@ -82,7 +82,8 @@ def main():
         install_requires=[
             'kahi',
             'thefuzz',
-            'pymongo'
+            'pymongo',
+            'kahi_impactu_utils'
         ],
     )
 
