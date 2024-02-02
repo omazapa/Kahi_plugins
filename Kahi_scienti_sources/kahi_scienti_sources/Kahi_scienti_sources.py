@@ -1,9 +1,8 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, ASCENDING
-from datetime import datetime as dt
 from time import time
 from langid import classify
-from re import match
+from kahi_impactu_utils.Utils import check_date_format
 
 
 class Kahi_scienti_sources(KahiBase):
@@ -40,32 +39,6 @@ class Kahi_scienti_sources(KahiBase):
                 collection.create_index([("details.article.journal_others.TXT_ISSN", ASCENDING)])
                 collection.create_index([("details.article.journal.TXT_ISSN_SEP", ASCENDING)])
                 client.close()
-
-    def check_date_format(self, date_str):
-        if date_str is None:
-            return ""
-        wdmyhmsz_format = r"^\w{3}, \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} \w{3}$"
-        ymdhms_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
-        dmyhms_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
-        ymd_format = r"\d{4}-\d{2}-\d{2}"
-        dmy_format = r"\d{2}-\d{2}-\d{4}"
-        ym_format = r"\d{4}-\d{2}"
-        my_format = r"\d{2}-\d{4}"
-        if match(wdmyhmsz_format, date_str):
-            return int(dt.strptime(date_str, "%a, %d %b %Y %H:%M:%S %Z").timestamp())
-        elif match(ymdhms_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
-        elif match(dmyhms_format, date_str):
-            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
-        elif match(ymd_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m-%d").timestamp())
-        elif match(dmy_format, date_str):
-            return int(dt.strptime(date_str, "%d-%m-%Y").timestamp())
-        elif match(ym_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m").timestamp())
-        elif match(my_format, date_str):
-            return int(dt.strptime(date_str, "%m-%Y").timestamp())
-        return ""
 
     def update_scienti(self, reg, entry, issn):
         updated_scienti = False
@@ -113,7 +86,7 @@ class Kahi_scienti_sources(KahiBase):
                 continue
             if "TPO_CLASIFICACION" not in journal.keys():
                 continue
-            DTA_CREACION = self.check_date_format(paper["DTA_CREACION"])
+            DTA_CREACION = check_date_format(paper["DTA_CREACION"])
             if not journal["TPO_CLASIFICACION"] in ranks:
                 ranking = {
                     "from_date": DTA_CREACION,
@@ -236,7 +209,7 @@ class Kahi_scienti_sources(KahiBase):
                         if journal:
                             if "TPO_CLASIFICACION" not in journal.keys():
                                 continue
-                            DTA_CREACION = self.check_date_format(paper["DTA_CREACION"])
+                            DTA_CREACION = check_date_format(paper["DTA_CREACION"])
 
                             if not journal["TPO_CLASIFICACION"] in ranks:
                                 from_date = DTA_CREACION
