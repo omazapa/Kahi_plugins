@@ -1,8 +1,7 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, ASCENDING, TEXT
-from datetime import datetime as dt
 from time import time
-from re import match
+from kahi_impactu_utils.Utils import check_date_format
 
 
 class Kahi_scienti_person(KahiBase):
@@ -44,29 +43,6 @@ class Kahi_scienti_person(KahiBase):
                 collection.create_index([('author.COD_RH', ASCENDING)])
                 collection.create_index([('author_others', ASCENDING)])
                 client.close()
-
-    def check_date_format(self, date_str):
-        if date_str is None:
-            return ""
-        ymdhms_format = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
-        dmyhms_format = r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}"
-        ymd_format = r"\d{4}-\d{2}-\d{2}"
-        dmy_format = r"\d{2}-\d{2}-\d{4}"
-        ym_format = r"\d{4}-\d{2}"
-        my_format = r"\d{2}-\d{4}"
-        if match(ymdhms_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m-%d %H:%M:%S").timestamp())
-        elif match(dmyhms_format, date_str):
-            return int(dt.strptime(date_str, "%d-%m-%Y %H:%M:%S").timestamp())
-        elif match(ymd_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m-%d").timestamp())
-        elif match(dmy_format, date_str):
-            return int(dt.strptime(date_str, "%d-%m-%Y").timestamp())
-        elif match(ym_format, date_str):
-            return int(dt.strptime(date_str, "%Y-%m").timestamp())
-        elif match(my_format, date_str):
-            return int(dt.strptime(date_str, "%m-%Y").timestamp())
-        return ""
 
     def update_inserted(self, config, verbose=0):
         client = MongoClient(config["database_url"])
@@ -157,7 +133,7 @@ class Kahi_scienti_person(KahiBase):
                                 elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
                                     time_str += "-" + \
                                         str(prod["NRO_MES_PRESENTA"])
-                                aff_time = self.check_date_format(time_str)
+                                aff_time = check_date_format(time_str)
                                 group_entry = {
                                     "id": group_db["_id"], "name": name, "types": group_db["types"], "start_date": aff_time, "end_date": -1}
                                 if group_entry not in person["affiliations"]:
@@ -170,7 +146,7 @@ class Kahi_scienti_person(KahiBase):
                         continue
                     date = ""
                     if "DTA_CREACION" in prod.keys():
-                        date = self.check_date_format(prod["DTA_CREACION"])
+                        date = check_date_format(prod["DTA_CREACION"])
                     rank_entry = {
                         "date": date,
                         "rank": au["TPO_PERFIL"],
@@ -276,7 +252,7 @@ class Kahi_scienti_person(KahiBase):
                             })
 
                     if "DTA_NACIM" in author.keys():
-                        entry["birthdate"] = self.check_date_format(
+                        entry["birthdate"] = check_date_format(
                             author["DTA_NACIM"])
 
                     if "TPO_ESTADO_CIVIL" in author.keys():
@@ -333,7 +309,7 @@ class Kahi_scienti_person(KahiBase):
                                     elif len(str(prod["NRO_MES_PRESENTA"])) == 2:
                                         time_str += "-" + \
                                             str(prod["NRO_MES_PRESENTA"])
-                                    aff_time = self.check_date_format(time_str)
+                                    aff_time = check_date_format(time_str)
                                     group_entry = {
                                         "id": group_db["_id"], "name": name, "types": group_db["types"], "start_date": aff_time, "end_date": -1}
                                     if group_entry not in entry["affiliations"]:
@@ -347,7 +323,7 @@ class Kahi_scienti_person(KahiBase):
                             continue
                         date = ""
                         if "DTA_CREACION" in prod.keys():
-                            date = self.check_date_format(prod["DTA_CREACION"])
+                            date = check_date_format(prod["DTA_CREACION"])
                         rank_entry = {
                             "date": date,
                             "rank": au["TPO_PERFIL"],
@@ -429,7 +405,7 @@ class Kahi_scienti_person(KahiBase):
                     [p[0].upper() for p in entry["first_names"]])
 
                 if "DTA_NACIMIENTO" in author.keys():
-                    entry["birthdate"] = self.check_date_format(
+                    entry["birthdate"] = check_date_format(
                         author["DTA_NACIMIENTO"])
 
                 self.collection.insert_one(entry)
