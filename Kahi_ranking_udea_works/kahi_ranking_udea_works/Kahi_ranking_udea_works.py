@@ -2,7 +2,6 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
-import unidecode
 from pandas import read_excel
 from kahi_impactu_utils.Utils import doi_processor, lang_poll, split_names
 
