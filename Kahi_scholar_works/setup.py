@@ -84,6 +84,7 @@ def main():
             'pymongo',
             'joblib',
             'thefuzz',
+            'kahi_impactu_utils',
         ],
     )
 
