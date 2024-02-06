@@ -4,9 +4,7 @@ from time import time
 from joblib import Parallel, delayed
 
 
-def process_relation(sub, url, db_name):
-    client = MongoClient(url)
-
+def process_relation(sub, client, db_name):
     db = client[db_name]
     collection = db["subjects"]
     relations = []
@@ -153,11 +151,13 @@ class Kahi_openalex_subjects(KahiBase):
     def process_relations(self):
         openalex_data = list(self.openalex_collection.find(
             {"id": {"$nin": self.relations_inserted_ids}}, {"id": 1, "ancestors": 1, "related_concepts": 1}))
+        client = MongoClient(self.config["database_url"])
         Parallel(
             n_jobs=self.n_jobs,
             backend="threading",
             verbose=10
-        )(delayed(process_relation)(sub, self.config["database_url"], self.config["database_name"]) for sub in openalex_data)
+        )(delayed(process_relation)(sub, client, self.config["database_name"]) for sub in openalex_data)
+        client.close()
 
     def run(self):
         print("Inserting the subjects")
