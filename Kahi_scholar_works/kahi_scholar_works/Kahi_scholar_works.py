@@ -51,14 +51,19 @@ def parse_scholar(reg, empty_work, verbose=0):
                 pages = reg["pages"].split("--")
                 entry["bibliographic_info"]["start_page"] = pages[0]
                 entry["bibliographic_info"]["end_page"] = pages[1]
-                try:
-                    entry["bibliographic_info"]["pages"] = str(int(
-                        entry["bibliographic_info"]["end_page"]) - int(entry["bibliographic_info"]["start_page"]))
-                except Exception as e:
+                if entry["bibliographic_info"]["start_page"].isdigit() and entry["bibliographic_info"]["end_page"].isdigit():
+                    try:
+                        entry["bibliographic_info"]["pages"] = str(int(
+                            entry["bibliographic_info"]["end_page"]) - int(entry["bibliographic_info"]["start_page"]))
+                    except Exception as e:
+                        if verbose > 4:
+                            print(
+                                f"""Could not cast pages to substract in {reg["doi"]}""")
+                            print(e)
+                else:
                     if verbose > 4:
-                        print(
-                            f"""Could not cast pages to substract in {reg["doi"]}""")
-                        print(e)
+                        print(f"Malformed start_page or end_page in source database for {reg['doi']}. Setting 'pages' to the original value.")
+                    entry["bibliographic_info"]["pages"] = reg["pages"]
             else:
                 if verbose > 4:
                     print(
