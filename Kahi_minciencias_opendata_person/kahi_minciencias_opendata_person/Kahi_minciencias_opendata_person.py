@@ -237,7 +237,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
-            backend="multiprocessing")(
+            backend="threading")(
             delayed(process_one)(
                 client,
                 self.config["database_name"],
