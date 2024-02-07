@@ -6,8 +6,7 @@ from datetime import datetime as dt
 from joblib import Parallel, delayed
 
 
-def process_one(url, db_name, empty_person, auid, cv, articulos, subset, verbose):
-    client = MongoClient(url)
+def process_one(client, db_name, empty_person, auid, cv, articulos, subset, verbose):
     db = client[db_name]
     collection = db["person"]
 
@@ -234,12 +233,13 @@ class Kahi_minciencias_opendata_person(KahiBase):
             "verbose"] if "verbose" in config["minciencias_opendata_person"].keys() else 0
 
     def process_openadata(self):
+        client = MongoClient(self.mongodb_url)
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
             backend="multiprocessing")(
             delayed(process_one)(
-                self.mongodb_url,
+                client,
                 self.config["database_name"],
                 self.empty_person(),
                 auid,
@@ -249,6 +249,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
                 self.verbose
             ) for auid in self.investigadores_minciencias["ID_PERSONA_PR"].unique()
         )
+        client.close()
 
     def run(self):
         self.process_openadata()
