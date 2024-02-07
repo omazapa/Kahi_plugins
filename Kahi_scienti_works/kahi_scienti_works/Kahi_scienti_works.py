@@ -151,13 +151,13 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
             entry = parse_scienti(
                 scienti_reg, empty_work.copy(), verbose=verbose)
             # updated
-            if "openalex" in [upd["source"] for upd in colav_reg["updated"]]:
-                if multiprocessing:
-                    client.close()
-                return None
             for upd in colav_reg["updated"]:
                 if upd["source"] == "scienti":
                     # adding new author and affiliations to the register
+                    if "openalex" in [upd["source"] for upd in colav_reg["updated"]]:
+                        if multiprocessing:
+                            client.close()
+                        return None
                     for i, author in enumerate(entry["authors"]):
                         author_db = None
                         for ext in author["external_ids"]:
@@ -262,9 +262,10 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
             colav_reg["updated"].append(
                 {"source": "scienti", "time": int(time())})
             # titles
-            lang = lang_poll(entry["titles"][0]["title"])
-            entry["titles"].append(
-                {"title": entry["titles"][0]["title"], "lang": lang, "source": "scienti"})
+            if 'scienti' not in [title['source'] for title in colav_reg["titles"]]:
+                lang = lang_poll(entry["titles"][0]["title"])
+                colav_reg["titles"].append(
+                    {"title": entry["titles"][0]["title"], "lang": lang, "source": "scienti"})
             # external_ids
             ext_ids = [ext["id"] for ext in colav_reg["external_ids"]]
             for ext in entry["external_ids"]:
@@ -375,7 +376,7 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
                     entry["authors"][i] = {
                         "id": author_db["_id"],
                         "full_name": author_db["full_name"],
-                        "affiliations": author["affiliations"]
+                        "affiliations": author_db["affiliations"]
                     }
                     if "external_ids" in author.keys():
                         del (author["external_ids"])
@@ -394,7 +395,7 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
                         entry["authors"][i] = {
                             "id": author_db["_id"],
                             "full_name": author_db["full_name"],
-                            "affiliations": author["affiliations"]
+                            "affiliations": author_db["affiliations"]
                         }
                     else:
                         entry["authors"][i] = {
