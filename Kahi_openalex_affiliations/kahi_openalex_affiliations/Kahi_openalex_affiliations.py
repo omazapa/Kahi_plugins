@@ -4,8 +4,7 @@ from time import time
 from joblib import Parallel, delayed
 
 
-def process_one(oa_aff, url, db_name, empty_affiliations, max_tries=10):
-    client = MongoClient(url)
+def process_one(oa_aff, client, db_name, empty_affiliations, max_tries=10):
     db = client[db_name]
     collection = db["affiliations"]
 
@@ -17,7 +16,6 @@ def process_one(oa_aff, url, db_name, empty_affiliations, max_tries=10):
     if db_reg:
         for upd in db_reg["updated"]:
             if upd["source"] == "openalex":
-                client.close()
                 return  # Should it be update-able?
         db_reg["updated"].append({"time": int(time()), "source": "openalex"})
         id_sources = [ext["id"] for ext in db_reg["external_ids"]]
@@ -114,7 +112,6 @@ def process_one(oa_aff, url, db_name, empty_affiliations, max_tries=10):
             }
         ]
         collection.insert_one(entry)
-    client.close()
 
 
 class Kahi_openalex_affiliations(KahiBase):
@@ -153,17 +150,19 @@ class Kahi_openalex_affiliations(KahiBase):
     def process_openalex(self):
         affiliation_list = list(self.openalex_collection.find())
         self.openalex_client.close()
+        client = MongoClient(self.mongodb_url)
         Parallel(
             n_jobs=self.n_jobs,
             verbose=self.verbose,
             backend="threading")(
             delayed(process_one)(
                 aff,
-                self.mongodb_url,
+                client,
                 self.config["database_name"],
                 self.empty_affiliation()
             ) for aff in affiliation_list
         )
+        client.close()
 
     def run(self):
         self.process_openalex()
