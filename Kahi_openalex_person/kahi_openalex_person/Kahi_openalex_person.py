@@ -4,8 +4,7 @@ from time import time
 from joblib import Parallel, delayed
 
 
-def process_one(oa_author, url, db_name, empty_person, max_tries=10):
-    client = MongoClient(url)
+def process_one(oa_author, client, db_name, empty_person, max_tries=10):
     db = client[db_name]
     collection = db["person"]
 
@@ -21,7 +20,6 @@ def process_one(oa_author, url, db_name, empty_person, max_tries=10):
                 already_updated = True
                 break
         if already_updated:
-            client.close()
             return None
         ext_sources = [ext["source"] for ext in author["external_ids"]]
         for key, val in oa_author["ids"].items():
@@ -73,7 +71,6 @@ def process_one(oa_author, url, db_name, empty_person, max_tries=10):
                     })
 
         collection.insert_one(entry)
-        client.close()
 
 
 class Kahi_openalex_person(KahiBase):
@@ -111,17 +108,19 @@ class Kahi_openalex_person(KahiBase):
     def process_openalex(self):
         author_list = list(self.openalex_collection.find())
         self.openalex_client.close()
+        client = MongoClient(self.mongodb_url)
         Parallel(
             n_jobs=self.n_jobs,
             verbose=self.verbose,
             backend="threading")(
             delayed(process_one)(
                 author,
-                self.mongodb_url,
+                client,
                 self.config["database_name"],
                 self.empty_person()
             ) for author in author_list
         )
+        client.close()
 
     def run(self):
         self.process_openalex()
