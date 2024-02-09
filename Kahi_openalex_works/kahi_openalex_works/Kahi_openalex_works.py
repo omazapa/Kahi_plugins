@@ -257,7 +257,7 @@ def process_one(oa_reg, db, collection, empty_work, verbose=0):
                 author_db = None
                 for ext in author["external_ids"]:  # given priority to scienti person
                     author_db = db["person"].find_one(
-                        {"external_ids.id": ext["id"], "affiliations.types.source": "scienti"})
+                        {"external_ids.id": ext["id"], "updated.source": "scienti"})
                     if author_db:
                         break
                 if not author_db:  # if not found ids with scienti, let search it with other sources
