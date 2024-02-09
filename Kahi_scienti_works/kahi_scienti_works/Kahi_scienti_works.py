@@ -376,7 +376,7 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
                     entry["authors"][i] = {
                         "id": author_db["_id"],
                         "full_name": author_db["full_name"],
-                        "affiliations": author_db["affiliations"]
+                        "affiliations": author["affiliations"]
                     }
                     if "external_ids" in author.keys():
                         del (author["external_ids"])
@@ -395,7 +395,7 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
                         entry["authors"][i] = {
                             "id": author_db["_id"],
                             "full_name": author_db["full_name"],
-                            "affiliations": author_db["affiliations"]
+                            "affiliations": author["affiliations"]
                         }
                     else:
                         entry["authors"][i] = {
