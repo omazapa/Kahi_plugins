@@ -99,6 +99,10 @@ class Kahi_scienti_person(KahiBase):
                     if upd["source"] == "scienti":
                         upd["time"] = int(time())
 
+                if 'scienti' not in [x['source'] for x in person['updated']]:
+                    person['updated'].append(
+                        {"time": int(time()), "source": "scienti"})
+
                 rank = person["ranking"]
                 ranks = []
                 for prod in scienti.find({"author.NRO_DOCUMENTO_IDENT": idx}):
