@@ -492,7 +492,7 @@ class Kahi_scienti_works(KahiBase):
             {"$group": {"_id": "$doi", "ids": {"$push": "$_id"}}}
         ]
 
-    def process_group(self, group, client, mongodb_url, db_name, collection, empty_work, verbose=0):
+    def process_doi_group(self, group, client, mongodb_url, db_name, collection, empty_work, verbose=0):
         for i in group["ids"]:
             reg = collection.find_one({"_id": i})
             process_one(reg, client, mongodb_url, db_name, empty_work, verbose=verbose)
@@ -501,22 +501,22 @@ class Kahi_scienti_works(KahiBase):
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
-        paper_groups = list(scienti.aggregate(self.pipeline))
+        paper_doi_groups = list(scienti.aggregate(self.pipeline))
         if self.verbose > 0:
-            print("Processing {} groups of papers".format(len(paper_groups)))
+            print("Processing {} groups of papers".format(len(paper_doi_groups)))
         Parallel(
             n_jobs=self.n_jobs,
             verbose=self.verbose,
             backend="threading")(
-            delayed(self.process_group)(
-                group,
+            delayed(self.process_doi_group)(
+                doi_group,
                 self.client,
                 self.mongodb_url,
                 self.config["database_name"],
                 scienti,
                 self.empty_work(),
                 verbose=self.verbose
-            ) for group in paper_groups
+            ) for doi_group in paper_doi_groups
         )
 
     def run(self):
