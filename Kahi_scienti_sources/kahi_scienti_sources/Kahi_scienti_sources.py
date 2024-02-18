@@ -26,7 +26,7 @@ class Kahi_scienti_sources(KahiBase):
         self.create_source_indexes()
 
     def create_source_indexes(self):
-        for db_info in self.config["scienti_sources"]:
+        for db_info in self.config["scienti_sources"]["databases"]:
             database_url = db_info.get('database_url', '')
             database_name = db_info.get('database_name', '')
             collection_name = db_info.get('collection_name', '')
@@ -36,8 +36,10 @@ class Kahi_scienti_sources(KahiBase):
                 db = client[database_name]
                 collection = db[collection_name]
 
-                collection.create_index([("details.article.journal_others.TXT_ISSN", ASCENDING)])
-                collection.create_index([("details.article.journal.TXT_ISSN_SEP", ASCENDING)])
+                collection.create_index(
+                    [("details.article.journal_others.TXT_ISSN", ASCENDING)])
+                collection.create_index(
+                    [("details.article.journal.TXT_ISSN_SEP", ASCENDING)])
                 client.close()
 
     def update_scienti(self, reg, entry, issn):
@@ -209,7 +211,8 @@ class Kahi_scienti_sources(KahiBase):
                         if journal:
                             if "TPO_CLASIFICACION" not in journal.keys():
                                 continue
-                            DTA_CREACION = check_date_format(paper["DTA_CREACION"])
+                            DTA_CREACION = check_date_format(
+                                paper["DTA_CREACION"])
 
                             if not journal["TPO_CLASIFICACION"] in ranks:
                                 from_date = DTA_CREACION
@@ -246,8 +249,9 @@ class Kahi_scienti_sources(KahiBase):
 
     def run(self):
         start_time = time()
-        for config in self.config["scienti_sources"]:
-            print("Processing {} database".format(config["database_name"]))
+        for config in self.config["scienti_sources"]["databases"]:
+            print("Processing {}.{} database".format(config["database_name"],config["collection_name"]))
             self.process_scienti(config, verbose=5)
-        print("Execution time: {} minutes".format(round((time() - start_time) / 60, 2)))
+        print("Execution time: {} minutes".format(
+            round((time() - start_time) / 60, 2)))
         return 0
