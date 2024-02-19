@@ -22,8 +22,21 @@ class Kahi_scienti_sources(KahiBase):
         self.collection.create_index("external_ids.id")
 
         self.already_in_db = []
-
+        # checking if the databases and collections are available
+        self.check_databases_and_collections()
+        # creating indexes for the scienti sources
         self.create_source_indexes()
+
+    def check_databases_and_collections(self):
+        for db_info in self.config["scienti_sources"]["databases"]:
+            client = MongoClient(db_info["database_url"])
+            if db_info['database_name'] not in client.list_database_names():
+                raise Exception("Database {} not found".format(
+                    db_info['database_name']))
+            if db_info['collection_name'] not in client[db_info['database_name']].list_collection_names():
+                raise Exception("Collection {}.{} not found".format(db_info['database_name'],
+                                                                    db_info['collection_name']))
+            client.close()
 
     def create_source_indexes(self):
         for db_info in self.config["scienti_sources"]["databases"]:
@@ -130,15 +143,7 @@ class Kahi_scienti_sources(KahiBase):
     def process_scienti(self, config, verbose=0):
         self.scienti_client = MongoClient(config["database_url"])
 
-        if config["database_name"] not in self.scienti_client.list_database_names():
-            raise Exception("Database {} not found".format(
-                config["database_name"]))
-
         self.scienti_db = self.scienti_client[config["database_name"]]
-
-        if config["collection_name"] not in self.scienti_db.list_collection_names():
-            raise Exception("Collection {} not found".format(
-                config["collection_name"]))
 
         self.scienti_collection = self.scienti_db[config["collection_name"]]
         issn_list = list(self.scienti_collection.distinct(
@@ -246,11 +251,13 @@ class Kahi_scienti_sources(KahiBase):
                                 dates[idx] = (date1, date2)
                     entry["ranking"] = rankings_list
                     self.collection.insert_one(entry)
+        self.scienti_client.close()
 
     def run(self):
         start_time = time()
         for config in self.config["scienti_sources"]["databases"]:
-            print("Processing {}.{} database".format(config["database_name"],config["collection_name"]))
+            print("Processing {}.{} database".format(
+                config["database_name"], config["collection_name"]))
             self.process_scienti(config, verbose=5)
         print("Execution time: {} minutes".format(
             round((time() - start_time) / 60, 2)))
