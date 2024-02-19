@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, TEXT
+from pymongo import MongoClient, TEXT, ASCENDING
 from time import time
 from joblib import Parallel, delayed
 from kahi_impactu_utils.Utils import lang_poll, doi_processor, check_date_format
@@ -496,6 +496,19 @@ class Kahi_scienti_works(KahiBase):
             {"$project": {"doi": {"$toLower": "$doi"}}},
             {"$group": {"_id": "$doi", "ids": {"$push": "$_id"}}}
         ]
+        # checking if the databases and collections are available
+        self.check_databases_and_collections()
+
+    def check_databases_and_collections(self):
+        for db_info in self.config["scienti_works"]["databases"]:
+            client = MongoClient(db_info["database_url"])
+            if db_info['database_name'] not in client.list_database_names():
+                raise Exception("Database {} not found".format(
+                    db_info['database_name']))
+            if db_info['collection_name'] not in client[db_info['database_name']].list_collection_names():
+                raise Exception("Collection {}.{} not found".format(db_info['database_name'],
+                                                                    db_info['collection_name']))
+            client.close()
 
     def process_doi_group(self, group, client, mongodb_url, db_name, collection, empty_work, verbose=0):
         for i in group["ids"]:
@@ -505,13 +518,7 @@ class Kahi_scienti_works(KahiBase):
 
     def process_scienti(self, config):
         client = MongoClient(config["database_url"])
-        if config["database_name"] not in client.list_database_names():
-            raise Exception(
-                f'Database {config["database_name"]} does not exist in the server')
         db = client[config["database_name"]]
-        if config["collection_name"] not in db.list_collection_names():
-            raise Exception(
-                f'Collection {config["collection_name"]} does not exist in the database {config["database_name"]}')
         scienti = db[config["collection_name"]]
         paper_doi_groups = list(scienti.aggregate(self.pipeline))
         if self.verbose > 0:
