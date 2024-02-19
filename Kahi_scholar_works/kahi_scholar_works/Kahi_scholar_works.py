@@ -62,7 +62,8 @@ def parse_scholar(reg, empty_work, verbose=0):
                             print(e)
                 else:
                     if verbose > 4:
-                        print(f"Malformed start_page or end_page in source database for {reg['doi']}. Setting 'pages' to the original value.")
+                        print(
+                            f"Malformed start_page or end_page in source database for {reg['doi']}. Setting 'pages' to the original value.")
                     entry["bibliographic_info"]["pages"] = reg["pages"]
             else:
                 if verbose > 4:
@@ -126,9 +127,6 @@ def parse_scholar(reg, empty_work, verbose=0):
 
 
 def process_one(scholar_reg, db, collection, empty_work, verbose=0):
-    # client = MongoClient(url)
-    # db = client[db_name]
-    # collection = db["works"]
     doi = None
     # register has doi
     if scholar_reg["doi"]:
@@ -361,8 +359,14 @@ class Kahi_scholar_works(KahiBase):
 
         self.scholar_client = MongoClient(
             config["scholar_works"]["database_url"])
+        if config["scholar_works"]["database_name"] not in self.scholar_client.list_database_names():
+            raise ValueError(
+                f"Database {config['scholar_works']['database_name']} not found in {config['scholar_works']['database_url']}")
         self.scholar_db = self.scholar_client[config["scholar_works"]
                                               ["database_name"]]
+        if config["scholar_works"]["collection_name"] not in self.scholar_db.list_collection_names():
+            raise ValueError(
+                f"Collection {config['scholar_works']['database_name']}.{config['scholar_works']['collection_name']} not found in {config['scholar_works']['database_url']}")
         self.scholar_collection = self.scholar_db[config["scholar_works"]
                                                   ["collection_name"]]
 
