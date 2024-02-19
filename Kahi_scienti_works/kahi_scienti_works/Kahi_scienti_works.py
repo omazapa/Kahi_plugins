@@ -165,8 +165,10 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
                             if author_db:
                                 break
                         if author_db:
-                            sources = [ext["source"] for ext in author_db["external_ids"]]
-                            ids = [ext["id"] for ext in author_db["external_ids"]]
+                            sources = [ext["source"]
+                                       for ext in author_db["external_ids"]]
+                            ids = [ext["id"]
+                                   for ext in author_db["external_ids"]]
                             for ext in author["external_ids"]:
                                 if ext["id"] not in ids:
                                     author_db["external_ids"].append(ext)
@@ -183,8 +185,10 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
                             author_db = db["person"].find_one(
                                 {"full_name": author["full_name"]})
                             if author_db:
-                                sources = [ext["source"] for ext in author_db["external_ids"]]
-                                ids = [ext["id"] for ext in author_db["external_ids"]]
+                                sources = [ext["source"]
+                                           for ext in author_db["external_ids"]]
+                                ids = [ext["id"]
+                                       for ext in author_db["external_ids"]]
                                 for ext in author["external_ids"]:
                                     if ext["id"] not in ids:
                                         author_db["external_ids"].append(ext)
@@ -251,7 +255,8 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
 
                     collection.update_one(
                         {"_id": colav_reg["_id"]},
-                        {"$push": {"authors": entry['authors'][0]}, "$inc": {"author_count": 1}}
+                        {"$push": {"authors": entry['authors'][0]}, "$inc": {
+                            "author_count": 1}}
                     )
 
                     if multiprocessing:
@@ -495,11 +500,18 @@ class Kahi_scienti_works(KahiBase):
     def process_doi_group(self, group, client, mongodb_url, db_name, collection, empty_work, verbose=0):
         for i in group["ids"]:
             reg = collection.find_one({"_id": i})
-            process_one(reg, client, mongodb_url, db_name, empty_work, verbose=verbose)
+            process_one(reg, client, mongodb_url, db_name,
+                        empty_work, verbose=verbose)
 
     def process_scienti(self, config):
         client = MongoClient(config["database_url"])
+        if config["database_name"] not in client.list_database_names():
+            raise Exception(
+                f'Database {config["database_name"]} does not exist in the server')
         db = client[config["database_name"]]
+        if config["collection_name"] not in db.list_collection_names():
+            raise Exception(
+                f'Collection {config["collection_name"]} does not exist in the database {config["database_name"]}')
         scienti = db[config["collection_name"]]
         paper_doi_groups = list(scienti.aggregate(self.pipeline))
         if self.verbose > 0:
@@ -518,15 +530,14 @@ class Kahi_scienti_works(KahiBase):
                 verbose=self.verbose
             ) for doi_group in paper_doi_groups
         )
+        client.close()
 
     def run(self):
         for config in self.config["scienti_works"]["databases"]:
             if self.verbose > 0:
-                print("Processing {} database".format(config["database_name"]))
+                print("Processing {}.{} database".format(
+                    config["database_name"], config["collection_name"]))
             if self.verbose > 4:
                 print("Updating already inserted entries")
-            print(config)
-            print(type(config))
             self.process_scienti(config)
-        self.client.close()
         return 0
