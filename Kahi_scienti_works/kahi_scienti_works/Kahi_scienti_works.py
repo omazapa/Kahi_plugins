@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, TEXT, ASCENDING
+from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
 from kahi_impactu_utils.Utils import lang_poll, doi_processor, check_date_format
