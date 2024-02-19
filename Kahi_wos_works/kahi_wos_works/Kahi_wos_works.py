@@ -181,9 +181,6 @@ def parse_wos(reg, empty_work, verbose=0):
 
 
 def process_one(wos_reg, db, collection, empty_work, verbose=0):
-    # client = MongoClient(url)
-    # db = client[db_name]
-    # collection = db["works"]
     doi = None
     # register has doi
     if wos_reg["DI"]:
@@ -398,7 +395,6 @@ def process_one(wos_reg, db, collection, empty_work, verbose=0):
     else:  # does not have a doi identifier
         # elasticsearch section
         pass
-    # client.close()
 
 
 class Kahi_wos_works(KahiBase):
@@ -422,8 +418,14 @@ class Kahi_wos_works(KahiBase):
 
         self.wos_client = MongoClient(
             config["wos_works"]["database_url"])
+        if config["wos_works"]["database_name"] not in self.wos_client.list_database_names():
+            raise Exception(
+                f"Database {config['wos_works']['database_name']} not found in {config['wos_works']['database_url']}")
         self.wos_db = self.wos_client[config["wos_works"]
                                             ["database_name"]]
+        if config["wos_works"]["collection_name"] not in self.wos_db.list_collection_names():
+            raise Exception(
+                f"Collection {config['wos_works']['database_name']}.{config['wos_works']['collection_name']} not found in {config['wos_works']['database_url']}")
         self.wos_collection = self.wos_db[config["wos_works"]
                                                 ["collection_name"]]
 
