@@ -130,9 +130,6 @@ def parse_scopus(reg, empty_work, verbose=0):
 
 
 def process_one(scopus_reg, db, collection, empty_work, verbose=0):
-    # client = MongoClient(url)
-    # db = client[db_name]
-    # collection = db["works"]
     doi = None
     # register has doi
     if scopus_reg["DOI"]:
@@ -359,8 +356,14 @@ class Kahi_scopus_works(KahiBase):
 
         self.scopus_client = MongoClient(
             config["scopus_works"]["database_url"])
+        if config["scopus_works"]["database_name"] not in self.scopus_client.list_database_names():
+            raise Exception(
+                f"Database {config['scopus_works']['database_name']} not found")
         self.scopus_db = self.scopus_client[config["scopus_works"]
                                             ["database_name"]]
+        if config["scopus_works"]["collection_name"] not in self.scopus_db.list_collection_names():
+            raise Exception(
+                f"Collection {config['scopus_works']['database_name']}.{config['scopus_works']['collection_name']} not found")
         self.scopus_collection = self.scopus_db[config["scopus_works"]
                                                 ["collection_name"]]
 
