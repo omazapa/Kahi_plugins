@@ -13,7 +13,7 @@ pip3 install .
 ```
 From the package you can install by running
 ```shell
-pip3 install kahi_doaj_sources
+pip3 install Kahi_openalex_sources
 ```
 
 ## Dependencies
