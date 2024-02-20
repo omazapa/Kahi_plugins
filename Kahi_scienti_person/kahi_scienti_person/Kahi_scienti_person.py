@@ -25,7 +25,21 @@ class Kahi_scienti_person(KahiBase):
         self.verbose = config["scienti_person"]["verbose"] if "verbose" in config["scienti_person"].keys(
         ) else 0
 
+        # checking if the databases and collections are available
+        self.check_databases_and_collections()
+        # creating indexes for the scienti sources
         self.create_source_indexes()
+
+    def check_databases_and_collections(self):
+        for db_info in self.config["scienti_person"]["databases"]:
+            client = MongoClient(db_info["database_url"])
+            if db_info['database_name'] not in client.list_database_names():
+                raise Exception("Database {} not found".format(
+                    db_info['database_name']))
+            if db_info['collection_name'] not in client[db_info['database_name']].list_collection_names():
+                raise Exception("Collection {}.{} not found in {}".format(db_info['database_name'],
+                                                                          db_info['collection_name'], db_info["database_url"]))
+            client.close()
 
     def create_source_indexes(self):
         for db_info in self.config["scienti_person"]["databases"]:
