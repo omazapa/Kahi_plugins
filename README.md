@@ -7,6 +7,7 @@ Mono Repo for Kahi Plugins
 * [Plugin explanation](#explanation)
 * [Anatomy of a plugin package](#anatomy)
 * [Creating a plugin release](#release)
+* [Creating a plugin release using Bump](#release_bump)
 * [Final remarks](#remarks)
 
 ## Plugin explanation <a name="explanation"></a>
@@ -58,6 +59,22 @@ We have a github action that allow to create a release for any plugin in the mon
 * click on publish relase
 
 Now the github action will be activate and you can check the status of you package here[https://github.com/colav/Kahi_plugins/actions/workflows/kahi-plugin-publish.yml](https://github.com/colav/Kahi_plugins/actions/workflows/kahi-plugin-publish.yml)
+
+# Creating a plugin release <a name="release_bump"></a>
+
+we have an script that allow to create a release for any plugin in the mono repo.
+This creates a new release for the plugin and updates the version of the plugin in the package kahi_impactu.
+
+to use this script you have to run the next command using the main repository as working directory. **(Kahi_plugins)**
+USE THIS CAREFULLY!!
+
+
+```sh
+git clone git@github.com:colav/Kahi_plugins.git
+
+cd Kahi_plugins
+.github/scripts/bump_kahi_impactu $PWD
+```
 
 # Final remarks <a name="remarks"></a>
 * You can take a look in the already developed plugins to have examples or get inspiration for your plugins.

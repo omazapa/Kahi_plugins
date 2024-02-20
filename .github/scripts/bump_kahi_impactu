@@ -86,7 +86,7 @@ if __name__ == "__main__":
     repo = Repo(repo_path)
 
     # adding the remote upstream if it does not exist
-    if upstream_url != repo.remote.origin.url:
+    if upstream_url != repo.remotes.origin.url:
         print(f"ERROR: The origin remote is not the same as the {upstream_url} remote")
         print(f"Plese use the main repository {upstream_url} to run this script and try again.")
         sys.exit(1)
