@@ -79,8 +79,15 @@ class Kahi_ror_affiliations(KahiBase):
 
         self.ror_client = MongoClient(
             config["ror_affiliations"]["database_url"])
+        if config["ror_affiliations"]["database_name"] not in self.ror_client.list_database_names():
+            raise Exception("Database {} not found in {}".format(
+                config["ror_affiliations"]['database_name'], config["ror_affiliations"]["database_url"]))
         self.ror_db = self.ror_client[config["ror_affiliations"]
                                       ["database_name"]]
+        if config["ror_affiliations"]["collection_name"] not in self.ror_db.list_collection_names():
+            raise Exception("Collection {}.{} not found in {}".format(config["ror_affiliations"]['database_name'],
+                                                                      config["ror_affiliations"]['collection_name'], config["ror_affiliations"]["database_url"]))
+
         self.ror_collection = self.ror_db[config["ror_affiliations"]
                                           ["collection_name"]]
 
