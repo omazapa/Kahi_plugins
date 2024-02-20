@@ -26,18 +26,18 @@ def parse_openalex(reg, empty_work, verbose=0):
     entry["citations_by_year"] = reg["counts_by_year"]
 
     entry["source"] = {
-        "name": reg["host_venue"]["display_name"],
-        "external_ids": [{"source": "openalex", "id": reg["host_venue"]["id"]}]
+        "name": reg["primary_location"]['source']["display_name"],
+        "external_ids": [{"source": "openalex", "id": reg["primary_location"]['source']["id"]}]
     }
 
-    if "issn_l" in reg["host_venue"].keys():
-        if reg["host_venue"]["issn_l"]:
+    if "issn_l" in reg["primary_location"]['source'].keys():
+        if reg["primary_location"]['source']["issn_l"]:
             entry["source"]["external_ids"].append(
-                {"source": "issn_l", "id": reg["host_venue"]["issn_l"]})
-    if "issn" in reg["host_venue"].keys():
-        if reg["host_venue"]["issn"]:
+                {"source": "issn_l", "id": reg["primary_location"]['source']["issn_l"]})
+    if "issn" in reg["primary_location"]['source'].keys():
+        if reg["primary_location"]['source']["issn"]:
             entry["source"]["external_ids"].append(
-                {"source": "issn", "id": reg["host_venue"]["issn"][0]})
+                {"source": "issn", "id": reg["primary_location"]['source']["issn"][0]})
 
     entry["citations_count"].append(
         {"source": "openalex", "count": reg["cited_by_count"]})

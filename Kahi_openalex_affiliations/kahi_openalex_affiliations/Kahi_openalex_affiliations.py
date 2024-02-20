@@ -4,9 +4,9 @@ from time import time
 from joblib import Parallel, delayed
 
 
-def process_one(oa_aff, client, db_name, empty_affiliations, max_tries=10):
-    db = client[db_name]
-    collection = db["affiliations"]
+def process_one(oa_aff, collection, empty_affiliations, max_tries=10):
+    # db = client[db_name]
+    # collection = db["affiliations"]
 
     db_reg = None
     for source, idx in oa_aff["ids"].items():
@@ -150,19 +150,21 @@ class Kahi_openalex_affiliations(KahiBase):
     def process_openalex(self):
         affiliation_list = list(self.openalex_collection.find())
         self.openalex_client.close()
-        client = MongoClient(self.mongodb_url)
-        Parallel(
-            n_jobs=self.n_jobs,
-            verbose=self.verbose,
-            backend="threading")(
-            delayed(process_one)(
-                aff,
-                client,
-                self.config["database_name"],
-                self.empty_affiliation()
-            ) for aff in affiliation_list
-        )
-        client.close()
+
+        with MongoClient(self.mongodb_url) as client:
+            db = client[self.config["database_name"]]
+            collection = db["affiliations"]
+
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(process_one)(
+                    aff,
+                    collection,
+                    self.empty_affiliation()
+                ) for aff in affiliation_list
+            )
 
     def run(self):
         self.process_openalex()

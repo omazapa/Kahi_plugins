@@ -4,9 +4,9 @@ from time import time
 from joblib import Parallel, delayed
 
 
-def process_one(inst, client, db_name, empty_affiliations):
-    db = client[db_name]
-    collection = db["affiliations"]
+def process_one(inst, collection, empty_affiliations):
+    # db = client[db_name]
+    # collection = db["affiliations"]
     found_entry = collection.find_one({"external_ids.id": inst["id"]})
     if found_entry:
         return
@@ -93,19 +93,20 @@ class Kahi_ror_affiliations(KahiBase):
 
     def process_ror(self):
         inst_list = list(self.ror_collection.find())
-        client = MongoClient(self.mongodb_url)
-        Parallel(
-            n_jobs=self.n_jobs,
-            verbose=10,
-            backend="threading")(
-            delayed(process_one)(
-                inst,
-                client,
-                self.config["database_name"],
-                self.empty_affiliation()
-            ) for inst in inst_list
-        )
-        client.close()
+        with MongoClient(self.mongodb_url) as client:
+            db = client[self.config["database_name"]]
+            collection = db["affiliations"]
+
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=5,
+                backend="threading")(
+                delayed(process_one)(
+                    inst,
+                    collection,
+                    self.empty_affiliation()
+                ) for inst in inst_list
+            )
 
     def run(self):
         self.process_ror()
