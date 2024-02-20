@@ -267,7 +267,7 @@ class Kahi_scienti_affiliations(KahiBase):
             if self.verbose > 4:
                 start_time = time()
             if self.verbose > 0:
-                print("Processing {} database".format(config["database_name"]))
+                print("Processing {}.{} database".format(config["database_name"],config["collection_name"]))
             self.process_scienti_institutions(config, verbose=self.verbose)
             self.process_scienti_groups(config, verbose=self.verbose)
         if self.verbose > 4:
