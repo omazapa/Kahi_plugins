@@ -25,6 +25,7 @@ import codecs
 
 v = sys.version_info
 
+
 def get_version(rel_path):
     for line in read(rel_path).splitlines():
         if line.startswith('__version__'):
@@ -32,6 +33,7 @@ def get_version(rel_path):
             return line.split(delim)[1]
     else:
         raise RuntimeError("Unable to find version string.")
+
 
 def read(rel_path):
     here = os.path.abspath(os.path.dirname(__file__))
