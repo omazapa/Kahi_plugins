@@ -26,6 +26,15 @@ import codecs
 v = sys.version_info
 
 
+def get_version(rel_path):
+    for line in read(rel_path).splitlines():
+        if line.startswith('__version__'):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
+
+
 def read(rel_path):
     here = os.path.abspath(os.path.dirname(__file__))
     with codecs.open(os.path.join(here, rel_path), 'r') as fp:
@@ -45,7 +54,7 @@ def main():
         name="Kahi_impactu",
 
         # Version number (initial):
-        version="0.0.6",
+        version=get_version('kahi_impactu/_version.py'),
 
         # Application author details:
         author="Colav",
@@ -72,26 +81,26 @@ def main():
         # put you packages here
         install_requires=[
             'kahi==0.0.5a0',
-            'Kahi_doaj_sources==0.1.0b0',
-            'Kahi_minciencias_opendata_affiliations==0.1.0b0',
-            'Kahi_minciencias_opendata_person==0.1.1b0',
-            'Kahi_openalex_affiliations==0.1.0b0',
-            'Kahi_openalex_person==0.1.1b0',
-            'Kahi_openalex_sources==0.1.0b0',
-            'Kahi_openalex_subjects==0.1.1b0',
-            'Kahi_openalex_works==0.1.4b0',
-            'Kahi_ranking_udea_works==0.1.2b0',
-            'Kahi_ror_affiliations==0.1.0b0',
-            'Kahi_scholar_works==0.1.2b0',
-            'Kahi_scienti_affiliations==0.1.2b0',
-            'Kahi_scienti_person==0.1.2b0',
-            'Kahi_scienti_sources==0.1.1b0',
-            'Kahi_scienti_works==0.1.3b0',
-            'Kahi_scimago_sources==0.1.0b0',
-            'Kahi_scopus_works==0.1.2b0',
-            'Kahi_staff_udea_affiliations==0.1.1b0',
-            'Kahi_staff_udea_person==0.1.1b0',
-            'Kahi_wos_works==0.1.2b0',
+            'Kahi_doaj_sources==0.1.1-beta',
+            'Kahi_minciencias_opendata_affiliations==0.1.1-beta',
+            'Kahi_minciencias_opendata_person==0.1.1-beta',
+            'Kahi_openalex_affiliations==0.1.1-beta',
+            'Kahi_openalex_person==0.1.1-beta',
+            'Kahi_openalex_sources==0.1.1-beta',
+            'Kahi_openalex_subjects==0.1.1-beta',
+            'Kahi_openalex_works==0.1.5-beta',
+            'Kahi_ranking_udea_works==0.1.2-beta',
+            'Kahi_ror_affiliations==0.1.2-beta',
+            'Kahi_scholar_works==0.1.3-beta',
+            'Kahi_scienti_affiliations==0.1.3-beta',
+            'Kahi_scienti_person==0.1.3-beta',
+            'Kahi_scienti_sources==0.1.2-beta',
+            'Kahi_scienti_works==0.1.4-beta',
+            'Kahi_scimago_sources==0.1.0-beta',
+            'Kahi_scopus_works==0.1.3-beta',
+            'Kahi_staff_udea_affiliations==0.1.1-beta',
+            'Kahi_staff_udea_person==0.1.1-beta',
+            'Kahi_wos_works==0.1.3-beta',
         ],
     )
 

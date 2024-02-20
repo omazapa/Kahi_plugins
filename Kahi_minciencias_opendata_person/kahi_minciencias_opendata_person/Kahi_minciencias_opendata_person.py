@@ -121,14 +121,14 @@ def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, ver
             {
                 "level": 0,
                 "name": reg["NME_GRAN_AREA_GR"],
-                "id":"",
-                "external_ids":[{"source": "OECD", "id": reg["ID_AREA_CON_GR"][0]}]
+                "id": "",
+                "external_ids": [{"source": "OECD", "id": reg["ID_AREA_CON_GR"][0]}]
             },
             {
                 "level": 1,
                 "name": reg["NME_AREA_GR"],
-                "id":"",
-                "external_ids":[{"source": "OECD", "id": reg["ID_AREA_CON_GR"][1]}]
+                "id": "",
+                "external_ids": [{"source": "OECD", "id": reg["ID_AREA_CON_GR"][1]}]
             },
         ]
     })
