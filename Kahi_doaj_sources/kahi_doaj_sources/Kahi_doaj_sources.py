@@ -20,8 +20,14 @@ class Kahi_doaj_sources(KahiBase):
         self.collection.create_index("external_ids.id")
 
         self.doaj_client = MongoClient(config["doaj_sources"]["database_url"])
+        if config["doaj_sources"]["database_name"] not in self.doaj_client.list_database_names():
+            raise Exception(
+                f"""Database {config["doaj_sources"]["database_name"]} not found in {config["doaj_sources"]["database_url"]}""")
         self.doaj_db = self.doaj_client[config["doaj_sources"]
                                         ["database_name"]]
+        if config["doaj_sources"]["collection_name"] not in self.doaj_db.list_collection_names():
+            raise Exception(
+                f"""Collection {config["doaj_sources"]["database_name"]}.{config["doaj_sources"]["collection_name"]} not found in {config["doaj_sources"]["database_name"]}""")
         self.doaj_collection = self.doaj_db[config["doaj_sources"]
                                             ["collection_name"]]
 
@@ -188,5 +194,6 @@ class Kahi_doaj_sources(KahiBase):
     def run(self):
         start_time = time()
         self.process_doaj(verbose=self.verbose)
-        print("Execution time: {} minutes".format(round((time() - start_time) / 60, 2)))
+        print("Execution time: {} minutes".format(
+            round((time() - start_time) / 60, 2)))
         return 0
