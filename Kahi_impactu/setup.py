@@ -25,6 +25,13 @@ import codecs
 
 v = sys.version_info
 
+def get_version(rel_path):
+    for line in read(rel_path).splitlines():
+        if line.startswith('__version__'):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
 
 def read(rel_path):
     here = os.path.abspath(os.path.dirname(__file__))
@@ -45,7 +52,7 @@ def main():
         name="Kahi_impactu",
 
         # Version number (initial):
-        version="0.0.6",
+        version=get_version('kahi_impactu/_version.py'),
 
         # Application author details:
         author="Colav",

@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+import argparse
+import importlib
+import re
+import os
+import sys
+from git import Repo
+upstream_url = "git@github.com:colav/Kahi_plugins.git"
+upstream_name = "upstream"
+
+
+plugins = ['Kahi_minciencias_opendata_person',
+           'Kahi_scopus_works',
+           'Kahi_scienti_affiliations',
+           'Kahi_scienti_works',
+           'Kahi_staff_udea_person',
+           'Kahi_openalex_subjects',
+           'Kahi_openalex_sources',
+           'Kahi_wos_works',
+           'Kahi_scholar_works',
+           'Kahi_ranking_udea_works',
+           'Kahi_openalex_works',
+           'Kahi_scimago_sources',
+           'Kahi_wikipedia_affiliations',
+           'Kahi_openalex_person',
+           'Kahi_ror_affiliations',
+           'Kahi_scienti_sources',
+           'Kahi_minciencias_opendata_affiliations',
+           'Kahi_scienti_person',
+           'Kahi_doaj_sources',
+           'Kahi_openalex_affiliations',
+           'Kahi_staff_udea_affiliations',
+           'Kahi_impactu']
+
+
+def bump_kahi_impactu(repo, repo_path):
+    file = open(os.path.join(repo_path, 'Kahi_impactu/setup.py'), 'r+')
+    setup = file.read()
+    for plugin in plugins:
+        plugin_file = os.path.join(
+            repo_path, plugin, plugin.lower(), "_version.py")
+        plugin_spec = importlib.util.spec_from_file_location(
+            plugin, plugin_file)
+        plugin_mod = importlib.util.module_from_spec(plugin_spec)
+        sys.modules[plugin] = plugin_mod
+        plugin_spec.loader.exec_module(plugin_mod)
+        version = plugin_mod.get_version()
+        setup = re.sub(
+            plugin+'==(\d.\d.\d[a-z]+\d)', plugin+'=='+version, setup)
+        del sys.modules[plugin]
+    file.seek(0)
+    file.truncate()
+    file.write(setup)
+    file.close()
+    repo.commit(f'[Kahi_impactu] Bump plugin version v{version}')
+
+
+def bump_plugin_tags(repo, repo_path):
+
+    for plugin in plugins:
+        plugin_file = os.path.join(
+            repo_path, plugin, plugin.lower(), "_version.py")
+        plugin_spec = importlib.util.spec_from_file_location(
+            plugin, plugin_file)
+        plugin_mod = importlib.util.module_from_spec(plugin_spec)
+        sys.modules[plugin] = plugin_mod
+        plugin_spec.loader.exec_module(plugin_mod)
+        version = plugin_mod.get_version()
+        setup = re.sub(
+            plugin+'==(\d.\d.\d[a-z]+\d)', plugin+'=='+version, setup)
+        del sys.modules[plugin]
+        tag = f"{plugin}/v{version}"
+        if tag not in repo.tags:
+            repo.create_tag(tag, message='Bump version to v{}'.format(version))
+            repo.git.push(upstream_name, tag)
+
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument('repo_path', help='Path to the repository')
+
+if __name__ == "__main__":
+    args = argparser.parse_args()
+    repo_path = args.repo_path
+
+    # initialize the repository
+    repo = Repo(repo_path)
+
+    # adding the remote upstream if it does not exist
+    if upstream_name not in [remote.name for remote in repo.remotes]:
+        repo.create_remote(upstream_name, upstream_url)
+    bump_kahi_impactu(repo, repo_path)
+    bump_plugin_tags(repo)
