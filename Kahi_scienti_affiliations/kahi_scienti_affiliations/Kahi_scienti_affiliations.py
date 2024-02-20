@@ -36,7 +36,21 @@ class Kahi_scienti_affiliations(KahiBase):
             self.collection.create_index([("names.name", TEXT)])
             print("Text index created on names.name field")
 
+        # checking if the databases and collections are available
+        self.check_databases_and_collections()
+        # creating indexes for the scienti sources
         self.create_source_indexes()
+
+    def check_databases_and_collections(self):
+        for db_info in self.config["scienti_affiliations"]["databases"]:
+            client = MongoClient(db_info["database_url"])
+            if db_info['database_name'] not in client.list_database_names():
+                raise Exception("Database {} not found".format(
+                    db_info['database_name']))
+            if db_info['collection_name'] not in client[db_info['database_name']].list_collection_names():
+                raise Exception("Collection {}.{} not found in {}".format(db_info['database_name'],
+                                                                          db_info['collection_name'], db_info["database_url"]))
+            client.close()
 
     def create_source_indexes(self):
         for db_info in self.config["scienti_affiliations"]["databases"]:
@@ -253,7 +267,8 @@ class Kahi_scienti_affiliations(KahiBase):
             if self.verbose > 4:
                 start_time = time()
             if self.verbose > 0:
-                print("Processing {} database".format(config["database_name"]))
+                print("Processing {}.{} database".format(
+                    config["database_name"], config["collection_name"]))
             self.process_scienti_institutions(config, verbose=self.verbose)
             self.process_scienti_groups(config, verbose=self.verbose)
         if self.verbose > 4:

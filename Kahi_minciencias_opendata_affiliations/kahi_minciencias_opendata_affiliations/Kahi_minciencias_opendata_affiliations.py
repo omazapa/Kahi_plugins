@@ -184,13 +184,13 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
                     entry["relations"].append(
                         {"types": institution["types"], "id": institution["_id"], "name": name})
                     entry["addresses"].append({
-                        "lat": institution["addresses"][0]["lat"],
-                        "lng": institution["addresses"][0]["lng"],
-                        "postcode": institution["addresses"][0]["postcode"],
-                        "state": institution["addresses"][0]["state"],
-                        "city": institution["addresses"][0]["city"],
-                        "country": institution["addresses"][0]["country"],
-                        "country_code": institution["addresses"][0]["country_code"]
+                        "lat": institution["addresses"][0].get("lat", None),
+                        "lng": institution["addresses"][0].get("lng", None),
+                        "postcode": institution["addresses"][0].get("postcode", None),
+                        "state": institution["addresses"][0].get("state", None),
+                        "city": institution["addresses"][0].get("city", None),
+                        "country": institution["addresses"][0].get("country", None),
+                        "country_code": institution["addresses"][0].get("country_code", None)
                     })
                 else:
                     if score == 98 and method == "token set ratio":

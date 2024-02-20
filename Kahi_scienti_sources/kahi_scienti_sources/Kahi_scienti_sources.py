@@ -22,11 +22,24 @@ class Kahi_scienti_sources(KahiBase):
         self.collection.create_index("external_ids.id")
 
         self.already_in_db = []
-
+        # checking if the databases and collections are available
+        self.check_databases_and_collections()
+        # creating indexes for the scienti sources
         self.create_source_indexes()
 
+    def check_databases_and_collections(self):
+        for db_info in self.config["scienti_sources"]["databases"]:
+            client = MongoClient(db_info["database_url"])
+            if db_info['database_name'] not in client.list_database_names():
+                raise Exception("Database {} not found".format(
+                    db_info['database_name']))
+            if db_info['collection_name'] not in client[db_info['database_name']].list_collection_names():
+                raise Exception("Collection {}.{} not found".format(db_info['database_name'],
+                                                                    db_info['collection_name']))
+            client.close()
+
     def create_source_indexes(self):
-        for db_info in self.config["scienti_sources"]:
+        for db_info in self.config["scienti_sources"]["databases"]:
             database_url = db_info.get('database_url', '')
             database_name = db_info.get('database_name', '')
             collection_name = db_info.get('collection_name', '')
@@ -36,8 +49,10 @@ class Kahi_scienti_sources(KahiBase):
                 db = client[database_name]
                 collection = db[collection_name]
 
-                collection.create_index([("details.article.journal_others.TXT_ISSN", ASCENDING)])
-                collection.create_index([("details.article.journal.TXT_ISSN_SEP", ASCENDING)])
+                collection.create_index(
+                    [("details.article.journal_others.TXT_ISSN", ASCENDING)])
+                collection.create_index(
+                    [("details.article.journal.TXT_ISSN_SEP", ASCENDING)])
                 client.close()
 
     def update_scienti(self, reg, entry, issn):
@@ -128,15 +143,7 @@ class Kahi_scienti_sources(KahiBase):
     def process_scienti(self, config, verbose=0):
         self.scienti_client = MongoClient(config["database_url"])
 
-        if config["database_name"] not in self.scienti_client.list_database_names():
-            raise Exception("Database {} not found".format(
-                config["database_name"]))
-
         self.scienti_db = self.scienti_client[config["database_name"]]
-
-        if config["collection_name"] not in self.scienti_db.list_collection_names():
-            raise Exception("Collection {} not found".format(
-                config["collection_name"]))
 
         self.scienti_collection = self.scienti_db[config["collection_name"]]
         issn_list = list(self.scienti_collection.distinct(
@@ -209,7 +216,8 @@ class Kahi_scienti_sources(KahiBase):
                         if journal:
                             if "TPO_CLASIFICACION" not in journal.keys():
                                 continue
-                            DTA_CREACION = check_date_format(paper["DTA_CREACION"])
+                            DTA_CREACION = check_date_format(
+                                paper["DTA_CREACION"])
 
                             if not journal["TPO_CLASIFICACION"] in ranks:
                                 from_date = DTA_CREACION
@@ -243,11 +251,14 @@ class Kahi_scienti_sources(KahiBase):
                                 dates[idx] = (date1, date2)
                     entry["ranking"] = rankings_list
                     self.collection.insert_one(entry)
+        self.scienti_client.close()
 
     def run(self):
         start_time = time()
-        for config in self.config["scienti_sources"]:
-            print("Processing {} database".format(config["database_name"]))
+        for config in self.config["scienti_sources"]["databases"]:
+            print("Processing {}.{} database".format(
+                config["database_name"], config["collection_name"]))
             self.process_scienti(config, verbose=5)
-        print("Execution time: {} minutes".format(round((time() - start_time) / 60, 2)))
+        print("Execution time: {} minutes".format(
+            round((time() - start_time) / 60, 2)))
         return 0

@@ -30,13 +30,13 @@ config:
   log_collection: log
 workflow:
   scienti_sources:
-    - database_url: localhost:27017
-      database_name: scienti_111
-      collection_name: products
+    databases:
+      - database_url: localhost:27017
+        database_name: scienti_111
+        collection_name: products
 ```
-Where file_path under scimago_sources task is the full path where the scimago csv is located.
 
-I you have several scimago files use the yaml structure as shown below
+I you have several scienti files use the yaml structure as shown below
 ```yaml
 config:
   database_url: localhost:27017
@@ -45,15 +45,16 @@ config:
   log_collection: log
 workflow:
   scienti_sources:
-    - database_url: localhost:27017
-      database_name: scienti_111
-      collection_name: products
-    - database_url: localhost:27017
-      database_name: scienti_uec_2022
-      collection_name: products
-    - database_url: localhost:27017
-      database_name: scienti_univalle_2022
-      collection_name: products
+    databases:
+      - database_url: localhost:27017
+        database_name: scienti_111
+        collection_name: products
+      - database_url: localhost:27017
+        database_name: scienti_uec_2022
+        collection_name: products
+      - database_url: localhost:27017
+        database_name: scienti_univalle_2022
+        collection_name: products
 ```
 
 # License
