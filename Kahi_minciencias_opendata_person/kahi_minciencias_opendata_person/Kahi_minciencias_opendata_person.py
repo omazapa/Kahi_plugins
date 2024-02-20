@@ -6,7 +6,7 @@ from datetime import datetime as dt
 from joblib import Parallel, delayed
 
 
-def process_one(client, db_name, empty_person, auid, cv, articulos, subset, verbose):
+def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, verbose):
     db = client[db_name]
     collection = db["person"]
 
@@ -53,6 +53,7 @@ def process_one(client, db_name, empty_person, auid, cv, articulos, subset, verb
         cv["SEGUNDO APELLIDO"] = "Rodríguez"
         cv["Nombre"] = "Gabriel de la Luz Rodríguez"
 
+    articulos = articulos_.copy()
     years = []
     for idx, reg in articulos.iterrows():
         years.append(int(reg["FCREACION_PD"].split("/")[-1]))

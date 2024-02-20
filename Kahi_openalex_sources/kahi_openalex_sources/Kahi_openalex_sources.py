@@ -110,8 +110,10 @@ def process_one(source, client, db_name, empty_source):
             if source["abbreviated_title"]:
                 entry["abbreviations"].append(
                     source["abbreviated_title"])
-        for name in source["alternate_titles"]:
-            entry["abbreviations"].append(name)
+        if "alternate_titles" in source.keys():
+            if source["alternate_titles"]:
+                for name in source["alternate_titles"]:
+                    entry["abbreviations"].append(name)
         if source["homepage_url"]:
             entry["external_urls"].append(
                 {"source": "site", "url": source["homepage_url"]})
