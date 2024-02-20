@@ -52,7 +52,8 @@ def bump_kahi_impactu(repo, repo_path):
     file.truncate()
     file.write(setup)
     file.close()
-    repo.commit(f'[Kahi_impactu] Bump plugin version v{version}')
+    repo.index.add([os.path.join(repo_path, 'Kahi_impactu/setup.py')])
+    repo.index.commit('[Kahi_impactu] Bump plugin version')
 
 
 def bump_plugin_tags(repo, repo_path):
@@ -66,8 +67,6 @@ def bump_plugin_tags(repo, repo_path):
         sys.modules[plugin] = plugin_mod
         plugin_spec.loader.exec_module(plugin_mod)
         version = plugin_mod.get_version()
-        setup = re.sub(
-            plugin+'==(\d.\d.\d[a-z]+\d)', plugin+'=='+version, setup)
         del sys.modules[plugin]
         tag = f"{plugin}/v{version}"
         if tag not in repo.tags:
@@ -89,4 +88,4 @@ if __name__ == "__main__":
     if upstream_name not in [remote.name for remote in repo.remotes]:
         repo.create_remote(upstream_name, upstream_url)
     bump_kahi_impactu(repo, repo_path)
-    bump_plugin_tags(repo)
+    bump_plugin_tags(repo,repo_path)
