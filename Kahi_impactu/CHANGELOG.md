@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  
 ## [0.0.6] - 2024-02-16
   
-Meta package version 0.0.6 is released. This release includes the following 
+Meta package version 0.0.6 is released.
+This is for old data of openalex. This is only with doi data and scienti products 111 only.
+This release includes the following 
 ### Added
   all packages required for impactu. This was developed for the old openalex version.
   This is only with doi data.
