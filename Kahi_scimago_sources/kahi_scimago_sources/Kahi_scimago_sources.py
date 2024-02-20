@@ -156,7 +156,7 @@ class Kahi_scimago_sources(KahiBase):
                 entry["external_ids"].append(
                     {"source": "scimago", "id": int(sjr["Sourceid"])})
                 entry["names"] = [
-                    {"lang": "en", "name": sjr["Title"], "source":"scimago"}]
+                    {"lang": "en", "name": sjr["Title"], "source": "scimago"}]
                 country = None
                 try:
                     if sjr["Country"] == "United States":
