@@ -13,7 +13,7 @@ pip3 install .
 ```
 From the package you can install by running
 ```shell
-pip3 install kahi_openalex_works
+pip3 install kahi_scienti_works
 ```
 
 ## Dependencies
