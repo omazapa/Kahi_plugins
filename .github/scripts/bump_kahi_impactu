@@ -6,7 +6,7 @@ import os
 import sys
 from git import Repo
 upstream_url = "git@github.com:colav/Kahi_plugins.git"
-upstream_name = "upstream"
+upstream_name = "origin"
 
 
 plugins = ['Kahi_minciencias_opendata_person',
@@ -54,6 +54,7 @@ def bump_kahi_impactu(repo, repo_path):
     file.close()
     repo.index.add([os.path.join(repo_path, 'Kahi_impactu/setup.py')])
     repo.index.commit('[Kahi_impactu] Bump plugin version')
+    repo.git.push(upstream_name, 'main')
 
 
 def bump_plugin_tags(repo, repo_path):
@@ -85,7 +86,9 @@ if __name__ == "__main__":
     repo = Repo(repo_path)
 
     # adding the remote upstream if it does not exist
-    if upstream_name not in [remote.name for remote in repo.remotes]:
-        repo.create_remote(upstream_name, upstream_url)
+    if upstream_url != repo.remote.origin.url:
+        print(f"ERROR: The origin remote is not the same as the {upstream_url} remote")
+        print(f"Plese use the main repository {upstream_url} to run this script and try again.")
+        sys.exit(1)
     bump_kahi_impactu(repo, repo_path)
     bump_plugin_tags(repo,repo_path)
