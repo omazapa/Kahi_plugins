@@ -3,7 +3,7 @@ from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
 from kahi_impactu_utils.Utils import lang_poll, doi_processor, check_date_format
-
+from thefuzz import fuzz, process
 
 def parse_scienti(reg, empty_work, verbose=0):
     entry = empty_work.copy()
@@ -290,6 +290,84 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
                     colav_reg["external_urls"].append(ext)
                     url_sources.append(ext["source"])
 
+
+            
+            # authors
+            authors_list = [au["full_name"]
+                    for au in colav_reg["authors"] if au["full_name"]]
+            
+            for author in entry["authors"]:
+                idx = None
+                match, score = process.extractOne(
+                    author["full_name"], authors_list, scorer=fuzz.ratio)
+                print("Ratio: ",score,author["full_name"],match)
+                if score >= 70:
+                    idx = authors_list.index(match)
+                elif score > 50:
+                    match, score = process.extractOne(
+                        author["full_name"], authors_list, scorer=fuzz.partial_ratio)
+                    print("Partial ratio: ",score,author["full_name"],match)
+                    if score >= 80:
+                        idx = authors_list.index(match)
+                    elif score > 60:
+                        match, score = process.extractOne(
+                            author["full_name"], authors_list, scorer=fuzz.token_sort_ratio)
+                        print("Token sort ratio: ",score,author["full_name"],match)
+                        if score >= 99:
+                            idx = authors_list.index(match)
+                if idx:
+                    if "external_ids" not in colav_reg["authors"][idx].keys():
+                        #print(colav_reg)
+                        colav_reg["authors"][idx]["external_ids"] = []
+                    
+                    sources = [ext["source"]
+                            for ext in colav_reg["authors"][idx]["external_ids"]]
+                    ids = [ext["id"] for ext in colav_reg["authors"][idx]["external_ids"]]
+                    for ext in author["external_ids"]:
+                        if ext["id"] not in ids:
+                            colav_reg["authors"][idx]["external_ids"].append(ext)
+                            sources.append(ext["source"])
+                            ids.append(ext["id"])
+                    # Create the same loop as above to improve affiliations
+                    if "affiliations" in author.keys():
+                        #aff_name_list = [aff["name"] for aff in author["affiliations"]]
+                        aff_name_list = [aff["name"] for aff in colav_reg["authors"][idx]
+                             ["affiliations"] if "affiliations" in colav_reg["authors"][idx].keys()]
+                        for aff in author["affiliations"]:
+                            jdx = None
+                            match, score = process.extractOne(
+                                aff["name"], aff_name_list, scorer=fuzz.ratio)
+                            print("Ratio: ",score,author["full_name"],match)
+                            if score >= 70:
+                                jdx = aff_name_list.index(match)
+                            elif score > 50:
+                                match, score = process.extractOne(
+                                    aff["name"], aff_name_list, scorer=fuzz.partial_ratio)
+                                print("Partial ratio: ",score,author["full_name"],match)
+                                if score >= 80:
+                                    jdx = aff_name_list.index(match)
+                                elif score > 60:
+                                    match, score = process.extractOne(
+                                        aff["full_name"], aff_name_list, scorer=fuzz.token_sort_ratio)
+                                    print("Token sort ratio: ",score,author["full_name"],match)
+                                    if score >= 99:
+                                        jdx = aff_name_list.index(match)
+                            if jdx:
+                                sources = [ext["source"] for ext in colav_reg["authors"]
+                                        [idx]["affiliations"][jdx]["external_ids"]]
+                                ids = [ext["id"] for ext in colav_reg["authors"]
+                                    [idx]["affiliations"][jdx]["external_ids"]]
+                                for ext in author["affiliations"][jdx]["external_ids"]:
+                                    if ext["id"] not in ids:
+                                        colav_reg["authors"][idx]["affiliations"][jdx]["external_ids"].append(
+                                            ext)
+                                        sources.append(ext["source"])
+                                        ids.append(ext["id"])
+                    else:
+                        author["affiliations"] = []
+
+
+            
             collection.update_one(
                 {"_id": colav_reg["_id"]},
                 {"$set": {
@@ -300,6 +378,7 @@ def process_one(scienti_reg, client, url, db_name, empty_work, verbose=0, multip
                     "bibliographic_info": colav_reg["bibliographic_info"],
                     "external_urls": colav_reg["external_urls"],
                     "subjects": colav_reg["subjects"],
+                    # "authors": colav_reg["authors"],
                 }}
             )
         else:  # insert a new register
