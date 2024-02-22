@@ -106,8 +106,7 @@ class Kahi_openalex_person(KahiBase):
         self.client.close()
 
     def process_openalex(self):
-        author_list = list(self.openalex_collection.find())
-        self.openalex_client.close()
+        author_cursor = self.openalex_collection.find(no_cursor_timeout=True)
         client = MongoClient(self.mongodb_url)
         Parallel(
             n_jobs=self.n_jobs,
@@ -118,7 +117,7 @@ class Kahi_openalex_person(KahiBase):
                 client,
                 self.config["database_name"],
                 self.empty_person()
-            ) for author in author_list
+            ) for author in author_cursor
         )
         client.close()
 
