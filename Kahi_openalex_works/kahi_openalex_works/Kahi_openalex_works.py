@@ -405,7 +405,7 @@ class Kahi_openalex_works(KahiBase):
         ) else 0
 
     def process_openalex(self):
-        paper_list = list(self.openalex_collection.find())
+        paper_cursor = self.openalex_collection.find(no_cursor_timeout=True)
 
         with MongoClient(self.mongodb_url) as client:
             db = client[self.config["database_name"]]
@@ -421,8 +421,9 @@ class Kahi_openalex_works(KahiBase):
                     works_collection,
                     self.empty_work(),
                     verbose=self.verbose
-                ) for paper in paper_list
+                ) for paper in paper_cursor
             )
+            client.close()
 
     def run(self):
         self.process_openalex()
