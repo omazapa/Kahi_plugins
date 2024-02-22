@@ -93,8 +93,14 @@ class Kahi_openalex_person(KahiBase):
 
         self.openalex_client = MongoClient(
             config["openalex_person"]["database_url"])
+        if config["openalex_person"]["database_name"] not in self.openalex_client.list_database_names():
+            raise Exception("Database {} not found in {}".format(
+                config["openalex_person"]['database_name'], config["openalex_person"]["database_url"]))
         self.openalex_db = self.openalex_client[config["openalex_person"]
                                                 ["database_name"]]
+        if config["openalex_person"]["collection_name"] not in self.openalex_db.list_collection_names():
+            raise Exception("Collection {}.{} not found in {}".format(config["openalex_person"]['database_name'],
+                                                                      config["openalex_person"]['collection_name'], config["openalex_person"]["database_url"]))
         self.openalex_collection = self.openalex_db[config["openalex_person"]
                                                     ["collection_name"]]
 
