@@ -5,8 +5,6 @@ from joblib import Parallel, delayed
 
 
 def process_one(oa_aff, collection, empty_affiliations, max_tries=10):
-    # db = client[db_name]
-    # collection = db["affiliations"]
 
     db_reg = None
     for source, idx in oa_aff["ids"].items():
@@ -148,8 +146,7 @@ class Kahi_openalex_affiliations(KahiBase):
         self.client.close()
 
     def process_openalex(self):
-        affiliation_list = list(self.openalex_collection.find())
-        self.openalex_client.close()
+        affiliation_cursor = self.openalex_collection.find(no_cursor_timeout=True)
 
         with MongoClient(self.mongodb_url) as client:
             db = client[self.config["database_name"]]
@@ -163,8 +160,9 @@ class Kahi_openalex_affiliations(KahiBase):
                     aff,
                     collection,
                     self.empty_affiliation()
-                ) for aff in affiliation_list
+                ) for aff in affiliation_cursor
             )
+            client.close()
 
     def run(self):
         self.process_openalex()
