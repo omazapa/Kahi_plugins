@@ -133,8 +133,16 @@ class Kahi_openalex_affiliations(KahiBase):
 
         self.openalex_client = MongoClient(
             config["openalex_affiliations"]["database_url"])
+        if config["openalex_affiliations"]["database_name"] not in self.openalex_client.list_database_names():
+            raise Exception("Database {} not found in {}".format(
+                config["openalex_affiliations"]['database_name'], config["openalex_affiliations"]["database_url"]))
+
         self.openalex_db = self.openalex_client[config["openalex_affiliations"]
                                                 ["database_name"]]
+        if config["openalex_affiliations"]["collection_name"] not in self.openalex_db.list_collection_names():
+            raise Exception("Collection {} not found in {}".format(
+                config["openalex_affiliations"]['collection_name'], config["openalex_affiliations"]["database_url"]))
+
         self.openalex_collection = self.openalex_db[config["openalex_affiliations"]
                                                     ["collection_name"]]
 
@@ -146,7 +154,8 @@ class Kahi_openalex_affiliations(KahiBase):
         self.client.close()
 
     def process_openalex(self):
-        affiliation_cursor = self.openalex_collection.find(no_cursor_timeout=True)
+        affiliation_cursor = self.openalex_collection.find(
+            no_cursor_timeout=True)
 
         with MongoClient(self.mongodb_url) as client:
             db = client[self.config["database_name"]]
