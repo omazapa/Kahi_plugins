@@ -4,6 +4,7 @@ from pandas import read_csv
 from time import time
 from datetime import datetime as dt
 from joblib import Parallel, delayed
+import re
 
 
 def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, verbose):
@@ -82,12 +83,16 @@ def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, ver
     })
 
     if isinstance(cv["Google Scholar"], str):
-        if "&" == cv["Google Scholar"][-1]:
-            cv["Google Scholar"] = cv["Google Scholar"][:-1]
-        entry["external_ids"].append({
-            "source": "scholar",
-            "id": cv["Google Scholar"].split("user=")[-1].split("&")[0]
-        })
+        value = cv["Google Scholar"]
+        value = value.replace("authuser", "")
+        value = re.findall(r"user=([^&]{1,12})", value)
+        if value:
+            value = value[-1]
+            if len(value) == 12:
+                entry["external_ids"].append({
+                    "source": "scholar",
+                    "id": value
+                })
     if isinstance(cv["ResearchGate"], str):
         entry["external_ids"].append({
             "source": "researchgate",
