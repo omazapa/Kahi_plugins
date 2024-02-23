@@ -36,7 +36,7 @@ def get_id_type(url):
 
 def parse_scholar_id(value):
     """
-    Parse the google scholar id from the url, 
+    Parse the google scholar id from the url,
     the id is the value of the user parameter.
 
     Parameters:
