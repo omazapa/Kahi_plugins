@@ -282,10 +282,12 @@ def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, ver
         if isinstance(_id, str):
             value = get_id(_id)
             if value:
-                entry["external_ids"].append({
+                rec = {
                     "source": get_id_type(_id),
                     "id": value
-                })
+                }
+                if rec not in entry["external_ids"]:
+                    entry["external_ids"].append(rec)
 
     entry["subjects"].append({
         "source": "OECD",
