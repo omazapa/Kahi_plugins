@@ -1,10 +1,185 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
-from pandas import read_csv
+from pandas import read_csv, isna
 from time import time
 from datetime import datetime as dt
 from joblib import Parallel, delayed
 import re
+from urllib.parse import unquote
+
+
+def get_id_type(url):
+    """
+    This function returns the type of the id based on the url
+
+    Parameters:
+    ----------
+    url: str
+        The url of the id
+    Returns:
+    --------
+    str
+        The type of the id
+    """
+    if "orcid" in url:
+        return "orcid"
+    if "researchgate" in url:
+        return "researchgate"
+    if "linkedin" in url:
+        return "linkedin"
+    if "scholar.google" in url:
+        return "scholar"
+    if "scopus" in url:
+        return "scopus"
+    return None
+
+
+def parse_scholar_id(value):
+    """
+    Parse the google scholar id from the url, 
+    the id is the value of the user parameter.
+
+    Parameters:
+    ----------
+    value: str
+        The url of the google scholar profile
+
+    Returns:
+    --------
+    str
+        The google scholar id
+    """
+    value = value.replace("authuser", "")
+    value = re.findall(r"user=([^&]{1,12})", value)
+    if value:
+        value = value[-1]
+        if len(value) == 12:
+            return value
+    return None
+
+
+def parse_researchgate_id(value):
+    """
+    Function to parse the researchgate id from the url,
+    it is the value of the profile path in the url
+
+    Parameters:
+    ----------
+    value: str
+        The url of the researchgate profile
+
+    Returns:
+    --------
+    str
+        The researchgate id
+    """
+    value = re.search(
+        r"https://www\.researchgate\.net/profile/([^\s/?&]+)", value)
+    if value:
+        return value.group(1)
+    return None
+
+
+def parse_linkedin_id(value):
+    """
+    Function to parse the linkedin id from the url,
+    it is the value of the "in" parameter in the url.
+
+    Parameters:
+    ----------
+    value: str
+        The url of the linkedin profile
+
+    Returns:
+    --------
+    str
+        The linkedin id
+    """
+    value = re.search(r"linkedin\.com/in/([^/?&]+)", value)
+    if value:
+        return value.group(1)
+    return None
+
+
+def parse_orcid_id(value):
+    """
+    Function to parse the orcid id from the url,
+    it is the value of the orcid parameter in the url.
+    It is four groups of four characters separated by dashes.
+
+    Parameters:
+    ----------
+    value: str
+        The url of the orcid profile
+
+    Returns:
+    --------
+    str
+        The orcid id
+    """
+    value = value.replace("-", "")
+    value = value.replace("_", "")
+    value = re.search(
+        r"(?:ORCID\s?)?([a-zA-Z0-9]{4})-?([a-zA-Z0-9]{4})-?([a-zA-Z0-9]{4})-?([a-zA-Z0-9]{4})", value)
+    if value:
+        return "-".join(value.groups())
+    return None
+
+
+def parse_scopus_id(value):
+    """
+    Function to parse the scopus id from the url,
+    it is the value of the authorID or authorId parameter in the url.
+    **The number of characters have to be 10 or 11 but not more or less.**
+
+    Parameters:
+    ----------
+    value: str
+        The url of the scopus profile
+
+    Returns:
+    --------
+    str
+        The scopus id
+    """
+
+    ##
+    value = re.search(r"(?:authorId=|authorID=)(\d{10,11})", value)
+    if value:
+        return value.group(1)
+    return None
+
+
+def get_id(value):
+    """
+    Function to get the id from the url, it uses the get_id_type function to get the type of the id
+    and then uses the corresponding function to parse the id from the url.
+    Returns the ids without url encoding, without spaces and without url path.
+
+    Parameters:
+    ----------
+    value: str
+        The url of the profile
+
+    Returns:
+    --------
+    str
+        The id of the profile
+    """
+    value = unquote(value)
+    value = value.replace(" ", "")
+    if get_id_type(value) == "scholar":
+        return parse_scholar_id(value)
+    if get_id_type(value) == "researchgate":
+        return parse_researchgate_id(value)
+    if get_id_type(value) == "linkedin":
+        return parse_linkedin_id(value)
+    if get_id_type(value) == "orcid":
+        return parse_orcid_id(value)
+    if get_id_type(value) == "scopus":
+        return parse_scopus_id(value)
+
+    return None
 
 
 def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, verbose):
@@ -82,43 +257,35 @@ def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, ver
         "id": cv["ID_PERSONA_PD"]
     })
 
-    if isinstance(cv["Google Scholar"], str):
-        value = cv["Google Scholar"]
-        value = value.replace("authuser", "")
-        value = re.findall(r"user=([^&]{1,12})", value)
-        if value:
-            value = value[-1]
-            if len(value) == 12:
+    # all the ids are mixed, so we need to check each one in the next columns
+    ids = []
+    if not isna(cv["Google Scholar"]):
+        ids.extend(cv["Google Scholar"])
+    if not isna(cv["ResearchGate"]):
+        ids.extend(cv["ResearchGate"])
+    if not isna(cv['Linkedln']):
+        ids.extend(cv['Linkedln'])
+    if not isna(cv['ORCID']):
+        ids.extend(cv['ORCID'])
+    if not isna(cv['Scopus']):
+        ids.extend(cv['Scopus'])
+    if not isna(cv['Academia.edu']):  # TODO:implement those other ids
+        ids.extend(cv['Academia.edu'])
+    if not isna(cv['Mendeley']):
+        ids.extend(cv['Mendeley'])
+    if not isna(cv['Network']):
+        ids.extend(cv['Network'])
+    if not isna(cv['Social Sciences Research']):
+        ids.extend(cv["Social Sciences Research"])
+    # NOTA: remover la URL y dejar solo el ID
+    for _id in ids:
+        if isinstance(_id, str):
+            value = get_id(_id)
+            if value:
                 entry["external_ids"].append({
-                    "source": "scholar",
+                    "source": get_id_type(_id),
                     "id": value
                 })
-    if isinstance(cv["ResearchGate"], str):
-        entry["external_ids"].append({
-            "source": "researchgate",
-            "id": cv["ResearchGate"].split("/")[-1]
-        })
-    if isinstance(cv["Linkedln"], str):
-        try:
-            entry["external_ids"].append({
-                "source": "linkedin",
-                "id": cv["Linkedln"].split("in/")[-1]
-            })
-        except Exception as e:
-            print(e)
-
-    if isinstance(cv["ORCID"], str):
-        if "orcid" not in cv["ORCID"].split("/")[-1]:
-            entry["external_ids"].append({
-                "source": "orcid",
-                "id": cv["ORCID"].split("/")[-1]
-            })
-    if isinstance(cv["Scopus"], str):
-        if "authorid" in cv["Scopus"].lower():
-            entry["external_ids"].append({
-                "source": "scopus",
-                "id": cv["Scopus"].split("authorId=")[-1]
-            })
 
     entry["subjects"].append({
         "source": "OECD",
