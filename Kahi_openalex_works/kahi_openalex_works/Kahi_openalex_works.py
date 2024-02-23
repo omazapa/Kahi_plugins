@@ -394,8 +394,14 @@ class Kahi_openalex_works(KahiBase):
 
         self.openalex_client = MongoClient(
             config["openalex_works"]["database_url"])
+        if config["openalex_works"]["database_name"] not in list(self.openalex_client.list_database_names()):
+            raise RuntimeError(
+                f'''Database {config["openalex_works"]["database_name"]} was not found''')
         self.openalex_db = self.openalex_client[config["openalex_works"]
                                                 ["database_name"]]
+        if config["openalex_works"]["collection_name"] not in self.openalex_db.list_collection_names():
+            raise RuntimeError(
+                f'''Collection {config["openalex_works"]["collection_name"]} was not found on database {config["openalex_works"]["database_name"]}''')
         self.openalex_collection = self.openalex_db[config["openalex_works"]
                                                     ["collection_name"]]
 
