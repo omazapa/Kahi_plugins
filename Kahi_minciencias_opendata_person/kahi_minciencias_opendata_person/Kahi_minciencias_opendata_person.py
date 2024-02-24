@@ -4,7 +4,7 @@ from pandas import read_csv, isna
 from time import time
 from datetime import datetime as dt
 from joblib import Parallel, delayed
-from kahi_impactu_utils.Utils import get_id, get_id_type
+from kahi_impactu_utils.Utils import get_id_from_url, get_id_type_from_url
 
 
 def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, verbose):
@@ -105,10 +105,11 @@ def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, ver
     # NOTA: remover la URL y dejar solo el ID
     for _id in ids:
         if isinstance(_id, str):
-            value = get_id(_id)
+            value = get_id_from_url(_id)
             if value:
                 rec = {
-                    "source": get_id_type(_id),
+                    "provenance": "minciencias",
+                    "source": get_id_type_from_url(_id),
                     "id": value
                 }
                 if rec not in entry["external_ids"]:
