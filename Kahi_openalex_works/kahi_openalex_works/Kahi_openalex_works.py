@@ -25,19 +25,21 @@ def parse_openalex(reg, empty_work, verbose=0):
     entry["types"].append({"source": "openalex", "type": reg["type"]})
     entry["citations_by_year"] = reg["counts_by_year"]
 
-    entry["source"] = {
-        "name": reg["primary_location"]['source']["display_name"],
-        "external_ids": [{"source": "openalex", "id": reg["primary_location"]['source']["id"]}]
-    }
+    if reg["primary_location"]['source']:
+        entry["source"] = {
+            "name": reg["primary_location"]['source']["display_name"],
+            "external_ids": [{"source": "openalex", "id": reg["primary_location"]['source']["id"]}]
+        }
 
-    if "issn_l" in reg["primary_location"]['source'].keys():
-        if reg["primary_location"]['source']["issn_l"]:
-            entry["source"]["external_ids"].append(
-                {"source": "issn_l", "id": reg["primary_location"]['source']["issn_l"]})
-    if "issn" in reg["primary_location"]['source'].keys():
-        if reg["primary_location"]['source']["issn"]:
-            entry["source"]["external_ids"].append(
-                {"source": "issn", "id": reg["primary_location"]['source']["issn"][0]})
+        if "issn_l" in reg["primary_location"]['source'].keys():
+            if reg["primary_location"]['source']["issn_l"]:
+                entry["source"]["external_ids"].append(
+                    {"source": "issn_l", "id": reg["primary_location"]['source']["issn_l"]})
+
+        if "issn" in reg["primary_location"]['source'].keys():
+            if reg["primary_location"]['source']["issn"]:
+                entry["source"]["external_ids"].append(
+                    {"source": "issn", "id": reg["primary_location"]['source']["issn"][0]})
 
     entry["citations_count"].append(
         {"source": "openalex", "count": reg["cited_by_count"]})
@@ -105,9 +107,6 @@ def parse_openalex(reg, empty_work, verbose=0):
 
 
 def process_one(oa_reg, db, collection, empty_work, verbose=0):
-    # client = MongoClient(url)
-    # db = client[db_name]
-    # collection = db["works"]
     doi = None
     # register has doi
     if "doi" in oa_reg.keys():
@@ -204,12 +203,13 @@ def process_one(oa_reg, db, collection, empty_work, verbose=0):
             entry = parse_openalex(oa_reg, empty_work.copy(), verbose=verbose)
             # link
             source_db = None
-            if "external_ids" in entry["source"].keys():
-                for ext in entry["source"]["external_ids"]:
-                    source_db = db["sources"].find_one(
-                        {"external_ids.id": ext["id"]})
-                    if source_db:
-                        break
+            if entry["source"]:
+                if "external_ids" in entry["source"].keys():
+                    for ext in entry["source"]["external_ids"]:
+                        source_db = db["sources"].find_one(
+                            {"external_ids.id": ext["id"]})
+                        if source_db:
+                            break
             if source_db:
                 name = source_db["names"][0]["name"]
                 for n in source_db["names"]:
@@ -223,16 +223,17 @@ def process_one(oa_reg, db, collection, empty_work, verbose=0):
                     "name": name
                 }
             else:
-                if len(entry["source"]["external_ids"]) == 0:
-                    print(
-                        f'Register with doi: {oa_reg["doi"]} does not provide a source')
-                else:
-                    print("No source found for\n\t",
-                          entry["source"]["external_ids"])
-                entry["source"] = {
-                    "id": "",
-                    "name": entry["source"]["name"]
-                }
+                if entry["source"]:
+                    if len(entry["source"]["external_ids"]) == 0:
+                        print(
+                            f'Register with doi: {oa_reg["doi"]} does not provide a source')
+                    else:
+                        print("No source found for\n\t",
+                              entry["source"]["external_ids"])
+                    entry["source"] = {
+                        "id": "",
+                        "name": entry["source"]["name"]
+                    }
             for subjects in entry["subjects"]:
                 for i, subj in enumerate(subjects["subjects"]):
                     for ext in subj["external_ids"]:
@@ -393,8 +394,14 @@ class Kahi_openalex_works(KahiBase):
 
         self.openalex_client = MongoClient(
             config["openalex_works"]["database_url"])
+        if config["openalex_works"]["database_name"] not in list(self.openalex_client.list_database_names()):
+            raise RuntimeError(
+                f'''Database {config["openalex_works"]["database_name"]} was not found''')
         self.openalex_db = self.openalex_client[config["openalex_works"]
                                                 ["database_name"]]
+        if config["openalex_works"]["collection_name"] not in self.openalex_db.list_collection_names():
+            raise RuntimeError(
+                f'''Collection {config["openalex_works"]["collection_name"]} was not found on database {config["openalex_works"]["database_name"]}''')
         self.openalex_collection = self.openalex_db[config["openalex_works"]
                                                     ["collection_name"]]
 
@@ -404,7 +411,7 @@ class Kahi_openalex_works(KahiBase):
         ) else 0
 
     def process_openalex(self):
-        paper_list = list(self.openalex_collection.find())
+        paper_cursor = self.openalex_collection.find(no_cursor_timeout=True)
 
         with MongoClient(self.mongodb_url) as client:
             db = client[self.config["database_name"]]
@@ -420,8 +427,9 @@ class Kahi_openalex_works(KahiBase):
                     works_collection,
                     self.empty_work(),
                     verbose=self.verbose
-                ) for paper in paper_list
+                ) for paper in paper_cursor
             )
+            client.close()
 
     def run(self):
         self.process_openalex()

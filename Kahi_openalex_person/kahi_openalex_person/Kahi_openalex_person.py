@@ -2,6 +2,7 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
+from kahi_impactu_utils.Utils import get_id_from_url
 
 
 def process_one(oa_author, client, db_name, empty_person, max_tries=10):
@@ -10,8 +11,8 @@ def process_one(oa_author, client, db_name, empty_person, max_tries=10):
 
     author = None
     for source, idx in oa_author["ids"].items():
-        if source == "orcid":
-            idx = idx.split("/")[-1]
+        if source != "openalex":
+            idx = get_id_from_url(idx)
         author = collection.find_one({"external_ids.id": idx})
     if author:
         already_updated = False
@@ -24,9 +25,12 @@ def process_one(oa_author, client, db_name, empty_person, max_tries=10):
         ext_sources = [ext["source"] for ext in author["external_ids"]]
         for key, val in oa_author["ids"].items():
             if key not in ext_sources:
-                if key == "orcid":
-                    val = val.split("/")[-1]
-                author["external_ids"].append({"source": key, "id": val})
+                if key != "openalex":
+                    val = get_id_from_url(val)
+                if val:
+                    rec = {"provenance": "openalex", "source": key, "id": val}
+                    if rec not in author["external_ids"]:
+                        author["external_ids"].append(rec)
         author["updated"].append({"source": "openalex", "time": int(time())})
         collection.update_one({"_id": author["_id"]}, {"$set": {
             "updated": author["updated"],
@@ -42,9 +46,11 @@ def process_one(oa_author, client, db_name, empty_person, max_tries=10):
             if not name.lower() in entry["aliases"]:
                 entry["aliases"].append(name.lower())
         for source, idx in oa_author["ids"].items():
-            if source == "orcid":
-                idx = idx.split("/")[-1]
-            entry["external_ids"].append({"source": source, "id": idx})
+            if source != "openalex":
+                idx = get_id_from_url(idx)
+            if idx:
+                entry["external_ids"].append(
+                    {"provenance": "openalex", "source": source, "id": idx})
 
         if "last_known_institution" in oa_author.keys():
             if oa_author["last_known_institution"]:
@@ -93,8 +99,14 @@ class Kahi_openalex_person(KahiBase):
 
         self.openalex_client = MongoClient(
             config["openalex_person"]["database_url"])
+        if config["openalex_person"]["database_name"] not in self.openalex_client.list_database_names():
+            raise Exception("Database {} not found in {}".format(
+                config["openalex_person"]['database_name'], config["openalex_person"]["database_url"]))
         self.openalex_db = self.openalex_client[config["openalex_person"]
                                                 ["database_name"]]
+        if config["openalex_person"]["collection_name"] not in self.openalex_db.list_collection_names():
+            raise Exception("Collection {}.{} not found in {}".format(config["openalex_person"]['database_name'],
+                                                                      config["openalex_person"]['collection_name'], config["openalex_person"]["database_url"]))
         self.openalex_collection = self.openalex_db[config["openalex_person"]
                                                     ["collection_name"]]
 
@@ -106,8 +118,7 @@ class Kahi_openalex_person(KahiBase):
         self.client.close()
 
     def process_openalex(self):
-        author_list = list(self.openalex_collection.find())
-        self.openalex_client.close()
+        author_cursor = self.openalex_collection.find(no_cursor_timeout=True)
         client = MongoClient(self.mongodb_url)
         Parallel(
             n_jobs=self.n_jobs,
@@ -118,7 +129,7 @@ class Kahi_openalex_person(KahiBase):
                 client,
                 self.config["database_name"],
                 self.empty_person()
-            ) for author in author_list
+            ) for author in author_cursor
         )
         client.close()
 

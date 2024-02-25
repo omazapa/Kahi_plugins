@@ -1,9 +1,10 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
-from pandas import read_csv
+from pandas import read_csv, isna
 from time import time
 from datetime import datetime as dt
 from joblib import Parallel, delayed
+from kahi_impactu_utils.Utils import get_id_from_url, get_id_type_from_url
 
 
 def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, verbose):
@@ -81,39 +82,38 @@ def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, ver
         "id": cv["ID_PERSONA_PD"]
     })
 
-    if isinstance(cv["Google Scholar"], str):
-        if "&" == cv["Google Scholar"][-1]:
-            cv["Google Scholar"] = cv["Google Scholar"][:-1]
-        entry["external_ids"].append({
-            "source": "scholar",
-            "id": cv["Google Scholar"].split("user=")[-1].split("&")[0]
-        })
-    if isinstance(cv["ResearchGate"], str):
-        entry["external_ids"].append({
-            "source": "researchgate",
-            "id": cv["ResearchGate"].split("/")[-1]
-        })
-    if isinstance(cv["Linkedln"], str):
-        try:
-            entry["external_ids"].append({
-                "source": "linkedin",
-                "id": cv["Linkedln"].split("in/")[-1]
-            })
-        except Exception as e:
-            print(e)
-
-    if isinstance(cv["ORCID"], str):
-        if "orcid" not in cv["ORCID"].split("/")[-1]:
-            entry["external_ids"].append({
-                "source": "orcid",
-                "id": cv["ORCID"].split("/")[-1]
-            })
-    if isinstance(cv["Scopus"], str):
-        if "authorid" in cv["Scopus"].lower():
-            entry["external_ids"].append({
-                "source": "scopus",
-                "id": cv["Scopus"].split("authorId=")[-1]
-            })
+    # all the ids are mixed, so we need to check each one in the next columns
+    ids = []
+    if not isna(cv["Google Scholar"]):
+        ids.extend(cv["Google Scholar"])
+    if not isna(cv["ResearchGate"]):
+        ids.extend(cv["ResearchGate"])
+    if not isna(cv['Linkedln']):
+        ids.extend(cv['Linkedln'])
+    if not isna(cv['ORCID']):
+        ids.extend(cv['ORCID'])
+    if not isna(cv['Scopus']):
+        ids.extend(cv['Scopus'])
+    if not isna(cv['Academia.edu']):  # TODO:implement those other ids
+        ids.extend(cv['Academia.edu'])
+    if not isna(cv['Mendeley']):
+        ids.extend(cv['Mendeley'])
+    if not isna(cv['Network']):
+        ids.extend(cv['Network'])
+    if not isna(cv['Social Sciences Research']):
+        ids.extend(cv["Social Sciences Research"])
+    # NOTA: remover la URL y dejar solo el ID
+    for _id in ids:
+        if isinstance(_id, str):
+            value = get_id_from_url(_id)
+            if value:
+                rec = {
+                    "provenance": "minciencias",
+                    "source": get_id_type_from_url(_id),
+                    "id": value
+                }
+                if rec not in entry["external_ids"]:
+                    entry["external_ids"].append(rec)
 
     entry["subjects"].append({
         "source": "OECD",

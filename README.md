@@ -65,13 +65,20 @@ Now the github action will be activate and you can check the status of you packa
 we have an script that allow to create a release for any plugin in the mono repo.
 This creates a new release for the plugin and updates the version of the plugin in the package kahi_impactu.
 
+This requires to update the version of your plugin manually, and then run the script.
+The version on the package kahi_impactu have to be updated manually as well in `Kahi_impactu/kahi_impact/_version.py`,
+but the version in the `Kahi_impactu/setup.py` package is going to be updated automatically.
+
 to use this script you have to run the next command using the main repository as working directory. **(Kahi_plugins)**
 USE THIS CAREFULLY!!
 
+Check list before running the script:
+* Update the version of your plugin in `Kahi_myplugin/kahi_myplugin/_version.py`
+* Update the version of the package kahi_impactu in `Kahi_impactu/kahi_impactu/_version.py`
+* Clone the repository in your local `git clone git@github.com:colav/Kahi_plugins.git`
+Then run the next commands:
 
 ```sh
-git clone git@github.com:colav/Kahi_plugins.git
-
 cd Kahi_plugins
 .github/scripts/bump_kahi_impactu $PWD
 ```

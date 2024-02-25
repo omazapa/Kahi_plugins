@@ -162,7 +162,7 @@ class Kahi_openalex_sources(KahiBase):
         self.client.close()
 
     def process_openalex(self):
-        source_list = list(self.openalex_collection.find())
+        source_cursor = self.openalex_collection.find(no_cursor_timeout=True)
         client = MongoClient(self.mongodb_url)
         Parallel(
             n_jobs=self.n_jobs,
@@ -173,7 +173,7 @@ class Kahi_openalex_sources(KahiBase):
                 client,
                 self.config["database_name"],
                 self.empty_source()
-            ) for source in source_list
+            ) for source in source_cursor
         )
         client.close()
 

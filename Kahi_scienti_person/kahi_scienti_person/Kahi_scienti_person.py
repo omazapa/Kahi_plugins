@@ -1,7 +1,7 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, ASCENDING, TEXT
 from time import time
-from kahi_impactu_utils.Utils import check_date_format
+from kahi_impactu_utils.Utils import check_date_format, get_id_from_url
 
 
 class Kahi_scienti_person(KahiBase):
@@ -72,12 +72,22 @@ class Kahi_scienti_person(KahiBase):
             scienti_reg = scienti.find_one({"author.NRO_DOCUMENTO_IDENT": idx})
             if scienti_reg:
                 author = scienti_reg["author"][0]
-                person["external_ids"].append(
-                    {"source": "scienti", "id": author["COD_RH"]})
+                rec = {"provenance": "scienti",
+                       "source": "scienti", "id": author["COD_RH"]}
+                if rec not in person["external_ids"]:
+                    person["external_ids"].append(rec)
                 if "COD_ORCID" in author.keys():
                     if author["COD_ORCID"]:
-                        person["external_ids"].append(
-                            {"source": "orcid", "id": author["COD_ORCID"]})
+                        orcid_id = None
+                        if "orcid" in author["COD_ORCID"]:
+                            orcid_id = get_id_from_url(author["COD_ORCID"])
+                        else:
+                            orcid_id = author["COD_ORCID"]
+                        if orcid_id:
+                            rec = {"provenance": "scienti",
+                                   "source": "orcid", "id": author["COD_ORCID"]}
+                            if rec not in person["external_ids"]:
+                                person["external_ids"].append(rec)
                 person["first_names"] = author["TXT_NAMES_RH"].strip().split()
                 person["last_names"] = []
                 if "TXT_PRIM_APELL" in author.keys():
@@ -201,31 +211,74 @@ class Kahi_scienti_person(KahiBase):
                         {"external_ids.id": author["NRO_DOCUMENTO_IDENT"]})
                 if not author_db:
                     if "COD_ORCID" in author.keys():
-                        author_db = self.collection.find_one(
-                            {"external_ids.id": author["COD_ORCID"]})
+                        if author["COD_ORCID"]:
+                            orcid_id = None
+                            if "orcid" in author["COD_ORCID"]:
+                                orcid_id = get_id_from_url(author["COD_ORCID"])
+                            else:
+                                orcid_id = author["COD_ORCID"]
+                            if orcid_id:
+                                author_db = self.collection.find_one(
+                                    {"external_ids.id": orcid_id})
                 if not author_db:
                     if "AUTHOR_ID_SCP" in author.keys():
-                        author_db = self.collection.find_one(
-                            {"external_ids.id": author["AUTHOR_ID_SCP"]})
+                        if author["AUTHOR_ID_SCP"]:
+                            scopus_id = None
+                            # check if the id is a url
+                            if "scopus" in author["AUTHOR_ID_SCP"]:
+                                scopus_id = get_id_from_url(
+                                    author["AUTHOR_ID_SCP"])
+                            else:
+                                scopus_id = author["AUTHOR_ID_SCP"]
+                            # get_id_from_url can return None (we need to double check)
+                            if scopus_id:
+                                author_db = self.collection.find_one(
+                                    {"external_ids.id": scopus_id})
                 if not author_db:
                     entry = self.empty_person()
                     entry["updated"].append(
                         {"time": int(time()), "source": "scienti"})
-                    if author["TPO_DOCUMENTO_IDENT"] == "P":
-                        entry["external_ids"].append(
-                            {"source": "Passport", "id": author["NRO_DOCUMENTO_IDENT"]})
-                    if author["TPO_DOCUMENTO_IDENT"] == "C":
-                        entry["external_ids"].append(
-                            {"source": "Cédula de Ciudadanía", "id": author["NRO_DOCUMENTO_IDENT"]})
-                    if author["TPO_DOCUMENTO_IDENT"] == "E":
-                        entry["external_ids"].append(
-                            {"source": "Cédula de Extranjería", "id": author["NRO_DOCUMENTO_IDENT"]})
+                    if author["NRO_DOCUMENTO_IDENT"]:
+                        if author["TPO_DOCUMENTO_IDENT"] == "P":
+                            rec = {"provenance": "scienti",
+                                   "source": "Passport", "id": author["NRO_DOCUMENTO_IDENT"]}
+                            if rec not in entry["external_ids"]:
+                                entry["external_ids"].append(rec)
+                        if author["TPO_DOCUMENTO_IDENT"] == "C":
+                            rec = {"provenance": "scienti",
+                                   "source": "Cédula de Ciudadanía", "id": author["NRO_DOCUMENTO_IDENT"]}
+                            if rec not in entry["external_ids"]:
+                                entry["external_ids"].append(rec)
+                        if author["TPO_DOCUMENTO_IDENT"] == "E":
+                            rec = {"provenance": "scienti",
+                                   "source": "Cédula de Extranjería", "id": author["NRO_DOCUMENTO_IDENT"]}
+                            if rec not in entry["external_ids"]:
+                                entry["external_ids"].append(rec)
                     entry["external_ids"].append(
-                        {"source": "scienti", "id": author["COD_RH"]})
+                        {"provenance": "scienti", "source": "scienti", "id": author["COD_RH"]})
                     if "COD_ORCID" in author.keys():
                         if author["COD_ORCID"]:
-                            entry["external_ids"].append(
-                                {"source": "orcid", "id": author["COD_ORCID"]})
+                            orcid_id = None
+                            if "orcid" in author["COD_ORCID"]:
+                                orcid_id = get_id_from_url(author["COD_ORCID"])
+                            else:
+                                orcid_id = author["COD_ORCID"]
+                            if orcid_id:
+                                entry["external_ids"].append(
+                                    {"provenance": "scienti",
+                                     "source": "orcid", "id": orcid_id})
+                    if "AUTHOR_ID_SCP" in author.keys():
+                        if author["AUTHOR_ID_SCP"]:
+                            scopus_id = None
+                            if "scopus" in author["AUTHOR_ID_SCP"]:
+                                scopus_id = get_id_from_url(
+                                    author["AUTHOR_ID_SCP"])
+                            else:
+                                scopus_id = author["AUTHOR_ID_SCP"]
+                            # get_id_from_url can return None (we need to double check)
+                            if scopus_id:
+                                entry["external_ids"].append(
+                                    {"provenance": "scienti", "source": "scopus", "id": scopus_id})
                     # implement the right split names here
                     entry["first_names"] = author["TXT_NAMES_RH"].strip().split()
                     entry["last_names"] = []
@@ -359,27 +412,44 @@ class Kahi_scienti_person(KahiBase):
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
         author_others = scienti.find(
-            {"author_others": {"$exists": True}}, {"author_others": 1})
+            {"author_others": {"$exists": True}, "author_others.COD_RH_REF": {"$ne": None}}, {"author_others": 1})
         for author_others_reg in author_others:
             for author in author_others_reg["author_others"]:
                 if "COD_RH_REF" in author.keys():
-                    author_db = self.collection.find_one(
-                        {"external_ids.id": author["COD_RH_REF"]})
+                    if author["COD_RH_REF"]:
+                        author_db = self.collection.find_one(
+                            {"external_ids.id": author["COD_RH_REF"]})
                     if author_db:
                         continue
                 if "NRO_DOC_IDENTIFICACION" in author.keys():
-                    author_db = self.collection.find_one(
-                        {"external_ids.id": author["NRO_DOC_IDENTIFICACION"]})
+                    if author["NRO_DOC_IDENTIFICACION"]:
+                        author_db = self.collection.find_one(
+                            {"external_ids.id": author["NRO_DOC_IDENTIFICACION"]})
                     if author_db:
                         continue
                 if "COD_ORCID" in author.keys():
-                    author_db = self.collection.find_one(
-                        {"external_ids.id": author["COD_ORCID"]})
+                    if author["COD_ORCID"]:
+                        orcid_id = None
+                        if "orcid" in author["COD_ORCID"]:
+                            orcid_id = get_id_from_url(author["COD_ORCID"])
+                        else:
+                            orcid_id = author["COD_ORCID"]
+                        if orcid_id:
+                            author_db = self.collection.find_one(
+                                {"external_ids.id": orcid_id})
                     if author_db:
                         continue
                 if "AUTOR_ID_SCP" in author.keys():
-                    author_db = self.collection.find_one(
-                        {"external_ids.id": author["AUTOR_ID_SCP"]})
+                    if author["AUTOR_ID_SCP"]:
+                        scopus_id = None
+                        if "scopus" in author["AUTOR_ID_SCP"]:
+                            scopus_id = get_id_from_url(author["AUTOR_ID_SCP"])
+                        else:
+                            scopus_id = author["AUTOR_ID_SCP"]
+                        # get_id_from_url can return None (we need to double check)
+                        if scopus_id:
+                            author_db = self.collection.find_one(
+                                {"external_ids.id": scopus_id})
                     if author_db:
                         continue
                 entry = self.empty_person()
@@ -387,30 +457,60 @@ class Kahi_scienti_person(KahiBase):
                     {"time": int(time()), "source": "scienti"})
 
                 if "NRO_DOC_IDENTIFICACION" in author.keys() and "TPO_DOC_IDENTIFICACION" in author.keys():
-                    if author["TPO_DOC_IDENTIFICACION"] == "P":
-                        entry["external_ids"].append(
-                            {"source": "Passport", "id": author["NRO_DOC_IDENTIFICACION"]})
-                    if author["TPO_DOC_IDENTIFICACION"] == "C":
-                        entry["external_ids"].append(
-                            {"source": "Cédula de Ciudadanía", "id": author["NRO_DOC_IDENTIFICACION"]})
-                    if author["TPO_DOC_IDENTIFICACION"] == "E":
-                        entry["external_ids"].append(
-                            {"source": "Cédula de Extranjería", "id": author["NRO_DOC_IDENTIFICACION"]})
+                    if author["NRO_DOC_IDENTIFICACION"]:
+                        if author["TPO_DOC_IDENTIFICACION"] == "P":
+                            rec = {"provenance": "scienti",
+                                   "source": "Passport",
+                                   "id": author["NRO_DOC_IDENTIFICACION"]}
+                            if rec not in entry["external_ids"]:
+                                entry["external_ids"].append(rec)
+                        if author["TPO_DOC_IDENTIFICACION"] == "C":
+                            rec = {"provenance": "scienti",
+                                   "source": "Cédula de Ciudadanía",
+                                   "id": author["NRO_DOC_IDENTIFICACION"]}
+                            if rec not in entry["external_ids"]:
+                                entry["external_ids"].append(rec)
+                        if author["TPO_DOC_IDENTIFICACION"] == "E":
+                            rec = {"provenance": "scienti",
+                                   "source": "Cédula de Extranjería",
+                                   "id": author["NRO_DOC_IDENTIFICACION"]}
+                            if rec not in entry["external_ids"]:
+                                entry["external_ids"].append(rec)
                 if "COD_ORCID" in author.keys():
                     if author["COD_ORCID"]:
-                        entry["external_ids"].append(
-                            {"source": "orcid", "id": author["COD_ORCID"]})
+                        orcid_id = None
+                        if "orcid" in author["COD_ORCID"]:
+                            orcid_id = get_id_from_url(author["COD_ORCID"])
+                        else:
+                            orcid_id = author["COD_ORCID"]
+                        if orcid_id:
+                            rec = {"provenance": "scienti",
+                                   "source": "orcid", "id":
+                                   author["COD_ORCID"]}
+                            if rec not in entry["external_ids"]:
+                                entry["external_ids"].append(rec)
                 if "COD_RH_REF" in author.keys():
-                    entry["external_ids"].append(
-                        {"source": "scienti", "id": author["COD_RH_REF"]})
+                    rec = {"provenance": "scienti",
+                           "source": "scienti", "id": author["COD_RH_REF"]}
+                    if rec not in entry["external_ids"]:
+                        entry["external_ids"].append(rec)
                 if "AUTOR_ID_SCP" in author.keys():
-                    entry["external_ids"].append(
-                        {"source": "scopus", "id": author["AUTOR_ID_SCP"]})
+                    if author["AUTOR_ID_SCP"]:
+                        scopus_id = None
+                        if "scopus" in author["AUTOR_ID_SCP"]:
+                            scopus_id = get_id_from_url(author["AUTOR_ID_SCP"])
+                        else:
+                            scopus_id = author["AUTOR_ID_SCP"]
+                        if scopus_id:
+                            rec = {"provenance": "scienti",
+                                   "source": "scopus", "id": scopus_id}
+                            if rec not in entry["external_ids"]:
+                                entry["external_ids"].append(rec)
 
                 if entry["external_ids"] == []:
                     continue
-
-                entry["first_names"] = author["TXT_NME_RH"].strip().split()
+                if author["TXT_NME_RH"]:
+                    entry["first_names"] = author["TXT_NME_RH"].strip().split()
                 entry["last_names"] = []
                 if "TXT_PRIM_APELL" in author.keys():
                     entry["last_names"].append(author["TXT_PRIM_APELL"])
@@ -431,7 +531,8 @@ class Kahi_scienti_person(KahiBase):
     def run(self):
         for config in self.config["scienti_person"]["databases"]:
             if self.verbose > 0:
-                print("Processing {} database".format(config["database_name"]))
+                print("Processing {}.{} database".format(
+                    config["database_name"], config["collection_name"]))
             if self.verbose > 4:
                 start_time = time()
                 print("Updating already inserted entries")
