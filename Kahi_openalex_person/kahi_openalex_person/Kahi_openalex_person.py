@@ -2,6 +2,7 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
+from kahi_impactu_utils.Utils import get_id_from_url
 
 
 def process_one(oa_author, client, db_name, empty_person, max_tries=10):
@@ -10,8 +11,8 @@ def process_one(oa_author, client, db_name, empty_person, max_tries=10):
 
     author = None
     for source, idx in oa_author["ids"].items():
-        if source == "orcid":
-            idx = idx.split("/")[-1]
+        if source != "openalex":
+            idx = get_id_from_url(idx)
         author = collection.find_one({"external_ids.id": idx})
     if author:
         already_updated = False
@@ -24,9 +25,12 @@ def process_one(oa_author, client, db_name, empty_person, max_tries=10):
         ext_sources = [ext["source"] for ext in author["external_ids"]]
         for key, val in oa_author["ids"].items():
             if key not in ext_sources:
-                if key == "orcid":
-                    val = val.split("/")[-1]
-                author["external_ids"].append({"source": key, "id": val})
+                if key != "openalex":
+                    val = get_id_from_url(val)
+                if val:
+                    rec = {"provenance": "openalex", "source": key, "id": val}
+                    if rec not in author["external_ids"]:
+                        author["external_ids"].append(rec)
         author["updated"].append({"source": "openalex", "time": int(time())})
         collection.update_one({"_id": author["_id"]}, {"$set": {
             "updated": author["updated"],
@@ -42,9 +46,11 @@ def process_one(oa_author, client, db_name, empty_person, max_tries=10):
             if not name.lower() in entry["aliases"]:
                 entry["aliases"].append(name.lower())
         for source, idx in oa_author["ids"].items():
-            if source == "orcid":
-                idx = idx.split("/")[-1]
-            entry["external_ids"].append({"source": source, "id": idx})
+            if source != "openalex":
+                idx = get_id_from_url(idx)
+            if idx:
+                entry["external_ids"].append(
+                    {"provenance": "openalex", "source": source, "id": idx})
 
         if "last_known_institution" in oa_author.keys():
             if oa_author["last_known_institution"]:
