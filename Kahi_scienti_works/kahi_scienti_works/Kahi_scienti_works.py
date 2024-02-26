@@ -10,6 +10,29 @@ class Kahi_scienti_works(KahiBase):
     config = {}
 
     def __init__(self, config):
+        """
+        Constructor for the Kahi_scienti_works class.
+
+        Several indices are created in the MongoDB collection to speed up the queries.
+        We also handle the error to check db and collection existence.
+
+        Parameters
+        ----------
+        config : dict
+            The configuration dictionary. It should contain the following keys:
+            - scienti_works: a dictionary with the following keys:
+                - task: the task to be performed. It can be "doi" or "all"
+                - num_jobs: the number of jobs to be used in parallel processing
+                - verbose: the verbosity level
+                - databases: a list of dictionaries with the following keys:
+                    - database_url: the URL for the MongoDB database
+                    - database_name: the name of the database
+                    - collection_name: the name of the collection
+                    - es_index: the name of the Elasticsearch index
+                    - es_url: the URL for the Elasticsearch server
+                    - es_user: the username for the Elasticsearch server
+                    - es_password: the password for the Elasticsearch server
+        """
         self.config = config
 
         self.mongodb_url = config["database_url"]
@@ -50,6 +73,9 @@ class Kahi_scienti_works(KahiBase):
         self.check_databases_and_collections()
 
     def check_databases_and_collections(self):
+        """
+        Method to check if the databases and collections are available.
+        """
         for db_info in self.config["scienti_works"]["databases"]:
             client = MongoClient(db_info["database_url"])
             if db_info['database_name'] not in client.list_database_names():
@@ -61,12 +87,57 @@ class Kahi_scienti_works(KahiBase):
             client.close()
 
     def process_doi_group(self, group, db, collection, collection_scienti, empty_work, es_handler, similarity, verbose=0):
+        """
+        This method processes a group of documents with the same DOI.
+        This allows to process the documents in parallel without having to worry about the DOI being processed more than once.
+
+        Parameters
+        ----------
+        group : dict
+            A dictionary with the group of documents to be processed. It should have the following keys:
+            - _id: the DOI
+            - ids: a list with the IDs of the documents
+        db : Database
+            The MongoDB database to be used. (colav database genrated by the kahi)
+        collection : Collection
+            The MongoDB collection to be used. (works collection genrated by the kahi)
+        collection_scienti : Collection
+            The MongoDB collection with the scienti data.
+        empty_work : dict
+            A template for the work entry. Structure is defined in the schema.
+        es_handler : Similarity
+            The Elasticsearch handler to be used for similarity checks. Take a look in Mohan package.
+        similarity : bool
+            A flag to indicate if similarity checks should be performed if doi is not available.
+        verbose : int
+            The verbosity level. Default is 0.
+        """
         for i in group["ids"]:
             reg = collection_scienti.find_one({"_id": i})
             process_one(reg, db, collection, empty_work,
                         es_handler, similarity, verbose)
 
     def process_scienti(self, db, collection, config):
+        """
+        Method to process the scienti database.
+        Checks if the task is "doi" or not and processes the documents accordingly.
+
+        Parameters:
+        -----------
+        db : Database
+            The MongoDB database to be used. (colav database genrated by the kahi)
+        collection : Collection
+            The MongoDB collection to be used. (works collection genrated by the kahi)
+        config : dict
+            A dictionary with the configuration for the scienti database. It should have the following keys:
+            - database_url: the URL for the MongoDB database
+            - database_name: the name of the database
+            - collection_name: the name of the collection
+            - es_index: the name of the Elasticsearch index
+            - es_url: the URL for the Elasticsearch server
+            - es_user: the username for the Elasticsearch server
+            - es_password: the password for the Elasticsearch server
+        """
         client = MongoClient(config["database_url"])
         scienti = client[config["database_name"]][config["collection_name"]]
 

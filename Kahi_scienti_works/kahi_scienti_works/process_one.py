@@ -5,6 +5,24 @@ from bson import ObjectId
 
 
 def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbose=0):
+    """
+    Method to update a register in the kahi database from scholar database if it is found.
+    This means that the register is already on the kahi database and it is being updated with new information.
+
+
+    Parameters
+    ----------
+    scienti_reg : dict
+        Register from the scienti database
+    colav_reg : dict
+        Register from the colav database (kahi database for impactu)
+    collection : pymongo.collection.Collection
+        Collection in the database where the register is stored (Collection of works)
+    empty_work : dict
+        Empty dictionary with the structure of a register in the database
+    verbose : int, optional
+        Verbosity level. The default is 0.
+    """
     entry = parse_scienti(
         scienti_reg, empty_work.copy(), verbose=verbose)
     # updated
@@ -159,6 +177,31 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
 
 
 def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, verbose=0):
+    """
+    Function to insert a new register in the database if it is not found in the colav(kahi works) database.
+    This means that the register is not on the database and it is being inserted.
+
+    For similarity purposes, the register is also inserted in the elasticsearch index,
+    all the elastic search fields are filled with the information from the register and it is
+    handled by Mohan's Similarity class.
+
+    The register is also linked to the source of the register, and the authors and affiliations are searched in the database.
+
+    Parameters
+    ----------
+    scienti_reg : dict
+        Register from the scienti database
+    db : pymongo.database.Database
+        Database where the colav collections are stored, used to search for authors and affiliations.
+    collection : pymongo.collection.Collection
+        Collection in the database where the register is stored (Collection of works)
+    empty_work : dict
+        Empty dictionary with the structure of a register in the database
+    es_handler : Similarity
+        Elasticsearch handler to insert the register in the elasticsearch index, Mohan's Similarity class.
+    verbose : int, optional
+        Verbosity level. The default is 0.
+    """
     # parse
     entry = parse_scienti(scienti_reg, empty_work.copy())
     # link
@@ -336,6 +379,25 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, verb
 
 
 def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity, verbose=0):
+    """
+    Function to process a single register from the scienti database.
+    This function is used to insert or update a register in the colav(kahi works) database.
+
+    Parameters
+    ----------
+    scienti_reg : dict
+        Register from the scienti database
+    db : pymongo.database.Database
+        Database where the colav collections are stored, used to search for authors and affiliations.
+    collection : pymongo.collection.Collection
+        Collection in the database where the register is stored (Collection of works)
+    empty_work : dict
+        Empty dictionary with the structure of a register in the database
+    es_handler : Similarity
+        Elasticsearch handler to insert the register in the elasticsearch index, Mohan's Similarity class.
+    verbose : int, optional
+        Verbosity level. The default is 0.
+    """
     doi = None
     # register has doi
     if "TXT_DOI" in scienti_reg.keys():
@@ -376,17 +438,12 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
                     page_end = scienti_reg["details"][0]["article"][0]["TXT_PAGINA_FINAL"]
             response = es_handler.search_work(
                 title=scienti_reg["TXT_NME_PROD_FILTRO"],
-                # source=scienti_reg["details"][0]["article"][0]["journal"][0]["TXT_NME_REVISTA"],
                 source=source,
                 year=scienti_reg["NRO_ANO_PRESENTA"],
                 authors=authors,
-                # volume=scienti_reg["details"][0]["article"][0]["TXT_VOLUMEN_REVISTA"],
                 volume=volume,
-                # issue=scienti_reg["details"][0]["article"][0]["TXT_FASCICULO_REVISTA"],
                 issue=issue,
-                # page_start=scienti_reg["details"][0]["article"][0]["TXT_PAGINA_INICIAL"],
                 page_start=page_start,
-                # page_end=scienti_reg["details"][0]["article"][0]["TXT_PAGINA_FINAL"],
                 page_end=page_end
             )
 
