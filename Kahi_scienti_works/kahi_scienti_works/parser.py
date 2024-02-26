@@ -13,8 +13,9 @@ def parse_scienti(reg, empty_work, verbose=0):
     entry["external_ids"].append(
         {"provenance": "scienti", "source": "COD_PRODUCTO", "id": reg["COD_PRODUCTO"]})
     if "TXT_DOI" in reg.keys():
-        entry["external_ids"].append(
-            {"source": "doi", "id": doi_processor(reg["TXT_DOI"])})
+        if reg["TXT_DOI"]:
+            entry["external_ids"].append(
+                {"source": "doi", "id": doi_processor(reg["TXT_DOI"])})
     if "TXT_WEB_PRODUCTO" in reg.keys():
         entry["external_urls"].append(
             {"source": "scienti", "url": reg["TXT_WEB_PRODUCTO"]})
