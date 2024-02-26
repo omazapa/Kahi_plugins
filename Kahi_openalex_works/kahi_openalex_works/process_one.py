@@ -293,13 +293,17 @@ def process_one(oa_reg, db, collection, empty_work, es_handler, verbose=0):
             for author in oa_reg['authorships']:
                 if "display_name" in author["author"].keys():
                     authors.append(author["author"]["display_name"])
-
+            source = ""
+            if oa_reg["primary_location"]:
+                if "source" in oa_reg["primary_location"].keys():
+                    if oa_reg["primary_location"]["source"]:
+                        if "display_name" in oa_reg["primary_location"]["source"].keys():
+                            source = oa_reg["primary_location"]["source"]["display_name"]
             response = es_handler.search_work(
                 title=oa_reg["title"],
-                source=oa_reg["primary_location"]["source"]["display_name"],
+                source=source,
                 year=str(oa_reg["publication_year"]),
-                authors=[auth.split(", ")[-1] + " " + auth.split(", ")[0]
-                         for auth in oa_reg["author"].split(" and ")],
+                authors=authors,
                 volume=oa_reg["biblio"]["volume"],
                 issue=oa_reg["biblio"]["issue"],
                 page_start=oa_reg["biblio"]["first_page"],
