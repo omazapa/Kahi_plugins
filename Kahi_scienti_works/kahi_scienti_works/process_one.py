@@ -2,6 +2,7 @@ from kahi_scienti_works.parser import parse_scienti
 from kahi_impactu_utils.Utils import lang_poll, doi_processor
 from time import time
 from bson import ObjectId
+from networkx import volume
 
 
 def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbose=0):
@@ -335,7 +336,7 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, verb
             print("No elasticsearch index provided")
 
 
-def process_one(scienti_reg, db, collection, empty_work, es_handler, verbose=0):
+def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity, verbose=0):
     doi = None
     # register has doi
     if "TXT_DOI" in scienti_reg.keys():
@@ -351,22 +352,43 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, verbose=0):
         else:  # insert a new register
             process_one_insert(
                 scienti_reg, db, collection, empty_work, es_handler, verbose=verbose)
-    else:  # does not have a doi identifier
+    elif similarity:  # does not have a doi identifier
         # elasticsearch section
         if es_handler:
             # Search in elasticsearch
             authors = []
             for author in scienti_reg["author_others"]:
                 authors.append(author["TXT_TOTAL_NAMES_FILTRO"])
+            source = ""
+            volume = ""
+            issue = ""
+            page_start = ""
+            page_end = ""
+            if "article" in scienti_reg["details"][0].keys():
+                if "journal" in scienti_reg["details"][0]["article"][0].keys():
+                    source = scienti_reg["details"][0]["article"][0]["journal"][0]["TXT_NME_REVISTA"]
+                if "TXT_VOLUMEN_REVISTA" in scienti_reg["details"][0]["article"][0].keys():
+                    volume = scienti_reg["details"][0]["article"][0]["TXT_VOLUMEN_REVISTA"]
+                if "TXT_FASCICULO_REVISTA" in scienti_reg["details"][0]["article"][0].keys():
+                    issue = scienti_reg["details"][0]["article"][0]["TXT_FASCICULO_REVISTA"]
+                if "TXT_PAGINA_INICIAL" in scienti_reg["details"][0]["article"][0].keys():
+                    page_start = scienti_reg["details"][0]["article"][0]["TXT_PAGINA_INICIAL"]
+                if "TXT_PAGINA_FINAL" in scienti_reg["details"][0]["article"][0].keys():
+                    page_end = scienti_reg["details"][0]["article"][0]["TXT_PAGINA_FINAL"]
             response = es_handler.search_work(
                 title=scienti_reg["TXT_NME_PROD_FILTRO"],
-                source=scienti_reg["details"][0]["article"][0]["journal"][0]["TXT_NME_REVISTA"],
+                # source=scienti_reg["details"][0]["article"][0]["journal"][0]["TXT_NME_REVISTA"],
+                source=source,
                 year=scienti_reg["NRO_ANO_PRESENTA"],
                 authors=authors,
-                volume=scienti_reg["details"][0]["article"][0]["TXT_VOLUMEN_REVISTA"],
-                issue=scienti_reg["details"][0]["article"][0]["TXT_FASCICULO_REVISTA"],
-                page_start=scienti_reg["details"][0]["article"][0]["TXT_PAGINA_INICIAL"],
-                page_end=scienti_reg["details"][0]["article"][0]["TXT_PAGINA_FINAL"],
+                # volume=scienti_reg["details"][0]["article"][0]["TXT_VOLUMEN_REVISTA"],
+                volume=volume,
+                # issue=scienti_reg["details"][0]["article"][0]["TXT_FASCICULO_REVISTA"],
+                issue=issue,
+                # page_start=scienti_reg["details"][0]["article"][0]["TXT_PAGINA_INICIAL"],
+                page_start=page_start,
+                # page_end=scienti_reg["details"][0]["article"][0]["TXT_PAGINA_FINAL"],
+                page_end=page_end
             )
 
             if response:  # register already on db... update accordingly
@@ -381,7 +403,6 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, verbose=0):
                             response["_id"]))
                         print(response)
             else:  # insert new register
-                print("INFO: found no register in elasticsearch")
                 process_one_insert(scienti_reg, db, collection,
                                    empty_work, es_handler, verbose)
         else:

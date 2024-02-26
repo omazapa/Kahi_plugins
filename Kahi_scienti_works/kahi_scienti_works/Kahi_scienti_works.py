@@ -34,6 +34,7 @@ class Kahi_scienti_works(KahiBase):
                 es_auth = None
             self.es_handler = Similarity(
                 es_index, es_uri=es_url, es_auth=es_auth)
+            print("INFO: ES handler created successfully")
         else:
             self.es_handler = None
             print("WARNING: No elasticsearch configuration provided")
@@ -59,14 +60,16 @@ class Kahi_scienti_works(KahiBase):
                                                                     db_info['collection_name']))
             client.close()
 
-    def process_doi_group(self, group, db, collection, empty_work, es_handler, verbose=0):
+    def process_doi_group(self, group, db, collection, collection_scienti, empty_work, es_handler, similarity, verbose=0):
         for i in group["ids"]:
-            reg = collection.find_one({"_id": i})
-            process_one(reg, db, collection, empty_work, es_handler, verbose=0)
+            reg = collection_scienti.find_one({"_id": i})
+            process_one(reg, db, collection, empty_work,
+                        es_handler, similarity, verbose)
 
     def process_scienti(self, db, collection, config):
         client = MongoClient(config["database_url"])
         scienti = client[config["database_name"]][config["collection_name"]]
+
         if self.task == "doi":
             pipeline = [
                 {"$match": {"TXT_DOI": {"$ne": None}}},
@@ -84,8 +87,10 @@ class Kahi_scienti_works(KahiBase):
                     doi_group,
                     db,
                     collection,
+                    scienti,
                     self.empty_work(),
                     self.es_handler,
+                    similarity=False,
                     verbose=self.verbose
                 ) for doi_group in paper_group_doi_cursor
             )
@@ -96,14 +101,15 @@ class Kahi_scienti_works(KahiBase):
                 n_jobs=self.n_jobs,
                 verbose=self.verbose,
                 backend="threading")(
-                delayed(self.process_doi_group)(
-                    [doi_group],  # trick to make the function signature compatible
+                delayed(process_one)(
+                    work,
                     db,
                     collection,
                     self.empty_work(),
                     self.es_handler,
+                    similarity=True,
                     verbose=self.verbose
-                ) for doi_group in paper_cursor
+                ) for work in paper_cursor
             )
         client.close()
 
