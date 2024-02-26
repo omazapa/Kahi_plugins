@@ -2,7 +2,6 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from pandas import read_excel
 from time import time
-from datetime import datetime as dt
 import re
 from kahi_impactu_utils.Utils import check_date_format
 
