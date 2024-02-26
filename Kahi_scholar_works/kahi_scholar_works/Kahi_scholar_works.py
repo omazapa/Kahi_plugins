@@ -1,5 +1,3 @@
-import collections
-from multiprocessing import process
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from joblib import Parallel, delayed
@@ -33,7 +31,7 @@ class Kahi_scholar_works(KahiBase):
                 - es_index: The index to be used in elasticsearch.
                 - es_url: The url of the elasticsearch server.
                 - es_user: The user for the elasticsearch server.
-                - es_password: The password for the elasticsearch server.   
+                - es_password: The password for the elasticsearch server.
         """
         self.config = config
 
