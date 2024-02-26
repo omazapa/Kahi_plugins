@@ -2,7 +2,6 @@ from kahi_scienti_works.parser import parse_scienti
 from kahi_impactu_utils.Utils import lang_poll, doi_processor
 from time import time
 from bson import ObjectId
-from networkx import volume
 
 
 def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbose=0):
