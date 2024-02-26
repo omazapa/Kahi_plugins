@@ -10,6 +10,28 @@ class Kahi_openalex_works(KahiBase):
     config = {}
 
     def __init__(self, config):
+        """
+        Constructor for the Kahi_openalex_works class.
+
+        Several indices are created in the database to speed up the process.
+        We also handle the error to check db and collection existence.
+
+        Parameters:
+        -----------
+        config : dict
+            The configuration dictionary. It should contain the following keys:
+            - Kahi_openalex_works: A dictionary with the following keys:
+                - database_url: The url of the scholar works database.
+                - database_name: The name of the scholar works database.
+                - collection_name: The name of the collection in the scholar works database.
+                - task: The task to be performed. It can be "doi" or empty for similarity.
+                - num_jobs: The number of jobs to be used in parallel processing.
+                - verbose: The verbosity level.
+                - es_index: The index to be used in elasticsearch.
+                - es_url: The url of the elasticsearch server.
+                - es_user: The user for the elasticsearch server.
+                - es_password: The password for the elasticsearch server.
+        """
         self.config = config
 
         self.mongodb_url = config["database_url"]

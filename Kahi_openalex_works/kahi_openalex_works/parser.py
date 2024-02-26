@@ -4,6 +4,18 @@ from datetime import datetime as dt
 
 
 def parse_openalex(reg, empty_work, verbose=0):
+    """
+    Parse a record from openalex to a work entry, using the empty_work template
+
+    Parameters
+    ----------
+    reg : dict
+        A record from openalex
+    empty_work : dict
+        A template for a work entry, with empty fields.
+    verbose : int, optional
+        Verbosity level. The default is 0.
+    """
     entry = empty_work.copy()
     entry["updated"] = [{"source": "openalex", "time": int(time())}]
     if reg["title"]:

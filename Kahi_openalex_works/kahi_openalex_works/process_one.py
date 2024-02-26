@@ -5,6 +5,25 @@ from bson import ObjectId
 
 
 def process_one_update(oa_reg, colav_reg, db, collection, empty_work, verbose=0):
+    """
+    Method to update a register in the database if it is found in the openalex database.
+    This means that the register is already on the database and it is being updated with new information.
+
+    Parameters
+    ----------
+    oa_reg : dict
+        A record from openalex
+    colav_reg : dict
+        Register from the colav database (kahi database for impactu)
+    db : pymongo.database.Database
+        Database connection to colav database.
+    collection : pymongo.collection.Collection
+        Collection to insert the register. Colav database collection for works.
+    empty_work : dict
+        A template for a work entry, with empty fields.
+    verbose : int, optional
+        Verbosity level. The default is 0.
+    """
     # updated
     for upd in colav_reg["updated"]:
         if upd["source"] == "openalex":
@@ -89,6 +108,33 @@ def process_one_update(oa_reg, colav_reg, db, collection, empty_work, verbose=0)
 
 
 def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0):
+    """
+    ""
+    Function to insert a new register in the database if it is not found in the colav(kahi works) database.
+    This means that the register is not on the database and it is being inserted.
+
+    For similarity purposes, the register is also inserted in the elasticsearch index,
+    all the elastic search fields are filled with the information from the register and it is
+    handled by Mohan's Similarity class.
+
+    The register is also linked to the source of the register, and the authors and affiliations are searched in the database.
+
+    Parameters
+    ----------
+    scholar_reg : dict
+        Register from the openalex database
+    db : pymongo.database.Database
+        Database where the colav collections are stored, used to search for authors and affiliations.
+    collection : pymongo.collection.Collection
+        Collection in the database where the register is stored (Collection of works)
+    empty_work : dict
+        Empty dictionary with the structure of a register in the database
+    es_handler : Similarity
+        Elasticsearch handler to insert the register in the elasticsearch index, Mohan's Similarity class.
+    verbose : int, optional
+        Verbosity level. The default is 0
+    """
+
     # parse
     entry = parse_openalex(oa_reg, empty_work.copy(), verbose=verbose)
     # link
@@ -271,6 +317,25 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
 
 
 def process_one(oa_reg, db, collection, empty_work, es_handler, verbose=0):
+    """
+    Function to process a single register from the scholar database.
+    This function is used to insert or update a register in the colav(kahi works) database.
+
+    Parameters
+    ----------
+    oa_reg : dict
+        Register from the openalex database
+    db : pymongo.database.Database
+        Database where the colav collections are stored, used to search for authors and affiliations.
+    collection : pymongo.collection.Collection
+        Collection in the database where the register is stored (Collection of works)
+    empty_work : dict
+        Empty dictionary with the structure of a register in the database
+    es_handler : Similarity
+        Elasticsearch handler to insert the register in the elasticsearch index, Mohan's Similarity class.
+    verbose : int, optional
+        Verbosity level. The default is 0.
+    """
     doi = None
     # register has doi
     if "doi" in oa_reg.keys():
