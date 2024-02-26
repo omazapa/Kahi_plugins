@@ -3,6 +3,18 @@ from time import time
 
 
 def parse_scienti(reg, empty_work, verbose=0):
+    """
+    Parse a record from the scienti database into a work entry, using the empty_work as template.
+
+    Parameters
+    ----------
+    reg : dict
+        The record to be parsed from scienti.
+    empty_work : dict
+        A template for the work entry. Structure is defined in the schema.
+    verbose : int
+        The verbosity level. Default is 0.
+    """
     entry = empty_work.copy()
     entry["updated"] = [{"source": "scienti", "time": int(time())}]
     lang = lang_poll(reg["TXT_NME_PROD"], verbose=verbose)
