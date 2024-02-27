@@ -83,7 +83,8 @@ def main():
             'kahi',
             'pymongo',
             'joblib',
-            'kahi_impactu_utils',],
+            'kahi_impactu_utils',
+            'mohan'],
     )
 
 
