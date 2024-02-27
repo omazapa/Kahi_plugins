@@ -2,8 +2,8 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from pandas import read_excel
 from time import time
-from datetime import datetime as dt
 import re
+from kahi_impactu_utils.Utils import check_date_format
 
 
 class Kahi_staff_udea_person(KahiBase):
@@ -216,8 +216,10 @@ class Kahi_staff_udea_person(KahiBase):
                 entry["last_names"].append(names["SEGUNDO APELLIDO"])
 
             for i, reg in self.data[self.data["cedula"] == idx].iterrows():
-                aff_time = int(dt.strptime(
-                    reg["fecha_vin"], "%Y-%m-%d %H:%M:%S").timestamp())
+                if isinstance(reg["fecha_vin"], str):
+                    aff_time = check_date_format(reg["fecha_vin"])
+                else:
+                    aff_time = None
                 name = self.udea_reg["names"][0]["name"]
                 for n in self.udea_reg["names"]:
                     if n["lang"] == "es":
@@ -267,8 +269,10 @@ class Kahi_staff_udea_person(KahiBase):
                         "id": fac["_id"], "name": name, "types": fac["types"], "start_date": aff_time, "end_date": -1}
                     if fac_affiliation not in entry["affiliations"]:
                         entry["affiliations"].append(fac_affiliation)
-                entry["birthdate"] = int(dt.strptime(
-                    reg["fecha_nac"], "%Y-%m-%d %H:%M:%S").timestamp())
+                if isinstance(reg["fecha_nac"], str):
+                    entry["birthdate"] = check_date_format(reg["fecha_nac"])
+                else:
+                    entry["birthdate"] = None
                 entry["sex"] = reg["sexo"].lower()
                 degree = {"date": "", "degree": reg["nivelacad"], "id": "", "institutions": [
                 ], "source": "staff"}
