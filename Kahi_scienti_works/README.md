@@ -15,6 +15,14 @@ From the package you can install by running
 ```shell
 pip3 install kahi_scienti_works
 ```
+# Similarity support
+To process works without doi, similarity is mandaroty. Then a elastic search server must be running. The plugin will use the server to find the most similar works in the database. To deply it please read https://github.com/colav/Chia/tree/main/elasticsaerch and follow the instructions.
+
+Docker and docker-compose are required to deploy the server.
+
+if you only wants to process works with doi, you can skip this step and remove the es_index, es_url, es_user and es_password from the yaml file.
+
+**But it is mandatory to put `scienti_works/doi` in the yaml file.**
 
 ## Dependencies
 Software dependencies will automatically be installed when installing the plugin.
@@ -34,7 +42,22 @@ config:
   log_database: kahi
   log_collection: log
 workflow:
+  scienti_works/doi:
+    es_index: kahi_es
+    es_url: http://localhost:9200
+    es_user: elastic_user
+    es_password: elastic_pass
+    databases:
+    - database_url: localhost:27017
+      database_name: scienti
+      collection_name: products
+    num_jobs: 5
+    verbose: 5
   scienti_works:
+    es_index: kahi_es
+    es_url: http://localhost:9200
+    es_user: elastic_user
+    es_password: elastic_pass
     databases:
     - database_url: localhost:27017
       database_name: scienti
@@ -51,7 +74,11 @@ config:
   log_database: kahi
   log_collection: log
 workflow:
-  scienti_works:
+  scienti_works/doi:
+    es_index: kahi_es
+    es_url: http://localhost:9200
+    es_user: elastic_user
+    es_password: elastic_pass
     databases:
       - database_url: localhost:27017
         database_name: scienti_udea
