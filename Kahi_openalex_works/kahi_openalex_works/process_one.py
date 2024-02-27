@@ -311,10 +311,6 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
                 authors.append(author["full_name"])
         work["authors"] = authors
         es_handler.insert_work(_id=str(response.inserted_id), work=work)
-    else:
-        if verbose > 4:
-            print("No elasticsearch index provided")
-
 
 def process_one(oa_reg, db, collection, empty_work, es_handler, verbose=0):
     """
