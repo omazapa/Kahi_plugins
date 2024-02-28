@@ -23,6 +23,14 @@ C++ library libhunspell-dev must be installed on your system. On ubuntu you can 
 ```shell
 $ sudo apt install libhunspell-dev
 ```
+# Similarity support
+To process works without doi, similarity is mandaroty. Then a elastic search server must be running. The plugin will use the server to find the most similar works in the database. To deply it please read https://github.com/colav/Chia/tree/main/elasticsaerch and follow the instructions.
+
+Docker and docker-compose are required to deploy the server.
+
+if you only wants to process works with doi, you can skip this step and remove the es_index, es_url, es_user and es_password from the yaml file.
+
+**But it is mandatory to put `scienti_works/doi` in the yaml file.**
 
 # Usage
 To use this plugin you must have kahi installed in your system and construct a yaml file such as
@@ -33,12 +41,26 @@ config:
   log_database: kahi_log
   log_collection: log
 workflow:
-  openalex_works:
-    num_jobs: 5
-    verbose: 5
+  openalex_works/doi:
     database_url: localhost:27017
-    database_name: openalexco
+    database_name: openalex_sample
     collection_name: works
+    num_jobs: 20
+    es_index: kahi_es
+    es_url: http://localhost:9200
+    es_user: elastic
+    es_password: colav
+    verbose: 5
+  openalex_works:
+    database_url: localhost:27017
+    database_name: openalex_sample
+    collection_name: works
+    num_jobs: 20
+    es_index: kahi_es
+    es_url: http://localhost:9200
+    es_user: elastic
+    es_password: colav
+    verbose: 5
 ```
 
 * WARNING *. This process could take several hours
