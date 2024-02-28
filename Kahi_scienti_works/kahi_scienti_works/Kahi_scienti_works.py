@@ -47,7 +47,7 @@ class Kahi_scienti_works(KahiBase):
         self.collection.create_index("authors.id")
         self.collection.create_index([("titles.title", TEXT)])
         self.collection.create_index("external_ids.id")
-        if "es_index" in config["scienti_works"].keys() and "es_url" in config["scienti_works"].keys() and "es_user" in config["scienti_works"].keys() and "es_password" in config["scienti_works"].keys():
+        if "es_index" in config["scienti_works"].keys() and "es_url" in config["scienti_works"].keys() and "es_user" in config["scienti_works"].keys() and "es_password" in config["scienti_works"].keys():  # noqa: E501
             es_index = config["scienti_works"]["es_index"]
             es_url = config["scienti_works"]["es_url"]
             if config["scienti_works"]["es_user"] and config["scienti_works"]["es_password"]:
