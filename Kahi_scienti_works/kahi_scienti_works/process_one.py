@@ -1,5 +1,5 @@
 from kahi_scienti_works.parser import parse_scienti
-from kahi_impactu_utils.Utils import lang_poll, doi_processor
+from kahi_impactu_utils.Utils import lang_poll, doi_processor, compare_author
 from time import time
 from bson import ObjectId
 
@@ -162,6 +162,43 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
             colav_reg["external_urls"].append(ext)
             url_sources.append(ext["source"])
 
+    # scienti author
+    scienti_author = entry['authors'][0]
+    if scienti_author:
+        author_ids = scienti_author['external_ids']
+        author_db = db['person'].find_one(
+            {'external_ids': {'$elemMatch': {'$or': author_ids}}})
+
+        if author_db:
+            name_match = None
+            affiliation_match = None
+            for i, author in enumerate(colav_reg['authors']):
+                if author['id'] == author_db['_id']:
+                    continue
+                name_match = compare_author(
+                    author['id'], author['full_name'], author_db['full_name'])
+
+                if author['affiliations']:
+                    affiliations_person = [str(aff['id'])
+                                           for aff in author_db['affiliations']]
+                    author_affiliations = [str(aff['id'])
+                                           for aff in author['affiliations']]
+                    affiliation_match = any(
+                        affil in author_affiliations for affil in affiliations_person)
+
+                if name_match and affiliation_match:
+                    # replace the author, maybe add the openalex id to the record in the future
+                    for reg in author_db["affiliations"]:
+                        reg.pop('start_date')
+                        reg.pop('end_date')
+
+                    colav_reg["authors"][i] = {
+                        "id": author_db["_id"],
+                        "full_name": author_db["full_name"],
+                        "affiliations": author["affiliations"]
+                    }
+                    break
+
     collection.update_one(
         {"_id": colav_reg["_id"]},
         {"$set": {
@@ -171,6 +208,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
             "types": colav_reg["types"],
             "bibliographic_info": colav_reg["bibliographic_info"],
             "external_urls": colav_reg["external_urls"],
+            "authors": colav_reg["authors"],
             "subjects": colav_reg["subjects"],
         }}
     )
