@@ -115,10 +115,11 @@ def parse_scopus(reg, empty_work, verbose=0):
                     try:
                         if i < len(ids):
                             author_entry["external_ids"] = [
-                                {"source": "scopus", "id": ids[i]}] if ids[i] else []
+                                {"source": "scopus", "id": f"https://www.scopus.com/authid/detail.uri?authorId={ids[i]}"}] if ids[i] else []
                         else:
-                            print("Not all authors have ids in doi ",
-                                  reg["DOI"])
+                            if verbose > 4:
+                                print("Not all authors have ids in doi ",
+                                      reg["DOI"])
                     except Exception as e:
                         if verbose > 4:
                             print("Error parsing author ids in doi ",
@@ -352,7 +353,16 @@ class Kahi_scopus_works(KahiBase):
         self.collection.create_index("year_published")
         self.collection.create_index("authors.affiliations.id")
         self.collection.create_index("authors.id")
+        self.collection.create_index("external_ids.id")
         self.collection.create_index([("titles.title", TEXT)])
+
+        self.db["person"].create_index([("full_name", TEXT)])
+        self.db["person"].create_index("external_ids.id")
+
+        self.db["affiliations"].create_index("external_ids.id")
+        self.db["affiliations"].create_index([("names.name", TEXT)])
+
+        self.db["sources"].create_index("external_ids.id")
 
         self.scopus_client = MongoClient(
             config["scopus_works"]["database_url"])
@@ -375,7 +385,7 @@ class Kahi_scopus_works(KahiBase):
         self.client.close()
 
     def process_scopus(self):
-        paper_list = list(self.scopus_collection.find())
+        paper_cursor = self.scopus_collection.find()
         with MongoClient(self.mongodb_url) as client:
             db = client[self.config["database_name"]]
             collection = db["works"]
@@ -390,7 +400,7 @@ class Kahi_scopus_works(KahiBase):
                     collection,
                     self.empty_work(),
                     verbose=self.verbose
-                ) for paper in paper_list
+                ) for paper in paper_cursor
             )
 
     def run(self):
