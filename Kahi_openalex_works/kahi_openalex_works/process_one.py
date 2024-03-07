@@ -384,7 +384,8 @@ def process_one(oa_reg, db, collection, empty_work, es_handler, verbose=0):
                             response["_id"]))
                         print(response)
             else:  # insert new register
-                print("INFO: found no register in elasticsearch")
+                if verbose > 4:
+                    print("INFO: found no register in elasticsearch")
                 process_one_insert(oa_reg, db, collection,
                                    empty_work, es_handler, verbose=0)
         else:

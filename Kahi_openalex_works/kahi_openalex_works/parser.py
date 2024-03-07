@@ -34,7 +34,7 @@ def parse_openalex(reg, empty_work, verbose=0):
     entry["types"].append({"source": "openalex", "type": reg["type"]})
     entry["citations_by_year"] = reg["counts_by_year"]
 
-    if reg["primary_location"]['source']:
+    if reg["primary_location"] and reg["primary_location"]['source']:
         entry["source"] = {
             "name": reg["primary_location"]['source']["display_name"],
             "external_ids": [{"source": "openalex", "id": reg["primary_location"]['source']["id"]}]
