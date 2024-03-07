@@ -85,6 +85,7 @@ def main():
             'joblib',
             'pandas',
             'kahi_impactu_utils',
+            'mohan'
         ],
     )
 
