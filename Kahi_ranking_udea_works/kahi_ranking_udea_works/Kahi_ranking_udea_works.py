@@ -13,6 +13,28 @@ class Kahi_ranking_udea_works(KahiBase):
     config = {}
 
     def __init__(self, config):
+        """
+        Constructor for the Kahi_ranking_udea_works class.
+
+        Several indices are created in the MongoDB collection to speed up the queries.
+
+        Parameters
+        ----------
+        config : dict
+            The configuration dictionary. It should contain the following keys:
+            - ranking_udea_works(/doi or empty): a dictionary with the following keys:
+                - task: the task to be performed. It can be "doi" or "all"
+                - num_jobs: the number of jobs to be used in parallel processing
+                - verbose: the verbosity level
+                - databases: a list of dictionaries with the following keys:
+                    - database_url: the URL for the MongoDB database
+                    - database_name: the name of the database
+                    - collection_name: the name of the collection
+                    - es_index: the name of the Elasticsearch index
+                    - es_url: the URL for the Elasticsearch server
+                    - es_user: the username for the Elasticsearch server
+                    - es_password: the password for the Elasticsearch server
+        """
         self.config = config
 
         self.mongodb_url = config["database_url"]
@@ -93,6 +115,27 @@ class Kahi_ranking_udea_works(KahiBase):
                 {"names.name": "Universidad de Antioquia"})
 
     def process_ranking_udea(self):
+        """
+        Method to process the ranking database.
+        Checks if the task is "doi" or not and processes the documents accordingly.
+
+        Parameters:
+        -----------
+        db : Database
+            The MongoDB database to be used. (colav database genrated by the kahi)
+        collection : Collection
+            The MongoDB collection to be used. (works collection genrated by the kahi)
+        config : dict
+            A dictionary with the configuration for the scienti database. It should have the following keys:
+            - database_url: the URL for the MongoDB database
+            - database_name: the name of the database
+            - collection_name: the name of the collection
+            - es_index: the name of the Elasticsearch index
+            - es_url: the URL for the Elasticsearch server
+            - es_user: the username for the Elasticsearch server
+            - es_password: the password for the Elasticsearch server
+        """
+
         # selects papers with doi according to task variable
         if self.task == "doi":
             papers = []
@@ -132,5 +175,9 @@ class Kahi_ranking_udea_works(KahiBase):
             )
 
     def run(self):
+        """
+        Method to run the process_ranking_udea method.
+        Entrypoint for the Kahi_ranking_udea_works class to be excute by kahi.
+        """
         self.process_ranking_udea()
         return 0

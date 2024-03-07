@@ -4,6 +4,18 @@ from pandas import isna
 
 
 def parse_ranking_udea(reg, affiliation, empty_work):
+    """
+    Parse a record from the ranking database into a work entry, using the empty_work as template.
+
+    Parameters:
+    ----------
+    reg: dict
+        A record from the ranking database.
+    affiliation: dict
+        The affiliation of the author.
+    empty_work: dict
+        A template for the work entry.
+    """
     entry = empty_work.copy()
     entry["updated"] = [{"source": "ranking_udea", "time": int(time())}]
     lang = lang_poll(reg["titulo"])

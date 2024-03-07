@@ -15,14 +15,15 @@ From the package you can install by running
 ```shell
 pip3 install Kahi_openalex_subjects
 ```
+# Similarity support
+To process works without doi, similarity is mandaroty. Then a elastic search server must be running. The plugin will use the server to find the most similar works in the database. To deply it please read https://github.com/colav/Chia/tree/main/elasticsaerch and follow the instructions.
 
-## Dependencies
-Software dependencies will automatically be installed when installing the plugin.
-For the data dependencies the user must have a copy of the file from UdeA's ranking office..
-C++ library libhunspell-dev must be installed on your system. On ubuntu you can do it by typing
-```shell
-$ sudo apt install libhunspell-dev
-```
+Docker and docker-compose are required to deploy the server.
+
+if you only wants to process works with doi, you can skip this step and remove the es_index, es_url, es_user and es_password from the yaml file.
+
+**But it is mandatory to put `ranking_udea_works/doi` in the yaml file.**
+
 
 # Usage
 To use this plugin you must have kahi installed in your system and construct a yaml file such as
@@ -33,10 +34,18 @@ config:
   log_database: kahi
   log_collection: log
 workflow:
+  ranking_udea_works/doi:
+    es_index: kahi_es
+    es_url: http://localhost:9200
+    es_user: elastic
+    es_password: colav
+    file_path: udea/produccion 2018-2022 al 27 oct 2022.xlsx
   ranking_udea_works:
-    file_path: /current/data/colombia/udea/produccion 2018-2022 al 27 oct 2022.xlsx
-    verbose: 5
-    num_jobs: 5
+    es_index: kahi_es
+    es_url: http://localhost:9200
+    es_user: elastic
+    es_password: colav
+    file_path: udea/produccion 2018-2022 al 27 oct 2022.xlsx
 ```
 
 * WARNING *. This process could take several hours

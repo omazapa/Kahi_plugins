@@ -5,6 +5,24 @@ from bson import ObjectId
 
 
 def process_one_update(ranking_udea_reg, colav_reg, collection, affiliation, empty_work):
+    """
+    Method to update a register in the kahi database from ranking database if it is found.
+    This means that the register is already on the kahi database and it is being updated with new information.
+
+
+    Parameters
+    ----------
+    ranking_udea_reg : dict
+        Register from the ranking database
+    colav_reg : dict
+        Register from the colav database (kahi database for impactu)
+    collection : pymongo.collection.Collection
+        Collection in the database where the register is stored (Collection of works)
+    affiliation : dict
+        Affiliation of the author
+    empty_work : dict
+        Empty dictionary with the structure of a register in the database
+    """
     # updated
     for upd in colav_reg["updated"]:
         if upd["source"] == "ranking_udea":
@@ -34,6 +52,31 @@ def process_one_update(ranking_udea_reg, colav_reg, collection, affiliation, emp
 
 
 def process_one_insert(ranking_udea_reg, db, collection, affiliation, empty_work, es_handler, verbose=0):
+    """
+    Function to insert a new register in the database if it is not found in the colav(kahi works) database.
+    This means that the register is not on the database and it is being inserted.
+
+    For similarity purposes, the register is also inserted in the elasticsearch index,
+    all the elastic search fields are filled with the information from the register and it is
+    handled by Mohan's Similarity class.
+
+    Parameters:
+    ----------
+    ranking_udea_reg: dict
+        Register from the ranking database
+    db: pymongo.database.Database
+        Database where the collection is stored (kahi database)
+    collection: pymongo.collection.Collection
+        Collection in the database where the register is stored (Collection of works)
+    affiliation: dict
+        Affiliation of the author
+    empty_work: dict
+        Empty dictionary with the structure of a register in the database
+    es_handler: Mohan.Similarity.Similarity
+        Handler for the elasticsearch index
+    verbose: int
+        Verbosity level
+    """
     # parse
     entry = parse_ranking_udea(
         ranking_udea_reg, affiliation, empty_work.copy())
@@ -193,6 +236,29 @@ def process_one_insert(ranking_udea_reg, db, collection, affiliation, empty_work
 
 
 def process_one(ranking_udea_reg, db, collection, affiliation, empty_work, similarity, es_handler, verbose=0):
+    """
+    Function to process a single register from the ranking database.
+    This function is used to insert or update a register in the colav(kahi works) database.
+
+    Parameters:
+    ----------
+    ranking_udea_reg: dict
+        Register from the ranking database
+    db: pymongo.database.Database
+        Database where the collection is stored (kahi database)
+    collection: pymongo.collection.Collection
+        Collection in the database where the register is stored (Collection of works)
+    affiliation: dict
+        Affiliation of the author
+    empty_work: dict
+        Empty dictionary with the structure of a register in the database
+    similarity: bool
+        Flag to indicate if the register should be inserted in the elasticsearch index
+    es_handler: Mohan.Similarity.Similarity
+        Handler for the elasticsearch index
+    verbose: int
+        Verbosity level
+    """
     doi = None
     # register has doi
     if ranking_udea_reg["DOI"]:
