@@ -265,7 +265,7 @@ def process_one_insert(scholar_reg, db, collection, empty_work, es_handler, verb
             print("No elasticsearch index provided")
 
 
-def process_one(scholar_reg, db, collection, empty_work, es_handler, verbose=0):
+def process_one(scholar_reg, db, collection, empty_work, similarity, es_handler, verbose=0):
     """
     Function to process a single register from the scholar database.
     This function is used to insert or update a register in the colav(kahi works) database.
@@ -299,7 +299,7 @@ def process_one(scholar_reg, db, collection, empty_work, es_handler, verbose=0):
         else:  # insert a new register
             process_one_insert(
                 scholar_reg, db, collection, empty_work, es_handler, verbose=verbose)
-    else:
+    elif similarity:
         if es_handler:
             # Search in elasticsearch
             response = es_handler.search_work(
@@ -330,7 +330,8 @@ def process_one(scholar_reg, db, collection, empty_work, es_handler, verbose=0):
                             response["_id"]))
                         print(response)
             else:  # insert new register
-                print("INFO: found no register in elasticsearch")
+                if verbose > 4:
+                    print("INFO: found no register in elasticsearch")
                 process_one_insert(scholar_reg, db, collection,
                                    empty_work, es_handler, verbose=0)
         else:

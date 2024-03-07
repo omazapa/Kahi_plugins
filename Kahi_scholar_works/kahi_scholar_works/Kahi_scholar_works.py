@@ -112,6 +112,7 @@ class Kahi_scholar_works(KahiBase):
                 db,
                 collection,
                 self.empty_work(),
+                False if self.task == "doi" else True,
                 es_handler=self.es_handler,
                 verbose=self.verbose
             ) for paper in paper_cursor
