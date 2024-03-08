@@ -22,110 +22,15 @@ class Kahi_staff_udea_affiliations(KahiBase):
         self.collection.create_index("types.type")
         self.collection.create_index([("names.name", TEXT)])
 
-        self.file_path = config["staff_udea_affiliations"]["file_path"]
-        self.data = read_excel(self.file_path)
-
         # logs for higher verbosity
         self.facs_inserted = {}
         self.deps_inserted = {}
         self.fac_dep = []
 
-        self.udea_reg = self.collection.find_one(
-            {"names.name": "University of Antioquia"})
-        if not self.udea_reg:
-            print(
-                "University of Antioquia not found in database. Creating it with minimal information...")
-            udea_reg = self.empty_affiliation()
-            udea_reg["updated"].append(
-                {"time": int(time()), "source": "manual"})
-            udea_reg["names"] = [
-                {"name": 'Universidad de Antioquia',
-                    "lang": 'es', "source": "staff_udea"}
-            ]
-            udea_reg["abbreviations"] = ['UdeA']
-            udea_reg["year_established"] = 1803
-            udea_reg["addresses"] = [
-                {
-                    "lat": 6.267417,
-                    "lng": -75.568389,
-                    "postcode": '',
-                    "state": "Antioquia",
-                    "city": 'Medellín',
-                    "country": 'Colombia',
-                    "country_code": 'CO'
-                }
-            ]
-            udea_reg["external_ids"] = [
-                {"source": 'isni', "id": '0000 0000 8882 5269'},
-                {"source": 'fundref', "id": '501100005278'},
-                {"source": 'orgref', "id": '2696975'},
-                {"source": 'wikidata', "id": 'Q1258413'},
-                {"source": 'ror', "id": 'https://ror.org/03bp5hc83'},
-                {"source": 'minciencias', "id": '007300000887'},
-                {"source": 'nit', "id": '890980040-8'}
-            ]
-            self.collection.insert_one(udea_reg)
-            self.udea_reg = self.collection.find_one(
-                {"names.name": "Universidad de Antioquia"})
-
-    def fix_names(self, name):  # reg["Nombre fac"]
-        name = name.strip()
-        if name == 'Vic Docencia':
-            name = "Vicerrectoría de Docencia"
-        if name == "Exactas":
-            name = "Facultad de Ciencias Exactas y Naturales"
-        if name == "Sociales":
-            name = "Facultad de Ciencias Sociales y Humanas"
-        if name == "Derecho":
-            name = "Facultad de Derecho y Ciencias Políticas"
-        if name == "Agrarias":
-            name = "Facultad de Ciencias Agrarias"
-        if name == "Est. Políticos":
-            name = "Institutio de Estudios Políticos"
-        if name == "Artes":
-            name = "Facultad de Artes"
-        if name == "Odontología":
-            name = "Facultad de Odontología"
-        if name == "Comunicaciones":
-            name = "Facultad de Comunicaciones y Filología"
-        if name == "Educación":
-            name = "Facultad de Educación"
-        if name == "Idiomas":
-            name = "Escuela de Idiomas"
-        if name == "Filosofía":
-            name = "Instituto de Filosofía"
-        if name == "Económicas":
-            name = "Facultad de Ciencias Económicas"
-        if name == "Ingeniería":
-            name = "Facultad de Ingeniería"
-        if name == "Medicina":
-            name = "Facultad de Medicina"
-        if name == "Farmacéuticas":
-            name = "Facultad de Ciencias Farmacéuticas y Alimentarias"
-        if name == "Microbiología":
-            name = "Escuela de Microbiología"
-        if name == "Salud Pública":
-            name = "Facultad de Salud Pública"
-        if name == "Agrarias":
-            name = "Facultad de Ciecias Agrarias"
-        if name == "Bibliotecología":
-            name = "Escuela Interamericana de Bibliotecología"
-        if name == "Enfermería":
-            name = "Facultad de Enfermería"
-        if name == "Educación Física":
-            name = "Instituto Universitario de Educación Física y Deporte"
-        if name == "Nutrición":
-            name = "Escuela de Nutrición y Dietética"
-        if name == "Corp Ambiental":
-            name = "Corporación Ambiental"
-        if name == "Est. Regionales":
-            name = "Instituto de Estudios Regionales"
-        return name
-
-    def run(self):
+    def staff_affiliation(self, data, institution_name, udea_reg):
         # inserting faculties and departments
-        for idx, reg in self.data.iterrows():
-            name = self.fix_names(reg["Nombre fac"])
+        for idx, reg in data.iterrows():
+            name = reg["Nombre fac"]
             if name not in self.facs_inserted.keys():
                 is_in_db = self.collection.find_one({"names.name": name})
                 if is_in_db:
@@ -143,7 +48,7 @@ class Kahi_staff_udea_affiliations(KahiBase):
                     entry["types"].append(
                         {"source": "staff", "type": "faculty"})
                     entry["relations"].append(
-                        {"id": self.udea_reg["_id"], "name": "Universidad de Antioquia", "types": self.udea_reg["types"]})
+                        {"id": udea_reg["_id"], "name": institution_name, "types": udea_reg["types"]})
 
                     fac = self.collection.insert_one(entry)
                     self.facs_inserted[name] = fac.inserted_id
@@ -167,7 +72,7 @@ class Kahi_staff_udea_affiliations(KahiBase):
                     entry["types"].append(
                         {"source": "staff", "type": "department"})
                     entry["relations"].append(
-                        {"id": self.udea_reg["_id"], "name": "Universidad de Antioquia", "types": self.udea_reg["types"]})
+                        {"id": udea_reg["_id"], "name": institution_name, "types": udea_reg["types"]})
 
                     dep = self.collection.insert_one(entry)
                     self.deps_inserted[reg["Nombre cencos"]] = dep.inserted_id
@@ -191,5 +96,38 @@ class Kahi_staff_udea_affiliations(KahiBase):
                                            "relations": {
                                                "id": fac_reg["_id"],
                                                "name": fac_reg["names"][0]["name"], "types": fac_reg["types"]}}})
+        return 0
 
+    def run(self):
+        if self.verbose > 4:
+            start_time = time()
+
+        for config in self.config["staff_udea_affiliations"]["databases"]:
+            if self.verbose > 0:
+                print("Processing {} database".format(
+                    config["institution_name"]))
+
+            institution_name = config["institution_name"]
+
+            if institution_name == "udea":
+                institution_name = "Universidad de Antioquia"
+            if institution_name == "univalle":
+                institution_name = "University of Valle"
+            if institution_name == "unaula":
+                institution_name = "Universidad Autónoma Latinoamericana"
+            if institution_name == "uec":
+                institution_name = "Universidad Externado de Colombia"
+
+            udea_reg = self.collection.find_one({"names.name": institution_name})
+            if not udea_reg:
+                print("Institution not found in database")
+                raise ValueError(f"Institution {institution_name} not found in database")
+
+            file_path = config["file_path"]
+            data = read_excel(file_path)
+            self.staff_affiliation(self, data, institution_name, udea_reg)
+
+        if self.verbose > 4:
+            print("Execution time: {} minutes".format(
+                round((time() - start_time) / 60, 2)))
         return 0
