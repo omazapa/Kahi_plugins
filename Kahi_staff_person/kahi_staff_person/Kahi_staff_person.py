@@ -6,7 +6,7 @@ import re
 from kahi_impactu_utils.Utils import check_date_format
 
 
-class Kahi_staff_udea_person(KahiBase):
+class Kahi_staff_person(KahiBase):
 
     config = {}
 
