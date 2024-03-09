@@ -21,8 +21,7 @@ Software dependencies will automatically be installed when installing the plugin
 The user must have at least one file from staff's office for example: University of Antioquia.
 
 # Usage
-To use this plugin you must have kahi installed in your system and construct a yaml file such as
-UdeA's staff file
+To use this plugin you must have kahi installed in your system and construct a yaml file such as:
 ```yaml
 config:
   database_url: localhost:27017
@@ -31,47 +30,16 @@ config:
   log_collection: log
 workflow:
   staff_affiliations:
-    institution_name: Universidad de Antioquia
-    file_path: /current/data/colombia/udea/Base de Datos profesores.xlsx
-```
-Unaula staff file
-
-```yaml
-config:
-  database_url: localhost:27017
-  database_name: kahi
-  log_database: kahi_log
-  log_collection: log
-workflow:
-  staff_affiliations:
-    institution_name: Universidad Autónoma Latinoamericana
-    file_path: /current/data/colombia/unaula/Base de Datos profesores.xlsx
-```
-
-Univalle staff file
-```yaml
-config:
-  database_url: localhost:27017
-  database_name: kahi
-  log_database: kahi_log
-  log_collection: log
-workflow:
-  staff_affiliations:
-    institution_name: University of Valle
-    file_path: /current/data/colombia/univalle/Base de Datos profesores.xlsx
-```
-
-UEC staff file
-```yaml
-config:
-  database_url: localhost:27017
-  database_name: kahi
-  log_database: kahi_log
-  log_collection: log
-workflow:
-  staff_affiliations:
-    institution_name: Universidad Externado de Colombia
-    file_path: /current/data/colombia/uec/Base de Datos profesores.xlsx
+    databases:
+      - institution_id: https://ror.org/03bp5hc83 #Universidad de Antioquia (could be any external id ex: ROR_ID, GRID_ID, etc)
+        file_path: staff/Base de Datos profesores 2024_con_clasificación de Colciencias.xlsx
+      - institution_id: https://ror.org/00jb9vg53 #Universidad del Valle
+        file_path: staff/Maestro_empleado DOCENTES SEP 26_NORMALIZADO_univalle_2023.xlsx
+      - institution_id: https://ror.org/05tkb8v92 #Universidad Autónoma Latinoamericana
+        file_path: staff/UNAULA_Profesores regulares y ocasionales vige_NORMALIZADO.xlsx
+      - institution_id: https://ror.org/02xtwpk10 # Universidad Externado de Colombia
+        file_path: staff/Formato reporte de información docentes_2023_NORMALIZADO_uec.xlsx
+    verbose: 5
 ```
 
 

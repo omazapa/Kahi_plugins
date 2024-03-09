@@ -103,16 +103,16 @@ class Kahi_staff_affiliations(KahiBase):
         for config in self.config["staff_affiliations"]["databases"]:
             if self.verbose > 0:
                 print("Processing {} database".format(
-                    config["institution_name"]))
+                    config["institution_id"]))
 
-            institution_name = config["institution_name"]
+            institution_id = config["institution_id"]
 
             staff_reg = self.collection.find_one(
-                {"names.name": institution_name})
+                {"external_ids.id": institution_id})
             if not staff_reg:
                 print("Institution not found in database")
                 raise ValueError(
-                    f"Institution {institution_name} not found in database")
+                    f"Institution {institution_id} not found in database")
 
             file_path = config["file_path"]
             data = read_excel(file_path)
@@ -123,10 +123,11 @@ class Kahi_staff_affiliations(KahiBase):
 
             for aff in ["Nombre fac", "Nombre cencos"]:
                 if aff not in data.columns:
-                    print(f"Column {aff} not found in file {file_path}, and it is required.")
+                    print(
+                        f"Column {aff} not found in file {file_path}, and it is required.")
                     raise ValueError(f"Column {aff} not found in file")
 
-            self.staff_affiliation(data, institution_name, staff_reg)
+            self.staff_affiliation(data, institution_id, staff_reg)
 
         if self.verbose > 4:
             print("Execution time: {} minutes".format(
