@@ -22,17 +22,15 @@ class Kahi_staff_affiliations(KahiBase):
         self.collection.create_index("types.type")
         self.collection.create_index([("names.name", TEXT)])
 
-        # logs for higher verbosity
-        self.facs_inserted = {}
-        self.deps_inserted = {}
-        self.fac_dep = []
+        self.verbose = config["verbose"] if "verbose" in config else 0
 
     def staff_affiliation(self, data, institution_name, staff_reg):
         # inserting faculties and departments
         for idx, reg in data.iterrows():
             name = reg["Nombre fac"]
             if name not in self.facs_inserted.keys():
-                is_in_db = self.collection.find_one({"names.name": name})
+                is_in_db = self.collection.find_one(
+                    {"names.name": name, "relations.id": staff_reg["_id"]})
                 if is_in_db:
                     if name not in self.facs_inserted.keys():
                         self.facs_inserted[name] = is_in_db["_id"]
@@ -55,7 +53,7 @@ class Kahi_staff_affiliations(KahiBase):
 
             if reg["Nombre cencos"] not in self.deps_inserted.keys():
                 is_in_db = self.collection.find_one(
-                    {"names.name": reg["Nombre cencos"]})
+                    {"names.name": reg["Nombre cencos"], "relations.id": staff_reg["_id"]})
                 if is_in_db:
                     if reg["Nombre cencos"] not in self.deps_inserted.keys():
                         self.deps_inserted[reg["Nombre cencos"]
@@ -118,7 +116,12 @@ class Kahi_staff_affiliations(KahiBase):
 
             file_path = config["file_path"]
             data = read_excel(file_path)
-            self.staff_affiliation(self, data, institution_name, staff_reg)
+
+            self.facs_inserted = {}
+            self.deps_inserted = {}
+            self.fac_dep = []
+
+            self.staff_affiliation(data, institution_name, staff_reg)
 
         if self.verbose > 4:
             print("Execution time: {} minutes".format(
