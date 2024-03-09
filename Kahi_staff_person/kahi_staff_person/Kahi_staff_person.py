@@ -22,71 +22,13 @@ class Kahi_staff_person(KahiBase):
         self.collection.create_index("affiliations.id")
         self.collection.create_index([("full_name", TEXT)])
 
-        self.file_path = config["staff_udea_person"]["file_path"]
-        self.data = read_excel(self.file_path, dtype={
-                               "cedula": str, "codfac": str, "ccosto": str, "fecha_nac": str, "fecha_vin": str})
+        self.verbose = config["verbose"] if "verbose" in config else 0
 
-        # logs for higher verbosity
-        self.facs_inserted = {}
-        self.deps_inserted = {}
-        self.fac_dep = []
-
-        self.cedula_dep = {}
-        self.cedula_fac = {}
-        for idx, reg in self.data.iterrows():
-            self.cedula_fac[reg["cedula"]] = reg["Nombre fac"]
-            self.cedula_dep[reg["cedula"]] = reg["Nombre cencos"]
-
-        self.udea_reg = self.db["affiliations"].find_one(
-            {"names.name": "University of Antioquia"})
-        if not self.udea_reg:
-            print(
-                "University of Antioquia not found in database. Creating it with minimal information...")
-            udea_reg = self.empty_affiliation()
-            udea_reg["updated"].append(
-                {"time": int(time()), "source": "manual"})
-            udea_reg["names"] = [
-                {"name": 'University of Antioquia', "lang": 'en'},
-                {"name": "Universitat d'Antioquia", "lang": 'ca'},
-                {"name": 'University of Antioquia', "lang": 'ceb'},
-                {"name": 'Universidad de Antioquia', "lang": 'de'},
-                {"name": 'Universitato de Antjokio', "lang": 'eo'},
-                {"name": 'Universidad de Antioquia', "lang": 'es'},
-                {"name": 'Antioquia Ülikool', "lang": 'et'},
-                {"name": "Université d'Antioquia", "lang": 'fr'},
-                {"name": 'Oilthigh Antioquia', "lang": 'gd'},
-                {"name": 'アンティオキア大学', "lang": 'ja'},
-                {"name": 'Universiteit van Antioquia', "lang": 'nl'},
-                {"name": 'Uniwersytet Antioquia', "lang": 'pl'},
-                {"name": 'Antioquias universitet', "lang": 'sv'},
-                {"name": 'Unibersidad ng Antioquia', "lang": 'tl'},
-                {"name": 'Antiokiya universiteti', "lang": 'uz'}
-            ]
-            udea_reg["abbreviations"] = ['UdeA']
-            udea_reg["year_established"] = 1803
-            udea_reg["addresses"] = [
-                {
-                    "lat": 6.267417,
-                    "lng": -75.568389,
-                    "postcode": '',
-                    "state": "Antioquia",
-                    "city": 'Medellín',
-                    "country": 'Colombia',
-                    "country_code": 'CO'
-                }
-            ]
-            udea_reg["external_ids"] = [
-                {"source": 'isni', "id": '0000 0000 8882 5269'},
-                {"source": 'fundref', "id": '501100005278'},
-                {"source": 'orgref', "id": '2696975'},
-                {"source": 'wikidata', "id": 'Q1258413'},
-                {"source": 'ror', "id": 'https://ror.org/03bp5hc83'},
-                {"source": 'minciencias', "id": '007300000887'},
-                {"source": 'nit', "id": '890980040-8'}
-            ]
-            self.db["affiliations"].insert_one(udea_reg)
-            self.udea_reg = self.db["affiliations"].find_one(
-                {"names.name": "University of Antioquia"})
+        self.required_columns = ['cedula', 'codfac', 'Nombre fac', 'ccosto', 'Nombre cencos', 'tipo_doc',
+                                 'nombre', 'clase_emp', 'vincula', 'fecha_vin',
+                                 'Tiempo en la universidad', 'fecha_nac', 'Edad', 'nivelacad',
+                                 'categoria', 'sexo',
+                                 'nombres', 'apellidos']
 
     # noqa: W605
     def split_names(self, s, exceptions=['GIL', 'LEW', 'LIZ', 'PAZ', 'REY', 'RIO', 'ROA', 'RUA', 'SUS', 'ZEA']):
@@ -146,60 +88,6 @@ class Kahi_staff_person(KahiBase):
              }
         return d
 
-    def fix_names(self, name):  # reg["Nombre fac"]
-        name = name.strip()
-        if name == 'Vic Docencia':
-            name = "Vicerrectoría de Docencia"
-        if name == "Exactas":
-            name = "Facultad de Ciencias Exactas y Naturales"
-        if name == "Sociales":
-            name = "Facultad de Ciencias Sociales y Humanas"
-        if name == "Derecho":
-            name = "Facultad de Derecho y Ciencias Políticas"
-        if name == "Agrarias":
-            name = "Facultad de Ciencias Agrarias"
-        if name == "Est. Políticos":
-            name = "Institutio de Estudios Políticos"
-        if name == "Artes":
-            name = "Facultad de Artes"
-        if name == "Odontología":
-            name = "Facultad de Odontología"
-        if name == "Comunicaciones":
-            name = "Facultad de Comunicaciones y Filología"
-        if name == "Educación":
-            name = "Facultad de Educación"
-        if name == "Idiomas":
-            name = "Escuela de Idiomas"
-        if name == "Filosofía":
-            name = "Instituto de Filosofía"
-        if name == "Económicas":
-            name = "Facultad de Ciencias Económicas"
-        if name == "Ingeniería":
-            name = "Facultad de Ingeniería"
-        if name == "Medicina":
-            name = "Facultad de Medicina"
-        if name == "Farmacéuticas":
-            name = "Facultad de Ciencias Farmacéuticas y Alimentarias"
-        if name == "Microbiología":
-            name = "Escuela de Microbiología"
-        if name == "Salud Pública":
-            name = "Facultad de Salud Pública"
-        if name == "Agrarias":
-            name = "Facultad de Ciecias Agrarias"
-        if name == "Bibliotecología":
-            name = "Escuela Interamericana de Bibliotecología"
-        if name == "Enfermería":
-            name = "Facultad de Enfermería"
-        if name == "Educación Física":
-            name = "Instituto Universitario de Educación Física y Deporte"
-        if name == "Nutrición":
-            name = "Escuela de Nutrición y Dietética"
-        if name == "Corp Ambiental":
-            name = "Corporación Ambiental"
-        if name == "Est. Regionales":
-            name = "Instituto de Estudios Regionales"
-        return name
-
     def process_staff(self):
         for idx in list(self.cedula_dep.keys()):
             check_db = self.collection.find_one({"external_ids.id": idx})
@@ -220,15 +108,15 @@ class Kahi_staff_person(KahiBase):
                     aff_time = check_date_format(reg["fecha_vin"])
                 else:
                     aff_time = None
-                name = self.udea_reg["names"][0]["name"]
-                for n in self.udea_reg["names"]:
+                name = self.staff_reg["names"][0]["name"]
+                for n in self.staff_reg["names"]:
                     if n["lang"] == "es":
                         name = n["name"]
                         break
                     elif n["lang"] == "en":
                         name = n["name"]
-                udea_aff = {"id": self.udea_reg["_id"], "name": name,
-                            "types": self.udea_reg["types"], "start_date": aff_time, "end_date": -1}
+                udea_aff = {"id": self.staff_reg["_id"], "name": name,
+                            "types": self.staff_reg["types"], "start_date": aff_time, "end_date": -1}
                 if udea_aff not in entry["affiliations"]:
                     entry["affiliations"].append(udea_aff)
                 if reg["tipo_doc"] == "CC":
@@ -256,7 +144,7 @@ class Kahi_staff_person(KahiBase):
                     if dep_affiliation not in entry["affiliations"]:
                         entry["affiliations"].append(dep_affiliation)
                 fac = self.db["affiliations"].find_one(
-                    {"names.name": self.fix_names(reg["Nombre fac"])})
+                    {"names.name": reg["Nombre fac"]})
                 if fac:
                     name = fac["names"][0]["name"]
                     for n in fac["names"]:
@@ -286,5 +174,51 @@ class Kahi_staff_person(KahiBase):
             self.collection.insert_one(entry)
 
     def run(self):
-        self.process_staff()
+        if self.verbose > 4:
+            start_time = time()
+
+        for config in self.config["staff_person"]["databases"]:
+            if self.verbose > 0:
+                print("Processing {} database".format(
+                    config["institution_name"]))
+
+            institution_name = config["institution_name"]
+
+            self.staff_reg = self.db["affiliations"].find_one(
+                {"names.name": institution_name})
+            if not self.staff_reg:
+                print("Institution not found in database")
+                raise ValueError(
+                    f"Institution {institution_name} not found in database")
+
+            file_path = config["file_path"]
+            self.data = read_excel(file_path, dtype={
+                "cedula": str, "codfac": str, "ccosto": str, "fecha_nac": str, "fecha_vin": str})
+
+            # logs for higher verbosity
+            self.facs_inserted = {}
+            self.deps_inserted = {}
+            self.fac_dep = []
+
+            self.cedula_dep = {}
+            self.cedula_fac = {}
+            for idx, reg in self.data.iterrows():
+                self.cedula_fac[reg["cedula"]] = reg["Nombre fac"]
+                self.cedula_dep[reg["cedula"]] = reg["Nombre cencos"]
+
+            self.facs_inserted = {}
+            self.deps_inserted = {}
+            self.fac_dep = []
+
+            for aff in self.required_columns:
+                if aff not in self.data.columns:
+                    print(
+                        f"Column {aff} not found in file {file_path}, and it is required.")
+                    raise ValueError(f"Column {aff} not found in file {file_path}")
+
+            self.process_staff()
+
+        if self.verbose > 4:
+            print("Execution time: {} minutes".format(
+                round((time() - start_time) / 60, 2)))
         return 0

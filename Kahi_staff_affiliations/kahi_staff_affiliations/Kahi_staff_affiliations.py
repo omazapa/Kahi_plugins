@@ -121,6 +121,11 @@ class Kahi_staff_affiliations(KahiBase):
             self.deps_inserted = {}
             self.fac_dep = []
 
+            for aff in ["Nombre fac", "Nombre cencos"]:
+                if aff not in data.columns:
+                    print(f"Column {aff} not found in file {file_path}, and it is required.")
+                    raise ValueError(f"Column {aff} not found in file")
+
             self.staff_affiliation(data, institution_name, staff_reg)
 
         if self.verbose > 4:
