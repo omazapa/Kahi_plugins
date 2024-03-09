@@ -109,19 +109,12 @@ class Kahi_staff_udea_affiliations(KahiBase):
 
             institution_name = config["institution_name"]
 
-            if institution_name == "udea":
-                institution_name = "Universidad de Antioquia"
-            if institution_name == "univalle":
-                institution_name = "University of Valle"
-            if institution_name == "unaula":
-                institution_name = "Universidad Autónoma Latinoamericana"
-            if institution_name == "uec":
-                institution_name = "Universidad Externado de Colombia"
-
-            udea_reg = self.collection.find_one({"names.name": institution_name})
+            udea_reg = self.collection.find_one(
+                {"names.name": institution_name})
             if not udea_reg:
                 print("Institution not found in database")
-                raise ValueError(f"Institution {institution_name} not found in database")
+                raise ValueError(
+                    f"Institution {institution_name} not found in database")
 
             file_path = config["file_path"]
             data = read_excel(file_path)

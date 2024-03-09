@@ -22,6 +22,7 @@ The user must have at least one file from staff's office in the University of An
 
 # Usage
 To use this plugin you must have kahi installed in your system and construct a yaml file such as
+UdeA's staff file
 ```yaml
 config:
   database_url: localhost:27017
@@ -30,8 +31,49 @@ config:
   log_collection: log
 workflow:
   staff_udea_affiliations:
-    file_path: /current/data/colombia/udea/Base de Datos profesores 2019.xlsx
+    institution_name: Universidad de Antioquia
+    file_path: /current/data/colombia/udea/Base de Datos profesores.xlsx
 ```
+Unaula staff file
+
+```yaml
+config:
+  database_url: localhost:27017
+  database_name: kahi
+  log_database: kahi_log
+  log_collection: log
+workflow:
+  staff_udea_affiliations:
+    institution_name: Universidad Autónoma Latinoamericana
+    file_path: /current/data/colombia/unaula/Base de Datos profesores.xlsx
+```
+
+Univalle staff file
+```yaml
+config:
+  database_url: localhost:27017
+  database_name: kahi
+  log_database: kahi_log
+  log_collection: log
+workflow:
+  staff_udea_affiliations:
+    institution_name: University of Valle
+    file_path: /current/data/colombia/univalle/Base de Datos profesores.xlsx
+```
+
+UEC staff file
+```yaml
+config:
+  database_url: localhost:27017
+  database_name: kahi
+  log_database: kahi_log
+  log_collection: log
+workflow:
+  staff_udea_affiliations:
+    institution_name: Universidad Externado de Colombia
+    file_path: /current/data/colombia/uec/Base de Datos profesores.xlsx
+```
+
 
 # License
 BSD-3-Clause License 
