@@ -5,7 +5,7 @@ from pandas import read_excel
 from time import time
 
 
-class Kahi_staff_udea_affiliations(KahiBase):
+class Kahi_staff_affiliations(KahiBase):
 
     config = {}
 
@@ -27,7 +27,7 @@ class Kahi_staff_udea_affiliations(KahiBase):
         self.deps_inserted = {}
         self.fac_dep = []
 
-    def staff_affiliation(self, data, institution_name, udea_reg):
+    def staff_affiliation(self, data, institution_name, staff_reg):
         # inserting faculties and departments
         for idx, reg in data.iterrows():
             name = reg["Nombre fac"]
@@ -44,11 +44,11 @@ class Kahi_staff_udea_affiliations(KahiBase):
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
-                        {"name": name, "lang": "es", "source": "staff_udea"})
+                        {"name": name, "lang": "es", "source": "staff"})
                     entry["types"].append(
                         {"source": "staff", "type": "faculty"})
                     entry["relations"].append(
-                        {"id": udea_reg["_id"], "name": institution_name, "types": udea_reg["types"]})
+                        {"id": staff_reg["_id"], "name": institution_name, "types": staff_reg["types"]})
 
                     fac = self.collection.insert_one(entry)
                     self.facs_inserted[name] = fac.inserted_id
@@ -68,11 +68,11 @@ class Kahi_staff_udea_affiliations(KahiBase):
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
-                        {"name": reg["Nombre cencos"], "lang": "es", "source": "staff_udea"})
+                        {"name": reg["Nombre cencos"], "lang": "es", "source": "staff"})
                     entry["types"].append(
                         {"source": "staff", "type": "department"})
                     entry["relations"].append(
-                        {"id": udea_reg["_id"], "name": institution_name, "types": udea_reg["types"]})
+                        {"id": staff_reg["_id"], "name": institution_name, "types": staff_reg["types"]})
 
                     dep = self.collection.insert_one(entry)
                     self.deps_inserted[reg["Nombre cencos"]] = dep.inserted_id
@@ -102,23 +102,23 @@ class Kahi_staff_udea_affiliations(KahiBase):
         if self.verbose > 4:
             start_time = time()
 
-        for config in self.config["staff_udea_affiliations"]["databases"]:
+        for config in self.config["staff_affiliations"]["databases"]:
             if self.verbose > 0:
                 print("Processing {} database".format(
                     config["institution_name"]))
 
             institution_name = config["institution_name"]
 
-            udea_reg = self.collection.find_one(
+            staff_reg = self.collection.find_one(
                 {"names.name": institution_name})
-            if not udea_reg:
+            if not staff_reg:
                 print("Institution not found in database")
                 raise ValueError(
                     f"Institution {institution_name} not found in database")
 
             file_path = config["file_path"]
             data = read_excel(file_path)
-            self.staff_affiliation(self, data, institution_name, udea_reg)
+            self.staff_affiliation(self, data, institution_name, staff_reg)
 
         if self.verbose > 4:
             print("Execution time: {} minutes".format(
