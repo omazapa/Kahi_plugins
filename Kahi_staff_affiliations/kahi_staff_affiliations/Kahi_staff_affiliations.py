@@ -113,6 +113,13 @@ class Kahi_staff_affiliations(KahiBase):
                 print("Institution not found in database")
                 raise ValueError(
                     f"Institution {institution_id} not found in database")
+            else:
+                institution_name = ""
+                for name in staff_reg["names"]:
+                    if name["lang"] == "en":
+                        institution_name = name
+                if institution_name == "":  # if en not available take any
+                    institution_name = staff_reg["names"][0]["name"]
 
             file_path = config["file_path"]
             data = read_excel(file_path)
@@ -127,7 +134,7 @@ class Kahi_staff_affiliations(KahiBase):
                         f"Column {aff} not found in file {file_path}, and it is required.")
                     raise ValueError(f"Column {aff} not found in file")
 
-            self.staff_affiliation(data, institution_id, staff_reg)
+            self.staff_affiliation(data, institution_name, staff_reg)
 
         if self.verbose > 4:
             print("Execution time: {} minutes".format(
