@@ -180,16 +180,16 @@ class Kahi_staff_person(KahiBase):
         for config in self.config["staff_person"]["databases"]:
             if self.verbose > 0:
                 print("Processing {} database".format(
-                    config["institution_name"]))
+                    config["institution_id"]))
 
-            institution_name = config["institution_name"]
+            institution_id = config["institution_id"]
 
             self.staff_reg = self.db["affiliations"].find_one(
-                {"names.name": institution_name})
+                {"external_ids.id": institution_id})
             if not self.staff_reg:
                 print("Institution not found in database")
                 raise ValueError(
-                    f"Institution {institution_name} not found in database")
+                    f"Institution {institution_id} not found in database")
 
             file_path = config["file_path"]
             self.data = read_excel(file_path, dtype={

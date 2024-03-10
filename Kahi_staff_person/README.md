@@ -31,13 +31,13 @@ config:
 workflow:
   staff_person:
     databases:
-      - institution_name: Universidad de Antioquia
+      - institution_id: https://ror.org/03bp5hc83 # Universidad de Antioquia
         file_path: staff/Base de Datos profesores 2024_con_clasificación de Colciencias.xlsx
-      - institution_name: Universidad del Valle
+      - institution_id: https://ror.org/00jb9vg53 # Universidad del Valle
         file_path: staff/Maestro_empleado DOCENTES SEP 26_NORMALIZADO_univalle_2023.xlsx
-      - institution_name: Universidad Autónoma Latinoamericana
+      - institution_id: https://ror.org/05tkb8v92 #Universidad Autónoma Latinoamericana
         file_path: staff/UNAULA_Profesores regulares y ocasionales vige_NORMALIZADO.xlsx
-      - institution_name: Universidad Externado de Colombia
+      - institution_id: https://ror.org/02xtwpk10 # Universidad Externado de Colombia
         file_path: staff/Formato reporte de información docentes_2023_NORMALIZADO_uec.xlsx
     verbose: 5
 ```
