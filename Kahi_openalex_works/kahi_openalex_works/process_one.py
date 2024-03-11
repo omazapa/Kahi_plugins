@@ -376,8 +376,8 @@ def process_one(oa_reg, db, collection, empty_work, es_handler, verbose=0):
                 colav_reg = collection.find_one(
                     {"_id": ObjectId(response["_id"])})
                 if colav_reg:
-                    process_one_update(oa_reg, colav_reg,
-                                       collection, empty_work, es_handler, verbose=0)
+                    process_one_update(oa_reg, colav_reg, db,
+                                       collection, empty_work, verbose=verbose)
                 else:
                     if verbose > 4:
                         print("Register with {} not found in mongodb".format(
