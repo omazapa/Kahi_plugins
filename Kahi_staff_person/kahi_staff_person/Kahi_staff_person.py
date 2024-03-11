@@ -119,14 +119,16 @@ class Kahi_staff_person(KahiBase):
                             "types": self.staff_reg["types"], "start_date": aff_time, "end_date": -1}
                 if udea_aff not in entry["affiliations"]:
                     entry["affiliations"].append(udea_aff)
-                if reg["tipo_doc"] == "CC":
-                    id_entry = {"source": "Cédula de Ciudadanía", "id": idx}
+                if reg["tipo_doc"].strip() == "CC":
+                    id_entry = {"provenance": "staff", "source": "Cédula de Ciudadanía", "id": idx}
                     if id_entry not in entry["external_ids"]:
                         entry["external_ids"].append(id_entry)
-                elif reg["tipo_doc"] == "CE":
-                    id_entry = {"source": "Cédula de Extranjería", "id": idx}
+                elif reg["tipo_doc"].strip() == "CE":
+                    id_entry = {"provenance": "staff", "source": "Cédula de Extranjería", "id": idx}
                     if id_entry not in entry["external_ids"]:
                         entry["external_ids"].append(id_entry)
+                else:
+                    print(f"ERROR: tipo_doc have to be CC or CE not {reg['tipo_doc']}")
                 if reg["nombre"].lower() not in entry["aliases"]:
                     entry["aliases"].append(reg["nombre"].lower())
                 dep = self.db["affiliations"].find_one(
