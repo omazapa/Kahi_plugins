@@ -410,6 +410,8 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, verb
             if "full_name" in author.keys():
                 authors.append(author["full_name"])
         work["authors"] = authors
+        work["provenance"] = "scienti"
+
         es_handler.insert_work(_id=str(response.inserted_id), work=work)
     else:
         if verbose > 4:
