@@ -3,7 +3,7 @@ from pymongo import MongoClient, TEXT
 from bson.objectid import ObjectId
 from pandas import read_excel
 from time import time
-
+from kahi_impactu_utils.String import title_case
 
 class Kahi_staff_affiliations(KahiBase):
 
@@ -28,6 +28,7 @@ class Kahi_staff_affiliations(KahiBase):
         # inserting faculties and departments
         for idx, reg in data.iterrows():
             name = reg["Nombre fac"]
+            name = title_case(name)
             if name not in self.facs_inserted.keys():
                 is_in_db = self.collection.find_one(
                     {"names.name": name, "relations.id": staff_reg["_id"]})
@@ -50,15 +51,14 @@ class Kahi_staff_affiliations(KahiBase):
 
                     fac = self.collection.insert_one(entry)
                     self.facs_inserted[name] = fac.inserted_id
-
-            if reg["Nombre cencos"] not in self.deps_inserted.keys():
+            name_dep = title_case(reg["Nombre cencos"])
+            if name_dep not in self.deps_inserted.keys():
                 is_in_db = self.collection.find_one(
-                    {"names.name": reg["Nombre cencos"], "relations.id": staff_reg["_id"]})
+                    {"names.name": name_dep, "relations.id": staff_reg["_id"]})
                 if is_in_db:
-                    if reg["Nombre cencos"] not in self.deps_inserted.keys():
-                        self.deps_inserted[reg["Nombre cencos"]
-                                           ] = is_in_db["_id"]
-                        print(reg["Nombre cencos"], " already in db")
+                    if name_dep not in self.deps_inserted.keys():
+                        self.deps_inserted[name_dep] = is_in_db["_id"]
+                        print(name_dep, " already in db")
                     # continue
                     # may be updatable, check accordingly
                 else:
@@ -66,17 +66,17 @@ class Kahi_staff_affiliations(KahiBase):
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
-                        {"name": reg["Nombre cencos"], "lang": "es", "source": "staff"})
+                        {"name": name_dep, "lang": "es", "source": "staff"})
                     entry["types"].append(
                         {"source": "staff", "type": "department"})
                     entry["relations"].append(
                         {"id": staff_reg["_id"], "name": institution_name, "types": staff_reg["types"]})
 
                     dep = self.collection.insert_one(entry)
-                    self.deps_inserted[reg["Nombre cencos"]] = dep.inserted_id
+                    self.deps_inserted[name_dep] = dep.inserted_id
 
-            if (name, reg["Nombre cencos"]) not in self.fac_dep:
-                self.fac_dep.append((name, reg["Nombre cencos"]))
+            if (name, name_dep) not in self.fac_dep:
+                self.fac_dep.append((name, name_dep))
 
         # Creating relations between faculties and departments
         for fac, dep in self.fac_dep:
