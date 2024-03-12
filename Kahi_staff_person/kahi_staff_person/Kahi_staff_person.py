@@ -4,6 +4,7 @@ from pandas import read_excel
 from time import time
 import re
 from kahi_impactu_utils.Utils import check_date_format
+from kahi_impactu_utils.String import title_case
 
 
 class Kahi_staff_person(KahiBase):
@@ -60,6 +61,7 @@ class Kahi_staff_person(KahiBase):
             s='ROMANO ANTONIO ENEA' # Foreing → LAST_NAME NAMES
         """
         s = s.title()
+        s = title_case(s)
         exceptions = [e.title() for e in exceptions]
         sl = re.sub('(\s\w{1,3})\s', r'\1-', s, re.UNICODE)  # noqa: W605
         sl = re.sub('(\s\w{1,3}\-\w{1,3})\s', r'\1-', sl, re.UNICODE)  # noqa: W605
@@ -115,20 +117,24 @@ class Kahi_staff_person(KahiBase):
                         break
                     elif n["lang"] == "en":
                         name = n["name"]
+                name = title_case(name)
                 udea_aff = {"id": self.staff_reg["_id"], "name": name,
                             "types": self.staff_reg["types"], "start_date": aff_time, "end_date": -1}
                 if udea_aff not in entry["affiliations"]:
                     entry["affiliations"].append(udea_aff)
                 if reg["tipo_doc"].strip() == "CC":
-                    id_entry = {"provenance": "staff", "source": "Cédula de Ciudadanía", "id": idx}
+                    id_entry = {"provenance": "staff",
+                                "source": "Cédula de Ciudadanía", "id": idx}
                     if id_entry not in entry["external_ids"]:
                         entry["external_ids"].append(id_entry)
                 elif reg["tipo_doc"].strip() == "CE":
-                    id_entry = {"provenance": "staff", "source": "Cédula de Extranjería", "id": idx}
+                    id_entry = {"provenance": "staff",
+                                "source": "Cédula de Extranjería", "id": idx}
                     if id_entry not in entry["external_ids"]:
                         entry["external_ids"].append(id_entry)
                 else:
-                    print(f"ERROR: tipo_doc have to be CC or CE not {reg['tipo_doc']}")
+                    print(
+                        f"ERROR: tipo_doc have to be CC or CE not {reg['tipo_doc']}")
                 if reg["nombre"].lower() not in entry["aliases"]:
                     entry["aliases"].append(reg["nombre"].lower())
                 dep = self.db["affiliations"].find_one(
@@ -141,6 +147,7 @@ class Kahi_staff_person(KahiBase):
                             break
                         elif n["lang"] == "en":
                             name = n["name"]
+                    name = title_case(name)
                     dep_affiliation = {
                         "id": dep["_id"], "name": name, "types": dep["types"], "start_date": aff_time, "end_date": -1}
                     if dep_affiliation not in entry["affiliations"]:
@@ -155,6 +162,7 @@ class Kahi_staff_person(KahiBase):
                             break
                         elif n["lang"] == "en":
                             name = n["name"]
+                    name = title_case(name)
                     fac_affiliation = {
                         "id": fac["_id"], "name": name, "types": fac["types"], "start_date": aff_time, "end_date": -1}
                     if fac_affiliation not in entry["affiliations"]:
@@ -205,8 +213,9 @@ class Kahi_staff_person(KahiBase):
             self.cedula_dep = {}
             self.cedula_fac = {}
             for idx, reg in self.data.iterrows():
-                self.cedula_fac[reg["cedula"]] = reg["Nombre fac"]
-                self.cedula_dep[reg["cedula"]] = reg["Nombre cencos"]
+                self.cedula_fac[reg["cedula"]] = title_case(reg["Nombre fac"])
+                self.cedula_dep[reg["cedula"]] = title_case(
+                    reg["Nombre cencos"])
 
             self.facs_inserted = {}
             self.deps_inserted = {}
@@ -216,7 +225,8 @@ class Kahi_staff_person(KahiBase):
                 if aff not in self.data.columns:
                     print(
                         f"Column {aff} not found in file {file_path}, and it is required.")
-                    raise ValueError(f"Column {aff} not found in file {file_path}")
+                    raise ValueError(
+                        f"Column {aff} not found in file {file_path}")
 
             self.process_staff()
 
