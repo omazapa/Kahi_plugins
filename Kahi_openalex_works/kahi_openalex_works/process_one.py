@@ -310,6 +310,8 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
             if "full_name" in author.keys():
                 authors.append(author["full_name"])
         work["authors"] = authors
+        work["provenance"] = "openalex"
+
         es_handler.insert_work(_id=str(response.inserted_id), work=work)
 
 
