@@ -2,6 +2,7 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, ASCENDING, TEXT
 from time import time
 from kahi_impactu_utils.Utils import check_date_format, get_id_from_url
+from kahi_impactu_utils.String import title_case
 
 
 class Kahi_scienti_person(KahiBase):
@@ -88,15 +89,18 @@ class Kahi_scienti_person(KahiBase):
                                    "source": "orcid", "id": author["COD_ORCID"]}
                             if rec not in person["external_ids"]:
                                 person["external_ids"].append(rec)
-                person["first_names"] = author["TXT_NAMES_RH"].strip().split()
+                person["first_names"] = title_case(author["TXT_NAMES_RH"]).strip().split()
                 person["last_names"] = []
                 if "TXT_PRIM_APELL" in author.keys():
-                    person["last_names"].append(author["TXT_PRIM_APELL"])
+                    person["last_names"].append(
+                        title_case(author["TXT_PRIM_APELL"]))
                 if "TXT_SEG_APELL" in author.keys():
                     if author["TXT_SEG_APELL"] is not None:
-                        person["last_names"].append(author["TXT_SEG_APELL"])
+                        person["last_names"].append(
+                            title_case(author["TXT_SEG_APELL"]))
                 initials = "".join([p[0].upper()
                                    for p in person["first_names"]])
+                person["full_name"] = title_case(person["full_name"])
 
                 marital = None
                 if "TPO_ESTADO_CIVIL" in author.keys():
@@ -162,6 +166,7 @@ class Kahi_scienti_person(KahiBase):
                                     time_str += "-" + \
                                         str(prod["NRO_MES_PRESENTA"])
                                 aff_time = check_date_format(time_str)
+                                name = title_case(name)
                                 group_entry = {
                                     "id": group_db["_id"], "name": name, "types": group_db["types"], "start_date": aff_time, "end_date": -1}
                                 if group_entry not in person["affiliations"]:
@@ -280,13 +285,16 @@ class Kahi_scienti_person(KahiBase):
                                 entry["external_ids"].append(
                                     {"provenance": "scienti", "source": "scopus", "id": scopus_id})
                     # implement the right split names here
-                    entry["first_names"] = author["TXT_NAMES_RH"].strip().split()
+                    entry["first_names"] = title_case(
+                        author["TXT_NAMES_RH"]).strip().split()
                     entry["last_names"] = []
                     if "TXT_PRIM_APELL" in author.keys():
-                        entry["last_names"].append(author["TXT_PRIM_APELL"])
+                        entry["last_names"].append(
+                            title_case(author["TXT_PRIM_APELL"]))
                     if "TXT_SEG_APELL" in author.keys():
                         if author["TXT_SEG_APELL"] is not None:
-                            entry["last_names"].append(author["TXT_SEG_APELL"])
+                            entry["last_names"].append(
+                                title_case(author["TXT_SEG_APELL"]))
                     entry["full_name"] = " ".join(
                         entry["first_names"]) + " " + " ".join(entry["last_names"])
                     entry["initials"] = "".join(
@@ -314,6 +322,7 @@ class Kahi_scienti_person(KahiBase):
                                     break
                                 elif n["lang"] == "en":
                                     name = n["name"]
+                            name = title_case(name)
                             entry["affiliations"].append({
                                 "id": aff_db["_id"],
                                 "name": name,
@@ -510,13 +519,16 @@ class Kahi_scienti_person(KahiBase):
                 if entry["external_ids"] == []:
                     continue
                 if author["TXT_NME_RH"]:
-                    entry["first_names"] = author["TXT_NME_RH"].strip().split()
+                    entry["first_names"] = title_case(
+                        author["TXT_NME_RH"]).strip().split()
                 entry["last_names"] = []
                 if "TXT_PRIM_APELL" in author.keys():
-                    entry["last_names"].append(author["TXT_PRIM_APELL"])
+                    entry["last_names"].append(
+                        title_case(author["TXT_PRIM_APELL"]))
                 if "TXT_SEG_APELL" in author.keys():
                     if author["TXT_SEG_APELL"] is not None:
-                        entry["last_names"].append(author["TXT_SEG_APELL"])
+                        entry["last_names"].append(
+                            title_case(author["TXT_SEG_APELL"]))
                 entry["full_name"] = " ".join(
                     entry["first_names"]) + " " + " ".join(entry["last_names"])
                 entry["initials"] = "".join(
