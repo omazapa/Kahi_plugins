@@ -5,6 +5,7 @@ from pandas import read_excel
 from time import time
 from kahi_impactu_utils.String import title_case
 
+
 class Kahi_staff_affiliations(KahiBase):
 
     config = {}
