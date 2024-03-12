@@ -89,12 +89,12 @@ class Kahi_staff_affiliations(KahiBase):
                                        {"$push": {
                                            "relations": {
                                                "id": dep_reg["_id"],
-                                               "name": dep_reg["names"][0]["name"], "types": dep_reg["types"]}}})
+                                               "name": title_case(dep_reg["names"][0]["name"]), "types": dep_reg["types"]}}})
             self.collection.update_one({"_id": dep_reg["_id"]},
                                        {"$push": {
                                            "relations": {
                                                "id": fac_reg["_id"],
-                                               "name": fac_reg["names"][0]["name"], "types": fac_reg["types"]}}})
+                                               "name": title_case(fac_reg["names"][0]["name"]), "types": fac_reg["types"]}}})
         return 0
 
     def run(self):
