@@ -58,7 +58,9 @@ class Kahi_elasticsearch_works(KahiBase):
                 "issue": "",
                 "start_page": "",
                 "end_page": "",
-                "authors": []
+                "authors": [],
+                "provenance": "elasticsearch",
+
             }
             if "titles" not in reg.keys():
                 continue
