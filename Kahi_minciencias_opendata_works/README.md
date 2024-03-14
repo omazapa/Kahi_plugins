@@ -41,7 +41,7 @@ workflow:
     insert_all: False
     num_jobs: 6
     verbose: 1
-
+```
 * WARNING *. This process can take more than an hour.
 
 Note: In case you want to insert all documents that fail to be associated through the similarity processes as new documents, you need to change the value of the insert_all flag to True in the workflow
