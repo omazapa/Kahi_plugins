@@ -457,34 +457,34 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
         # elasticsearch section
         if es_handler:
             # Search in elasticsearch
+            entry = parse_scienti(
+                scienti_reg, empty_work.copy(), verbose=verbose)
+            work = {}
+            work["title"] = entry["titles"][0]["title"]
+            work["source"] = entry["source"]["name"] if "name" in entry["source"].keys(
+            ) else ""
+            work["year"] = entry["year_published"]
+            work["volume"] = entry["bibliographic_info"]["volume"] if "volume" in entry["bibliographic_info"].keys() else ""
+            work["issue"] = entry["bibliographic_info"]["issue"] if "issue" in entry["bibliographic_info"].keys() else ""
+            work["first_page"] = entry["bibliographic_info"]["first_page"] if "first_page" in entry["bibliographic_info"].keys() else ""
+            work["last_page"] = entry["bibliographic_info"]["last_page"] if "last_page" in entry["bibliographic_info"].keys() else ""
             authors = []
-            for author in scienti_reg["author_others"]:
-                authors.append(author["TXT_TOTAL_NAMES_FILTRO"])
-            source = ""
-            volume = ""
-            issue = ""
-            page_start = ""
-            page_end = ""
-            if "article" in scienti_reg["details"][0].keys():
-                if "journal" in scienti_reg["details"][0]["article"][0].keys():
-                    source = scienti_reg["details"][0]["article"][0]["journal"][0]["TXT_NME_REVISTA"]
-                if "TXT_VOLUMEN_REVISTA" in scienti_reg["details"][0]["article"][0].keys():
-                    volume = scienti_reg["details"][0]["article"][0]["TXT_VOLUMEN_REVISTA"]
-                if "TXT_FASCICULO_REVISTA" in scienti_reg["details"][0]["article"][0].keys():
-                    issue = scienti_reg["details"][0]["article"][0]["TXT_FASCICULO_REVISTA"]
-                if "TXT_PAGINA_INICIAL" in scienti_reg["details"][0]["article"][0].keys():
-                    page_start = scienti_reg["details"][0]["article"][0]["TXT_PAGINA_INICIAL"]
-                if "TXT_PAGINA_FINAL" in scienti_reg["details"][0]["article"][0].keys():
-                    page_end = scienti_reg["details"][0]["article"][0]["TXT_PAGINA_FINAL"]
+            for author in entry['authors']:
+                if len(authors) >= 5:
+                    break
+                if "full_name" in author.keys():
+                    authors.append(author["full_name"])
+            work["authors"] = authors
+            work["provenance"] = "scienti"
             response = es_handler.search_work(
-                title=scienti_reg["TXT_NME_PROD_FILTRO"],
-                source=source,
-                year=scienti_reg["NRO_ANO_PRESENTA"],
+                title=work["title"],
+                source=work["source"],
+                year=work["year"],
                 authors=authors,
-                volume=volume,
-                issue=issue,
-                page_start=page_start,
-                page_end=page_end
+                volume=work["volume"],
+                issue=work["issue"],
+                page_start=work["first_page"],
+                page_end=work["last_page"]
             )
 
             if response:  # register already on db... update accordingly
