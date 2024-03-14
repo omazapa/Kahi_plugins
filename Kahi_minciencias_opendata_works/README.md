@@ -44,6 +44,8 @@ workflow:
 
 * WARNING *. This process can take more than an hour.
 
+Note: In case you want to insert all documents that fail to be associated through the similarity processes as new documents, you need to change the value of the insert_all flag to True in the workflow
+
 # License
 BSD-3-Clause License 
 
