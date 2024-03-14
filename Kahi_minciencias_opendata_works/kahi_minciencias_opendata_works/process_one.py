@@ -252,7 +252,7 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
             print("No elasticsearch index provided")
 
 
-def process_one(openadata_reg, db, collection, empty_work, es_handler, similarity, insert_all, verbose=0):
+def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_all, verbose=0):
     """
     Function to process a single register from the minciencias opendata database.
     This function is used to insert or update a register in the colav(kahi works) database.
@@ -290,52 +290,51 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, similarit
                         process_one_update(openadata_reg, colav_reg, db, collection, empty_work, verbose)
                         return
 
-    if similarity:  # does not have a doi identifier
-        # elasticsearch section
-        if es_handler:
-            # Search in elasticsearch
-            authors = []
-            title_work = ""
-            if 'id_persona_pd' in openadata_reg.keys():
-                if openadata_reg["id_persona_pd"]:
-                    author_db = db["person"].find_one(
+    # elasticsearch section
+    if es_handler:
+        # Search in elasticsearch
+        authors = []
+        title_work = ""
+        if 'id_persona_pd' in openadata_reg.keys():
+            if openadata_reg["id_persona_pd"]:
+                author_db = db["person"].find_one(
                     {"external_ids.source": "scienti", "external_ids.id": openadata_reg["id_persona_pd"]})
-                    if not author_db:
-                        author_db = db["person"].find_one({"external_ids.id": openadata_reg["id_persona_pd"]})
-                    if author_db:
-                        authors.append(author_db["full_name"])
-            if 'nme_producto_pd' in openadata_reg.keys():
-                if openadata_reg["nme_producto_pd"]:
-                    title_work = openadata_reg["nme_producto_pd"]
-            if authors and title_work != "":
-                response = es_handler.search_work(
-                    title=title_work,
-                    source="",
-                    year="0",
-                    authors=authors,
-                    volume="",
-                    issue="",
-                    page_start="",
-                    page_end="",
-                )
-                if response:  # register already on db... update accordingly
-                    colav_reg = collection.find_one(
-                        {"_id": ObjectId(response["_id"])})
-                    if colav_reg:
-                        process_one_update(openadata_reg, colav_reg, db, collection, empty_work, verbose)
-                    else:
-                        if verbose > 4:
-                            print("Register with {} not found in mongodb".format(
-                                response["_id"]))
-                else:  # insert new register
-                    if insert_all:
-                        process_one_insert(openadata_reg, db, collection, empty_work, es_handler, verbose)
-            else:
-                if verbose > 4:
-                    if not authors:
-                        print(f"Not authors data for search with elasticsearch with {openadata_reg['id_persona_pd']} in {openadata_reg['_id']}")
-                    else:
-                        print(f"Not title data for search with elasticsearch in {openadata_reg['_id']}")
+                if not author_db:
+                    author_db = db["person"].find_one({"external_ids.id": openadata_reg["id_persona_pd"]})
+                if author_db:
+                    authors.append(author_db["full_name"])
+        if 'nme_producto_pd' in openadata_reg.keys():
+            if openadata_reg["nme_producto_pd"]:
+                title_work = openadata_reg["nme_producto_pd"]
+        if authors and title_work != "":
+            response = es_handler.search_work(
+                title=title_work,
+                source="",
+                year="0",
+                authors=authors,
+                volume="",
+                issue="",
+                page_start="",
+                page_end="",
+            )
+            if response:  # register already on db... update accordingly
+                colav_reg = collection.find_one(
+                    {"_id": ObjectId(response["_id"])})
+                if colav_reg:
+                    process_one_update(openadata_reg, colav_reg, db, collection, empty_work, verbose)
+                else:
+                    if verbose > 4:
+                        print("Register with {} not found in mongodb".format(
+                            response["_id"]))
+            else:  # insert new register
+                if insert_all:
+                    process_one_insert(openadata_reg, db, collection, empty_work, es_handler, verbose)
         else:
             if verbose > 4:
-                print("No elasticsearch index provided")
+                if not authors:
+                    print(f"Not authors data for search with elasticsearch with {openadata_reg['id_persona_pd']} in {openadata_reg['_id']}")
+                else:
+                    print(f"Not title data for search with elasticsearch in {openadata_reg['_id']}")
+    else:
+        if verbose > 4:
+            print("No elasticsearch index provided")

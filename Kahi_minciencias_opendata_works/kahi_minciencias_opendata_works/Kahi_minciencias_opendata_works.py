@@ -128,7 +128,6 @@ class Kahi_minciencias_opendata_works(KahiBase):
                     self.collection,
                     self.empty_work(),
                     self.es_handler,
-                    similarity=True,
                     insert_all=self.insert_all,
                     verbose=self.verbose
                 ) for work in paper_cursor
