@@ -1,2 +1,2 @@
-recursive-include kahi_scienti_works/ *.py
-recursive-include kahi_scienti_works/ *.*
+recursive-include kahi_minciencias_opendata_works/ *.py
+recursive-include kahi_minciencias_opendata_works/ *.*
