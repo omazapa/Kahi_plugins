@@ -119,7 +119,6 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
         else:
             if verbose > 4:
                 print("No author data")
-
     collection.update_one(
         {"_id": colav_reg["_id"]},
         {"$set": {
@@ -299,10 +298,12 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, similarit
             title_work = ""
             if 'id_persona_pd' in openadata_reg.keys():
                 if openadata_reg["id_persona_pd"]:
-                    author_bd = db["person"].find_one(
-                        {"external_ids.id": openadata_reg["id_persona_pd"]})
-                    if author_bd:
-                        authors.append(author_bd["full_name"])
+                    author_db = db["person"].find_one(
+                    {"external_ids.source": "scienti", "external_ids.id": openadata_reg["id_persona_pd"]})
+                    if not author_db:
+                        author_db = db["person"].find_one({"external_ids.id": openadata_reg["id_persona_pd"]})
+                    if author_db:
+                        authors.append(author_db["full_name"])
             if 'nme_producto_pd' in openadata_reg.keys():
                 if openadata_reg["nme_producto_pd"]:
                     title_work = openadata_reg["nme_producto_pd"]
