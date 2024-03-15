@@ -108,7 +108,7 @@ class Kahi_minciencias_opendata_works(KahiBase):
         categories = ['ART-00', 'ART-ART_A1', 'ART-ART_A2', 'ART-ART_B', 'ART-ART_C', 'ART-ART_D', 'ART-GC_ART']
 
         pipeline = [
-            {'$match': {'id_tipo_pd_med': {'$in': list(categories)}}},
+            {'$match': {'id_tipo_pd_med': {'$in': categories}}},
             {'$group': {'_id': '$id_producto_pd', 'originalDoc': {'$first': '$$ROOT'}}},
             {'$replaceRoot': {'newRoot': '$originalDoc'}}
         ]
