@@ -51,10 +51,10 @@ if os.name in ('nt', 'dos'):
 def main():
     setup(
         # Application name:
-        name="Kahi_staff_udea_person",
+        name="Kahi_staff_affiliations",
 
         # Version number (initial):
-        version=get_version('kahi_staff_udea_person/_version.py'),
+        version=get_version('kahi_staff_affiliations/_version.py'),
 
         # Application author details:
         author="Colav",
@@ -71,7 +71,7 @@ def main():
         #
         license="BSD",
 
-        description="Kahi plugin staff_udea_person",
+        description="Kahi plugin staff_affiliations",
 
         long_description=open("README.md").read(),
 

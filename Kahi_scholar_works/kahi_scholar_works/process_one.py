@@ -259,6 +259,8 @@ def process_one_insert(scholar_reg, db, collection, empty_work, es_handler, verb
             if "full_name" in author.keys():
                 authors.append(author["full_name"])
         work["authors"] = authors
+        work["provenance"] = "scholar"
+
         es_handler.insert_work(_id=str(response.inserted_id), work=work)
     else:
         if verbose > 4:
@@ -302,10 +304,11 @@ def process_one(scholar_reg, db, collection, empty_work, similarity, es_handler,
     elif similarity:
         if es_handler:
             # Search in elasticsearch
+            year = str(scholar_reg["year"])
             response = es_handler.search_work(
                 title=scholar_reg["title"],
                 source=scholar_reg["journal"],
-                year=str(scholar_reg["year"]),
+                year=year if year != "" else "-1",  # FIXME, term in ES have to be fixed
                 authors=[auth.split(", ")[-1] + " " + auth.split(", ")[0]
                          for auth in scholar_reg["author"].split(" and ")],
                 volume=scholar_reg["volume"] if "volume" in scholar_reg.keys(

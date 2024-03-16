@@ -3,9 +3,10 @@ from pymongo import MongoClient, TEXT
 from bson.objectid import ObjectId
 from pandas import read_excel
 from time import time
+from kahi_impactu_utils.String import title_case
 
 
-class Kahi_staff_udea_affiliations(KahiBase):
+class Kahi_staff_affiliations(KahiBase):
 
     config = {}
 
@@ -22,17 +23,16 @@ class Kahi_staff_udea_affiliations(KahiBase):
         self.collection.create_index("types.type")
         self.collection.create_index([("names.name", TEXT)])
 
-        # logs for higher verbosity
-        self.facs_inserted = {}
-        self.deps_inserted = {}
-        self.fac_dep = []
+        self.verbose = config["verbose"] if "verbose" in config else 0
 
-    def staff_affiliation(self, data, institution_name, udea_reg):
+    def staff_affiliation(self, data, institution_name, staff_reg):
         # inserting faculties and departments
         for idx, reg in data.iterrows():
             name = reg["Nombre fac"]
+            name = title_case(name)
             if name not in self.facs_inserted.keys():
-                is_in_db = self.collection.find_one({"names.name": name})
+                is_in_db = self.collection.find_one(
+                    {"names.name": name, "relations.id": staff_reg["_id"]})
                 if is_in_db:
                     if name not in self.facs_inserted.keys():
                         self.facs_inserted[name] = is_in_db["_id"]
@@ -44,23 +44,22 @@ class Kahi_staff_udea_affiliations(KahiBase):
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
-                        {"name": name, "lang": "es", "source": "staff_udea"})
+                        {"name": name, "lang": "es", "source": "staff"})
                     entry["types"].append(
                         {"source": "staff", "type": "faculty"})
                     entry["relations"].append(
-                        {"id": udea_reg["_id"], "name": institution_name, "types": udea_reg["types"]})
+                        {"id": staff_reg["_id"], "name": institution_name, "types": staff_reg["types"]})
 
                     fac = self.collection.insert_one(entry)
                     self.facs_inserted[name] = fac.inserted_id
-
-            if reg["Nombre cencos"] not in self.deps_inserted.keys():
+            name_dep = title_case(reg["Nombre cencos"])
+            if name_dep not in self.deps_inserted.keys():
                 is_in_db = self.collection.find_one(
-                    {"names.name": reg["Nombre cencos"]})
+                    {"names.name": name_dep, "relations.id": staff_reg["_id"]})
                 if is_in_db:
-                    if reg["Nombre cencos"] not in self.deps_inserted.keys():
-                        self.deps_inserted[reg["Nombre cencos"]
-                                           ] = is_in_db["_id"]
-                        print(reg["Nombre cencos"], " already in db")
+                    if name_dep not in self.deps_inserted.keys():
+                        self.deps_inserted[name_dep] = is_in_db["_id"]
+                        print(name_dep, " already in db")
                     # continue
                     # may be updatable, check accordingly
                 else:
@@ -68,17 +67,17 @@ class Kahi_staff_udea_affiliations(KahiBase):
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
-                        {"name": reg["Nombre cencos"], "lang": "es", "source": "staff_udea"})
+                        {"name": name_dep, "lang": "es", "source": "staff"})
                     entry["types"].append(
                         {"source": "staff", "type": "department"})
                     entry["relations"].append(
-                        {"id": udea_reg["_id"], "name": institution_name, "types": udea_reg["types"]})
+                        {"id": staff_reg["_id"], "name": institution_name, "types": staff_reg["types"]})
 
                     dep = self.collection.insert_one(entry)
-                    self.deps_inserted[reg["Nombre cencos"]] = dep.inserted_id
+                    self.deps_inserted[name_dep] = dep.inserted_id
 
-            if (name, reg["Nombre cencos"]) not in self.fac_dep:
-                self.fac_dep.append((name, reg["Nombre cencos"]))
+            if (name, name_dep) not in self.fac_dep:
+                self.fac_dep.append((name, name_dep))
 
         # Creating relations between faculties and departments
         for fac, dep in self.fac_dep:
@@ -90,42 +89,53 @@ class Kahi_staff_udea_affiliations(KahiBase):
                                        {"$push": {
                                            "relations": {
                                                "id": dep_reg["_id"],
-                                               "name": dep_reg["names"][0]["name"], "types": dep_reg["types"]}}})
+                                               "name": title_case(dep_reg["names"][0]["name"]), "types": dep_reg["types"]}}})
             self.collection.update_one({"_id": dep_reg["_id"]},
                                        {"$push": {
                                            "relations": {
                                                "id": fac_reg["_id"],
-                                               "name": fac_reg["names"][0]["name"], "types": fac_reg["types"]}}})
+                                               "name": title_case(fac_reg["names"][0]["name"]), "types": fac_reg["types"]}}})
         return 0
 
     def run(self):
         if self.verbose > 4:
             start_time = time()
 
-        for config in self.config["staff_udea_affiliations"]["databases"]:
+        for config in self.config["staff_affiliations"]["databases"]:
             if self.verbose > 0:
                 print("Processing {} database".format(
-                    config["institution_name"]))
+                    config["institution_id"]))
 
-            institution_name = config["institution_name"]
+            institution_id = config["institution_id"]
 
-            if institution_name == "udea":
-                institution_name = "Universidad de Antioquia"
-            if institution_name == "univalle":
-                institution_name = "University of Valle"
-            if institution_name == "unaula":
-                institution_name = "Universidad Autónoma Latinoamericana"
-            if institution_name == "uec":
-                institution_name = "Universidad Externado de Colombia"
-
-            udea_reg = self.collection.find_one({"names.name": institution_name})
-            if not udea_reg:
+            staff_reg = self.collection.find_one(
+                {"external_ids.id": institution_id})
+            if not staff_reg:
                 print("Institution not found in database")
-                raise ValueError(f"Institution {institution_name} not found in database")
+                raise ValueError(
+                    f"Institution {institution_id} not found in database")
+            else:
+                institution_name = ""
+                for name in staff_reg["names"]:
+                    if name["lang"] == "en":
+                        institution_name = name
+                if institution_name == "":  # if en not available take any
+                    institution_name = staff_reg["names"][0]["name"]
 
             file_path = config["file_path"]
             data = read_excel(file_path)
-            self.staff_affiliation(self, data, institution_name, udea_reg)
+
+            self.facs_inserted = {}
+            self.deps_inserted = {}
+            self.fac_dep = []
+
+            for aff in ["Nombre fac", "Nombre cencos"]:
+                if aff not in data.columns:
+                    print(
+                        f"Column {aff} not found in file {file_path}, and it is required.")
+                    raise ValueError(f"Column {aff} not found in file")
+
+            self.staff_affiliation(data, institution_name, staff_reg)
 
         if self.verbose > 4:
             print("Execution time: {} minutes".format(

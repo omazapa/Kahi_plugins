@@ -19,8 +19,10 @@ class Kahi_elasticsearch_works(KahiBase):
         self.db = self.client[config["database_name"]]
         self.collection = self.db["works"]
 
-        self.index = config["elasticsearch_works"]["index_name"] if "index_name" in config["elasticsearch_works"].keys(
-        ) else "kahi_index"
+        if "es_index" not in config["elasticsearch_works"].keys():
+            raise Exception("[Kahi_elasticsearch_works] ERROR: Please specify an es_index")
+
+        self.index = config["elasticsearch_works"]["es_index"]
 
         self.es_url = config["elasticsearch_works"]["es_url"] if "es_url" in config["elasticsearch_works"].keys(
         ) else "http://localhost:9200"
@@ -58,7 +60,9 @@ class Kahi_elasticsearch_works(KahiBase):
                 "issue": "",
                 "start_page": "",
                 "end_page": "",
-                "authors": []
+                "authors": [],
+                "provenance": "elasticsearch",
+
             }
             if "titles" not in reg.keys():
                 continue

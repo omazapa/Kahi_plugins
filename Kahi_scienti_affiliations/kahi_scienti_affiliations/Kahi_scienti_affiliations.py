@@ -96,6 +96,9 @@ class Kahi_scienti_affiliations(KahiBase):
                 name = None
                 highest_score = 0
                 highest_name = None
+                if inst["NME_INST"] == 'Universidad Autónoma Latinoamericana - Unaula':
+                    reg_col = self.collection.find_one(
+                        {"names.name": "Universidad Autónoma Latinoamericana"})
                 if "colciencias" in inst_name:
                     reg_col = self.collection.find_one(
                         {"names.name": "Colciencias"})
@@ -105,6 +108,7 @@ class Kahi_scienti_affiliations(KahiBase):
                 if inst["NME_INST"] == "UNIVERSIDAD ":
                     reg_col = self.collection.find_one(
                         {"names.name": "Universidad Católica de Oriente"})
+
                 if not reg_col:
                     for reg in col_list:
                         for name in reg["names"]:

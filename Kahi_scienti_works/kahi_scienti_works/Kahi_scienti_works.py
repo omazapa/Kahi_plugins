@@ -144,6 +144,8 @@ class Kahi_scienti_works(KahiBase):
         if self.task == "doi":
             pipeline = [
                 {"$match": {"TXT_DOI": {"$ne": None}}},
+                {"$match": {"TXT_NME_PROD_FILTRO": {"$ne": None}}},
+                {"$match": {"TXT_NME_PROD": {"$ne": " "}}},
                 {"$project": {"doi": {"$trim": {"input": "$TXT_DOI"}}}},
                 {"$project": {"doi": {"$toLower": "$doi"}}},
                 {"$group": {"_id": "$doi", "ids": {"$push": "$_id"}}}
@@ -167,7 +169,7 @@ class Kahi_scienti_works(KahiBase):
             )
         else:
             paper_cursor = scienti.find(
-                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}]})
+                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
             Parallel(
                 n_jobs=self.n_jobs,
                 verbose=self.verbose,
