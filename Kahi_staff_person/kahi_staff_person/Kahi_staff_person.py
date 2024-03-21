@@ -138,7 +138,7 @@ class Kahi_staff_person(KahiBase):
                 if reg["nombre"].lower() not in entry["aliases"]:
                     entry["aliases"].append(reg["nombre"].lower())
                 dep = self.db["affiliations"].find_one(
-                    {"names.name": title_case(reg["Nombre cencos"])})
+                    {"names.name": title_case(reg["Nombre cencos"]), "relations.id": self.staff_reg["_id"]})
                 if dep:
                     name = dep["names"][0]["name"]
                     for n in dep["names"]:
@@ -153,7 +153,7 @@ class Kahi_staff_person(KahiBase):
                     if dep_affiliation not in entry["affiliations"]:
                         entry["affiliations"].append(dep_affiliation)
                 fac = self.db["affiliations"].find_one(
-                    {"names.name": title_case(reg["Nombre fac"])})
+                    {"names.name": title_case(reg["Nombre fac"]), "relations.id": self.staff_reg["_id"]})
                 if fac:
                     name = fac["names"][0]["name"]
                     for n in fac["names"]:
