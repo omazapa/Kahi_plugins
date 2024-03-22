@@ -71,7 +71,7 @@ def main():
         #
         license="BSD",
 
-        description="Kahi plugin template",
+        description="Kahi plugin post processing calculations for impactu",
 
         long_description=open("README.md").read(),
 
