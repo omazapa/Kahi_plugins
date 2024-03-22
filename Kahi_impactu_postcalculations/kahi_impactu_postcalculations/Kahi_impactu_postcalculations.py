@@ -46,14 +46,16 @@ class Kahi_impactu_postcalculations(KahiBase):
         Returns:
             bool: True if models are installed, False otherwise.
         """
-        return "en_core_web_sm" in  spacy.cli.info()["pipelines"].keys() and "es_core_news_sm" in  spacy.cli.info()["pipelines"].keys()
+        return "en_core_web_sm" in spacy.cli.info()["pipelines"].keys() and "es_core_news_sm" in spacy.cli.info()["pipelines"].keys()
 
     def install_spacy_models(self):
         """
         Install the required spaCy models.
         """
-        subprocess.run(["python3", "-m", "spacy", "download", "en_core_web_sm"])
-        subprocess.run(["python3", "-m", "spacy", "download", "es_core_news_sm"])
+        subprocess.run(["python3", "-m", "spacy",
+                       "download", "en_core_web_sm"])
+        subprocess.run(["python3", "-m", "spacy",
+                       "download", "es_core_news_sm"])
 
     def __init__(self, config):
         """
@@ -78,7 +80,8 @@ class Kahi_impactu_postcalculations(KahiBase):
 
         self.en_model = spacy.load('en_core_web_sm')
         self.es_model = spacy.load('es_core_news_sm')
-        self.stopwords = self.en_model.Defaults.stop_words.union(self.es_model.Defaults.stop_words)
+        self.stopwords = self.en_model.Defaults.stop_words.union(
+            self.es_model.Defaults.stop_words)
 
     def network_creation(self, idx, collection_type):
         """
@@ -168,9 +171,11 @@ class Kahi_impactu_postcalculations(KahiBase):
                 if node not in nodes:
                     nodes.append(node)
             for node_a, node_b in work_edges:
-                edge_found = (node_a, node_b) in edges or (node_b, node_a) in edges
+                edge_found = (node_a, node_b) in edges or (
+                    node_b, node_a) in edges
                 if not edge_found:
-                    edges_coauthorships[str(node_a) + str(node_b)] = edges_coauthorships.get(str(node_a) + str(node_b), 0) + 1
+                    edges_coauthorships[str(
+                        node_a) + str(node_b)] = edges_coauthorships.get(str(node_a) + str(node_b), 0) + 1
                     edges.append((node_a, node_b))
 
         # Adding the connections between the coauthoring institutions
@@ -189,11 +194,14 @@ class Kahi_impactu_postcalculations(KahiBase):
                             if node == aff["id"]:
                                 continue
                             if (node, aff["id"]) in edges:
-                                edges_coauthorships[str(node) + str(aff["id"])] += 1
+                                edges_coauthorships[str(
+                                    node) + str(aff["id"])] += 1
                             elif (aff["id"], node) in edges:
-                                edges_coauthorships[str(aff["id"]) + str(node)] += 1
+                                edges_coauthorships[str(
+                                    aff["id"]) + str(node)] += 1
                             else:
-                                edges_coauthorships[str(node) + str(aff["id"])] = 1
+                                edges_coauthorships[str(
+                                    node) + str(aff["id"])] = 1
                                 edges.append((node, aff["id"]))
 
                 elif collection_type == "person":
@@ -206,11 +214,14 @@ class Kahi_impactu_postcalculations(KahiBase):
                         if node == author["id"]:
                             continue
                         if (node, author["id"]) in edges:
-                            edges_coauthorships[str(node) + str(author["id"])] += 1
+                            edges_coauthorships[str(
+                                node) + str(author["id"])] += 1
                         elif (author["id"], node) in edges:
-                            edges_coauthorships[str(author["id"]) + str(node)] += 1
+                            edges_coauthorships[str(
+                                author["id"]) + str(node)] += 1
                         else:
-                            edges_coauthorships[str(node) + str(author["id"])] = 1
+                            edges_coauthorships[str(
+                                node) + str(author["id"])] = 1
                             edges.append((node, author["id"]))
 
         # Constructing the actual format to insert in the database
@@ -265,14 +276,16 @@ class Kahi_impactu_postcalculations(KahiBase):
             old = dt.datetime.now()
 
             if collection == "person":
-                documents = self.db[collection].find({"_id": {"$nin": words_inserted_ids}})
+                documents = self.db[collection].find(
+                    {"_id": {"$nin": words_inserted_ids}})
                 authors_key = "authors.id"
             else:
                 documents = self.db[collection].find()
                 authors_key = "authors.affiliations.id"
 
             for aff in documents:
-                aff_db = self.impactu[collection].find_one({"_id": aff["_id"], "top_words": {"$exists": 1}})
+                aff_db = self.impactu[collection].find_one(
+                    {"_id": aff["_id"], "top_words": {"$exists": 1}})
                 if aff_db:
                     if collection == "person":
                         words_inserted_ids.append(aff["_id"])
@@ -302,16 +315,20 @@ class Kahi_impactu_postcalculations(KahiBase):
                         else:
                             results[token.lemma_] = 1
 
-                topN = sorted(results.items(), key=lambda x: x[1], reverse=True)[:20]
+                topN = sorted(results.items(),
+                              key=lambda x: x[1], reverse=True)[:20]
                 results = [{"name": top[0], "value": top[1]} for top in topN]
                 aff_db = self.impactu[collection].find_one({"_id": aff["_id"]})
                 if aff_db:
-                    self.impactu[collection].update_one({"_id": aff["_id"]}, {"$set": {"top_words": results}})
+                    self.impactu[collection].update_one(
+                        {"_id": aff["_id"]}, {"$set": {"top_words": results}})
                 else:
-                    self.impactu[collection].insert_one({"_id": aff["_id"], "top_words": results})
+                    self.impactu[collection].insert_one(
+                        {"_id": aff["_id"], "top_words": results})
                 delta = dt.datetime.now() - old
                 if delta.seconds > 240:
-                    self.client.admin.command('refreshSessions', [session.session_id], session=session)
+                    self.client.admin.command(
+                        'refreshSessions', [session.session_id], session=session)
                     old = dt.datetime.now()
 
     def run(self):
@@ -321,7 +338,8 @@ class Kahi_impactu_postcalculations(KahiBase):
         # Getting the list of institutions ids with works
         institutions_ids = []
         for aff in self.affiliations.find({"types.type": {"$nin": ["faculty", "department", "group"]}}):
-            count = self.db["works"].count_documents({"authors.affiliations.id": aff["_id"]})
+            count = self.db["works"].count_documents(
+                {"authors.affiliations.id": aff["_id"]})
             if count != 0:
                 institutions_ids.append(aff["_id"])
 
@@ -339,7 +357,8 @@ class Kahi_impactu_postcalculations(KahiBase):
         # Getting the list of institutions ids with works
         authors_ids = []
         for author in self.db["person"].find():
-            count = self.db["works"].count_documents({"authors.id": author["_id"]})
+            count = self.db["works"].count_documents(
+                {"authors.id": author["_id"]})
             if count != 0:
                 authors_ids.append(author["_id"])
 
