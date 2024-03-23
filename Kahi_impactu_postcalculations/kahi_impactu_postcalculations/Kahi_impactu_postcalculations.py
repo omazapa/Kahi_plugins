@@ -13,24 +13,34 @@ class Kahi_impactu_postcalculations(KahiBase):
 
     This class extends KahiBase and implements functions for creating co-authorship networks and
     extracting top words
-
-    Args:
-        config (dict): YAML workflow file
-
-    Attributes:
-        config (dict): Plugin configuration.
-        mongodb_url (str): MongoDB database URL.
-        client (MongoClient): MongoDB client for the main database.
-        db (MongoDatabase): Main database.
-        affiliations (MongoCollection): Affiliations collection.
-        impactu_client (MongoClient): MongoDB client for the Impactu database.
-        impactu_db (MongoDatabase): Impactu database.
-        verbose (bool): Indicates whether verbose output is enabled.
-        n_jobs (int): Number of parallel jobs.
-
     """
 
     config = {}
+    def __init__(self, config):
+        """
+        Initialize the Kahi_impactu_postcalculations plugin.
+        """
+        self.config = config
+
+        self.mongodb_url = config["database_url"]
+
+        self.client = MongoClient(self.mongodb_url)
+        self.db = self.client[config["database_name"]]
+        self.affiliations = self.db["affiliations"]
+
+        self.impactu_client = MongoClient(
+            config["impactu_postcalculations"]["database_url"])
+        self.impactu_db = self.impactu_client[
+            config["impactu_postcalculations"]["database_name"]]
+        self.verbose = self.config["impactu_postcalculations"]["verbose"]
+        self.n_jobs = self.config["impactu_postcalculations"]["n_jobs"]
+
+        self._check_and_install_spacy_models()
+
+        self.en_model = spacy.load('en_core_web_sm')
+        self.es_model = spacy.load('es_core_news_sm')
+        self.stopwords = self.en_model.Defaults.stop_words.union(
+            self.es_model.Defaults.stop_words)
 
     def _check_and_install_spacy_models(self):
         """
@@ -57,31 +67,6 @@ class Kahi_impactu_postcalculations(KahiBase):
         subprocess.run(["python3", "-m", "spacy",
                        "download", "es_core_news_sm"])
 
-    def __init__(self, config):
-        """
-        Initialize the Kahi_impactu_postcalculations plugin.
-        """
-        self.config = config
-
-        self.mongodb_url = config["database_url"]
-
-        self.client = MongoClient(self.mongodb_url)
-        self.db = self.client[config["database_name"]]
-        self.affiliations = self.db["affiliations"]
-
-        self.impactu_client = MongoClient(
-            config["impactu_postcalculations"]["database_url"])
-        self.impactu_db = self.impactu_client[
-            config["impactu_postcalculations"]["database_name"]]
-        self.verbose = self.config["impactu_postcalculations"]["verbose"]
-        self.n_jobs = self.config["impactu_postcalculations"]["n_jobs"]
-
-        self._check_and_install_spacy_models()
-
-        self.en_model = spacy.load('en_core_web_sm')
-        self.es_model = spacy.load('es_core_news_sm')
-        self.stopwords = self.en_model.Defaults.stop_words.union(
-            self.es_model.Defaults.stop_words)
 
     def network_creation(self, idx, collection_type):
         """
@@ -284,7 +269,7 @@ class Kahi_impactu_postcalculations(KahiBase):
                 authors_key = "authors.affiliations.id"
 
             for aff in documents:
-                aff_db = self.impactu[collection].find_one(
+                aff_db = self.impactu_db[collection].find_one(
                     {"_id": aff["_id"], "top_words": {"$exists": 1}})
                 if aff_db:
                     if collection == "person":
@@ -296,10 +281,7 @@ class Kahi_impactu_postcalculations(KahiBase):
                     title = work["titles"][0]["title"].lower()
                     lang = work["titles"][0]["lang"]
 
-                    if lang == "es":
-                        model = self.es
-                    else:
-                        model = self.en
+                    model = self.es_model if lang == "es" else self.en_model
 
                     title = model(title)
 
@@ -318,12 +300,12 @@ class Kahi_impactu_postcalculations(KahiBase):
                 topN = sorted(results.items(),
                               key=lambda x: x[1], reverse=True)[:20]
                 results = [{"name": top[0], "value": top[1]} for top in topN]
-                aff_db = self.impactu[collection].find_one({"_id": aff["_id"]})
+                aff_db = self.impactu_db[collection].find_one({"_id": aff["_id"]})
                 if aff_db:
-                    self.impactu[collection].update_one(
+                    self.impactu_db[collection].update_one(
                         {"_id": aff["_id"]}, {"$set": {"top_words": results}})
                 else:
-                    self.impactu[collection].insert_one(
+                    self.impactu_db[collection].insert_one(
                         {"_id": aff["_id"], "top_words": results})
                 delta = dt.datetime.now() - old
                 if delta.seconds > 240:
