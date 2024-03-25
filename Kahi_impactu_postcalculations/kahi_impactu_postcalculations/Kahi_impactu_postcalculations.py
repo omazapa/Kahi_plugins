@@ -115,6 +115,7 @@ class Kahi_impactu_postcalculations(KahiBase):
                     ) for oaid in authors_ids)
 
         # Getting the top words for each institution
+        print("INFO: Creating top words for institutions")
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
@@ -126,6 +127,7 @@ class Kahi_impactu_postcalculations(KahiBase):
                 ) for aff in institutions_ids)
 
         # Getting the top words for each author
+        print("INFO: Creating top words for authors")
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
