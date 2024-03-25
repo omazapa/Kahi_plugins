@@ -1,6 +1,5 @@
 from pymongo import MongoClient
 from math import log, exp
-import datetime as dt
 from spacy import load
 
 en_model = load('en_core_web_sm')
@@ -10,10 +9,12 @@ stopwords = en_model.Defaults.stop_words.union(es_model.Defaults.stop_words)
 
 # Global variables required for multiprocessing
 # thread lock are not serializable, this makes pymongo "fork safe"
-db = None  # Database to read the data (kahi output with works, person and affiliations)
-impactu_db = None # Database to store the networks and top words
+# Database to read the data (kahi output with works, person and affiliations)
+db = None
+impactu_db = None  # Database to store the networks and top words
 client = None
 impactu_client = None
+
 
 def start_mongo_client(mongodb_url, database_name, impactu_database_url, impactu_database_name):
     """
@@ -40,6 +41,7 @@ def start_mongo_client(mongodb_url, database_name, impactu_database_url, impactu
     impactu_client = MongoClient(impactu_database_url)
     impactu_db = impactu_client[impactu_database_name]
 
+
 def count_works_one(author_id):
     """
     Count the number of works for an author.
@@ -52,8 +54,8 @@ def count_works_one(author_id):
     Returns:
         str: The author identifier.
     """
-    count = db["works"].count_documents({"authors.id":author_id})
-    if count!=0:
+    count = db["works"].count_documents({"authors.id": author_id})
+    if count != 0:
         return author_id
 
 
@@ -254,7 +256,6 @@ def network_creation(idx, collection_type, author_count):
         print(f"ERROR: too big network for id {idx}")
 
 
-
 def top_words(collection, aff, authors_key):
     """
     Extract the top words for a given collection (affiliations or person).
@@ -270,7 +271,6 @@ def top_words(collection, aff, authors_key):
     global es_model
     global en_model
     global stopwords
-
 
     aff_db = impactu_db[collection].find_one(
         {"_id": aff, "top_words": {"$exists": 1}})
@@ -300,7 +300,7 @@ def top_words(collection, aff, authors_key):
                 results[token.lemma_] = 1
 
     topN = sorted(results.items(),
-                    key=lambda x: x[1], reverse=True)[:20]
+                  key=lambda x: x[1], reverse=True)[:20]
     results = [{"name": top[0], "value": top[1]} for top in topN]
     aff_db = impactu_db[collection].find_one({"_id": aff})
     if aff_db:
@@ -309,4 +309,3 @@ def top_words(collection, aff, authors_key):
     else:
         impactu_db[collection].insert_one(
             {"_id": aff, "top_words": results})
-

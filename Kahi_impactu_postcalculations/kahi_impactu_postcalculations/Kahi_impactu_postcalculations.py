@@ -5,6 +5,7 @@ import subprocess
 from spacy import cli
 from kahi_impactu_postcalculations.utils import network_creation, top_words, start_mongo_client, count_works_one
 
+
 class Kahi_impactu_postcalculations(KahiBase):
     """
     Plugin for performing post calculations for Impactu.
@@ -14,6 +15,7 @@ class Kahi_impactu_postcalculations(KahiBase):
     """
 
     config = {}
+
     def __init__(self, config):
         """
         Initialize the Kahi_impactu_postcalculations plugin.
@@ -27,9 +29,9 @@ class Kahi_impactu_postcalculations(KahiBase):
         self.impactu_database_name = config["impactu_postcalculations"]["database_name"]
         self.verbose = self.config["impactu_postcalculations"]["verbose"]
         self.n_jobs = self.config["impactu_postcalculations"]["n_jobs"]
-        self.author_count = self.config["impactu_postcalculations"]["author_count"] if "author_count" in self.config["impactu_postcalculations"] else 6
+        self.author_count = self.config["impactu_postcalculations"][
+            "author_count"] if "author_count" in self.config["impactu_postcalculations"] else 6
         self._check_and_install_spacy_models()
-
 
     def _check_and_install_spacy_models(self):
         """
@@ -56,15 +58,12 @@ class Kahi_impactu_postcalculations(KahiBase):
         subprocess.run(["python3", "-m", "spacy",
                        "download", "es_core_news_sm"])
 
-
-
-
-
     def run(self):
         """
         Execute the plugin to create co-authorship networks and extract top words.
         """
-        start_mongo_client(self.mongodb_url, self.database_name, self.impactu_database_url, self.impactu_database_name)
+        start_mongo_client(self.mongodb_url, self.database_name,
+                           self.impactu_database_url, self.impactu_database_name)
 
         client = MongoClient(self.mongodb_url)
         db = client[self.database_name]
@@ -76,12 +75,12 @@ class Kahi_impactu_postcalculations(KahiBase):
         print("INFO: Getting authors and affiliations ids")
         institutions_ids = []
 
-        for aff in db["affiliations"].find({"types.type": {"$nin": ["faculty", "department", "group"]}},{"_id":1}):
+        for aff in db["affiliations"].find({"types.type": {"$nin": ["faculty", "department", "group"]}}, {"_id": 1}):
             count = db["works"].count_documents(
                 {"authors.affiliations.id": aff["_id"]})
             if count != 0:
                 institutions_ids.append(aff["_id"])
-        authors_ids = [x["_id"] for x in db["person"].find({},{"_id":1})]
+        authors_ids = [x["_id"] for x in db["person"].find({}, {"_id": 1})]
         client.close()
 
         print("INFO: Creating affiliations networks")
@@ -99,7 +98,8 @@ class Kahi_impactu_postcalculations(KahiBase):
 
         # Getting the list of authors ids with works
         print("INFO: Checking authors with works")
-        authors_ids = Parallel(n_jobs=self.n_jobs,backend="multiprocessing",verbose=10)(delayed(count_works_one)(author) for author in authors_ids)
+        authors_ids = Parallel(n_jobs=self.n_jobs, backend="multiprocessing", verbose=10)(
+            delayed(count_works_one)(author) for author in authors_ids)
         authors_ids = [x for x in authors_ids if x is not None]
 
         # Creating the networks of coauthorship for each author
@@ -114,7 +114,6 @@ class Kahi_impactu_postcalculations(KahiBase):
                         self.author_count
                     ) for oaid in authors_ids)
 
-
         # Getting the top words for each institution
         Parallel(
             n_jobs=self.n_jobs,
@@ -123,9 +122,9 @@ class Kahi_impactu_postcalculations(KahiBase):
                 delayed(top_words)(
                     "affiliations",
                     aff,
-                    "authors.affiliations.id" 
+                    "authors.affiliations.id"
                 ) for aff in institutions_ids)
-        
+
         # Getting the top words for each author
         Parallel(
             n_jobs=self.n_jobs,
@@ -134,6 +133,5 @@ class Kahi_impactu_postcalculations(KahiBase):
                 delayed(top_words)(
                     "person",
                     author,
-                    "authors.id" 
+                    "authors.id"
                 ) for author in authors_ids)
-
