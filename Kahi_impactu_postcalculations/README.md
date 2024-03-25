@@ -16,7 +16,8 @@ What do I need fot this plugin?, it could be external services etc..
 Write here how to install this plugin
 usauly is 
 
-`pip install kahi_template`
+`pip install kahi_impactu_postcalculations
+`
 
 
 # Usage
@@ -38,6 +39,7 @@ workflow:
     database_name: kahi_calculations
     n_jobs: 6
     verbose: 5
+    author_count: 6 #use this with warning, maybe the network is too big and it can not be saved in MongoDB
 ```
 Those parameters are not really needed in the workflow file, it is just for illustration.
 
