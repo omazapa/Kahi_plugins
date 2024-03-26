@@ -26,8 +26,11 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
     entry = parse_scienti(
         scienti_reg, empty_work.copy(), verbose=verbose)
     # updated
+    authors_ids = []
     for upd in colav_reg["updated"]:
         if upd["source"] == "scienti":
+            authors_ids = [str(colav_author["id"])
+                           for colav_author in colav_reg["authors"] if "id" in colav_author.keys()]
             # adding new author and affiliations to the register
             if "openalex" in [upd["source"] for upd in colav_reg["updated"]]:
                 return None
@@ -39,6 +42,8 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                     if author_db:
                         break
                 if author_db:
+                    if str(author_db["_id"]) in authors_ids:
+                        return None
                     sources = [ext["source"]
                                for ext in author_db["external_ids"]]
                     ids = [ext["id"]
