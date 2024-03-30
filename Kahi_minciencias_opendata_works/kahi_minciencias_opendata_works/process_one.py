@@ -55,7 +55,6 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
     if "authors" in entry.keys():
         if entry["authors"]:
             minciencias_author = entry["authors"][0]
-
     if minciencias_author:
         author_found = False
         if "external_ids" in minciencias_author.keys() and minciencias_author["affiliations"]:
@@ -64,7 +63,8 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                 author_db = db["person"].find_one(
                     {"external_ids.source": "scienti", "external_ids.id": ext["id"]})
                 if not author_db:
-                    author_db = db["person"].find_one({"external_ids.id": ext["id"]})
+                    author_db = db["person"].find_one(
+                        {"external_ids.id": ext["id"]})
                 if author_db:
                     group_id = minciencias_author["affiliations"][0]['external_ids'][0]['id']
 
@@ -88,7 +88,8 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                                         "types": affiliations_db["types"]})
                                 author_found = True
                                 if verbose > 4:
-                                    print("group added to author: {}".format(affiliations_db["names"][0]["name"]))
+                                    print("group added to author: {}".format(
+                                        affiliations_db["names"][0]["name"]))
                                 break
                             else:
                                 author_found = True
@@ -106,7 +107,8 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                                                            for aff in author_db['affiliations']]
                                     author_affiliations = [str(aff['id'])
                                                            for aff in author['affiliations']]
-                                    affiliation_match = any(affil in author_affiliations for affil in affiliations_person)
+                                    affiliation_match = any(
+                                        affil in author_affiliations for affil in affiliations_person)
                                 if name_match and affiliation_match:
                                     author["affiliations"].append({
                                         "id": affiliations_db["_id"],
@@ -160,93 +162,99 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
     # parse
     entry = parse_minciencias_opendata(openadata_reg, empty_work.copy())
     # search authors and affiliations in db
-    for i, author in enumerate(entry["authors"]):
-        author_db = None
-        for ext in author["external_ids"]:
-            author_db = db["person"].find_one(
-                {
-                    "external_ids.source": ext["source"],
-                    "external_ids.id": ext["id"]})
-            if author_db:
-                break
-        if author_db:
-            sources = [ext["source"] for ext in author_db["external_ids"]]
-            ids = [ext["id"] for ext in author_db["external_ids"]]
-            for ext in author["external_ids"]:
-                if ext["id"] not in ids:
-                    author_db["external_ids"].append(ext)
-                    sources.append(ext["source"])
-                    ids.append(ext["id"])
-            entry["authors"][i] = {
-                "id": author_db["_id"],
-                "full_name": author_db["full_name"],
-                "affiliations": author["affiliations"]
-            }
-            if "external_ids" in author.keys():
-                del (author["external_ids"])
-
-        for j, aff in enumerate(author["affiliations"]):
-            aff_db = None
-            if "external_ids" in aff.keys():
-                for ext in aff["external_ids"]:
-                    aff_db = db["affiliations"].find_one(
-                        {"external_ids.id": ext["id"]})
-                    if aff_db:
-                        break
-            if aff_db:
-                name = aff_db["names"][0]["name"]
-                for n in aff_db["names"]:
-                    if n["source"] == "ror":
-                        name = n["name"]
-                        break
-                    if n["lang"] == "en":
-                        name = n["name"]
-                    if n["lang"] == "es":
-                        name = n["name"]
-                entry["authors"][i]["affiliations"][j] = {
-                    "id": aff_db["_id"],
-                    "name": name,
-                    "types": aff_db["types"]
-                }
-            else:
-                aff_db = db["affiliations"].find_one(
-                    {"names.name": aff["name"]})
-                if aff_db:
-                    name = aff_db["names"][0]["name"]
-                    for n in aff_db["names"]:
-                        if n["source"] == "ror":
-                            name = n["name"]
-                            break
-                        if n["lang"] == "en":
-                            name = n["name"]
-                        if n["lang"] == "es":
-                            name = n["name"]
-                    entry["authors"][i]["affiliations"][j] = {
-                        "id": aff_db["_id"],
-                        "name": name,
-                        "types": aff_db["types"]
-                    }
-                else:
-                    entry["authors"][i]["affiliations"][j] = {
-                        "id": "",
-                        "name": aff["name"],
-                        "types": []
-                    }
     entry["author_count"] = len(entry["authors"])
+    # authors
+    minciencias_author = ""
+    if "authors" in entry.keys():
+        if entry["authors"]:
+            minciencias_author = entry["authors"][0]
+    if minciencias_author:
+        if "external_ids" in minciencias_author.keys() and minciencias_author["affiliations"]:
+            for ext in minciencias_author["external_ids"]:
+                author_db = db["person"].find_one(
+                    {"external_ids.source": "scienti", "external_ids.id": ext["id"]})
+                if not author_db:
+                    author_db = db["person"].find_one(
+                        {"external_ids.id": ext["id"]})
+                if author_db:
+                    group_id = minciencias_author["affiliations"][0]['external_ids'][0]['id']
+                    affiliations_db = db["affiliations"].find_one(
+                        {"external_ids.source": "scienti", "external_ids.id": group_id})
+                    if not affiliations_db:
+                        affiliations_db = db["affiliations"].find_one(
+                            {"external_ids.id": group_id})
+                    if author_db:
+                        for author in entry['authors']:
+                            if author['external_ids'][0]['id'] == ext['id']:
+                                author["id"] = author_db["_id"]
+                                author["full_name"] = author_db["full_name"]
+                                author["affiliations"].append(
+                                    {
+                                        "id": affiliations_db["_id"] if affiliations_db else None,
+                                        "name": affiliations_db["names"][0]["name"].strip() if affiliations_db else None,
+                                        "types": affiliations_db["types"] if affiliations_db else None
+                                    }
+                                )
+                                if len(author["affiliations"]) > 1:
+                                    author["affiliations"].pop(0)
+                                if verbose > 4:
+                                    print("group added to author: {}".format(
+                                        affiliations_db["names"][0]["name"] if affiliations_db else None))
+                                break
+                else:
+                    # author not found in db, search only for group
+                    try:
+                        group_id = entry['authors'][0]['affiliations'][0]['external_ids'][0]['id']
+                        affiliations_db = db["affiliations"].find_one(
+                            {"external_ids.source": "scienti", "external_ids.id": group_id})
+                        if not affiliations_db:
+                            affiliations_db = db["affiliations"].find_one(
+                                {"external_ids.id": group_id})
+                        if affiliations_db:
+                            entry['authors'][0]['affiliations'].append(
+                                {
+                                    "id": affiliations_db["_id"] if affiliations_db else None,
+                                    "name": affiliations_db["names"][0]["name"].strip() if affiliations_db else None,
+                                    "types": affiliations_db["types"] if affiliations_db else None
+                                }
+                            )
+                            if len(entry['authors'][0]['affiliations']) > 1:
+                                entry['authors'][0]['affiliations'].pop(0)
+                            if "external_ids" in entry['authors'][0]:
+                                entry['authors'][0].pop("external_ids")
+                        else:
+                            return
+                    except Exception as e:
+                        print(e)
+                        return
+        else:
+            if verbose > 4:
+                print("No author data")
+                return
+
     # insert in mongo
     response = collection.insert_one(entry)
     # insert in elasticsearch
+    authors = []
     if es_handler:
         work = {}
         work["title"] = entry["titles"][0]["title"]
-        authors = []
+        work["source"] = "",
+        work["year"] = "0",
+        work["volume"] = "",
+        work["issue"] = "",
+        work["first_page"] = "",
+        work["last_page"] = "",
         for author in entry['authors']:
-            if len(authors) >= 5:
-                break
             if "full_name" in author.keys():
-                authors.append(author["full_name"])
+                if author["full_name"]:
+                    authors.append(author["full_name"])
         work["authors"] = authors
-        es_handler.insert_work(_id=str(response.inserted_id), work=work)
+        if work["title"]:
+            es_handler.insert_work(_id=str(response.inserted_id), work=work)
+        else:
+            if verbose > 4:
+                print("Not enough data for insert in elasticsearch index")
     else:
         if verbose > 4:
             print("No elasticsearch index provided")
@@ -287,7 +295,8 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
                     colav_reg = collection.find_one(
                         {"external_ids.id": {"$all": [COD_RH, COD_PROD]}})
                     if colav_reg:
-                        process_one_update(openadata_reg, colav_reg, db, collection, empty_work, verbose)
+                        process_one_update(
+                            openadata_reg, colav_reg, db, collection, empty_work, verbose)
                         return
 
     # elasticsearch section
@@ -300,7 +309,8 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
                 author_db = db["person"].find_one(
                     {"external_ids.source": "scienti", "external_ids.id": openadata_reg["id_persona_pd"]})
                 if not author_db:
-                    author_db = db["person"].find_one({"external_ids.id": openadata_reg["id_persona_pd"]})
+                    author_db = db["person"].find_one(
+                        {"external_ids.id": openadata_reg["id_persona_pd"]})
                 if author_db:
                     authors.append(author_db["full_name"])
         if 'nme_producto_pd' in openadata_reg.keys():
@@ -321,20 +331,24 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
                 colav_reg = collection.find_one(
                     {"_id": ObjectId(response["_id"])})
                 if colav_reg:
-                    process_one_update(openadata_reg, colav_reg, db, collection, empty_work, verbose)
+                    process_one_update(
+                        openadata_reg, colav_reg, db, collection, empty_work, verbose)
                 else:
                     if verbose > 4:
                         print("Register with {} not found in mongodb".format(
                             response["_id"]))
             else:  # insert new register
                 if insert_all:
-                    process_one_insert(openadata_reg, db, collection, empty_work, es_handler, verbose)
+                    process_one_insert(
+                        openadata_reg, db, collection, empty_work, es_handler, verbose)
         else:
             if verbose > 4:
                 if not authors:
-                    print(f"Not authors data for search with elasticsearch with {openadata_reg['id_persona_pd']} in {openadata_reg['_id']}")
+                    print(
+                        f"Not authors data for search with elasticsearch with {openadata_reg['id_persona_pd']} in {openadata_reg['_id']}")
                 else:
-                    print(f"Not title data for search with elasticsearch in {openadata_reg['_id']}")
+                    print(
+                        f"Not title data for search with elasticsearch in {openadata_reg['_id']}")
     else:
         if verbose > 4:
             print("No elasticsearch index provided")
