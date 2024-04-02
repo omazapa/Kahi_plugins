@@ -239,12 +239,12 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
     if es_handler:
         work = {}
         work["title"] = entry["titles"][0]["title"]
-        work["source"] = "",
-        work["year"] = "0",
-        work["volume"] = "",
-        work["issue"] = "",
-        work["first_page"] = "",
-        work["last_page"] = "",
+        work["source"] = ""
+        work["year"] = "0"
+        work["volume"] = ""
+        work["issue"] = ""
+        work["first_page"] = ""
+        work["last_page"] = ""
         for author in entry['authors']:
             if "full_name" in author.keys():
                 if author["full_name"]:
