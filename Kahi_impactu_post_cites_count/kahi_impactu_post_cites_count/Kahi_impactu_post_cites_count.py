@@ -32,9 +32,9 @@ class Kahi_impactu_post_cites_count(KahiBase):
         self.mongodb_url = config["database_url"]
         self.database_name = config["database_name"]
 
-        self.impactu_database_url = config["impactu_postcalculations"]["database_url"]
-        self.impactu_database_name = config["impactu_postcalculations"]["database_name"]
-        self.verbose = self.config["impactu_postcalculations"]["verbose"]
+        self.impactu_database_url = config["impactu_post_cites_count"]["database_url"]
+        self.impactu_database_name = config["impactu_post_cites_count"]["database_name"]
+        self.verbose = self.config["impactu_post_cites_count"]["verbose"]
 
         self.client = MongoClient(self.mongodb_url)
         self.db = self.client[self.database_name]
