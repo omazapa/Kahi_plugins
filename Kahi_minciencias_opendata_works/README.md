@@ -39,12 +39,15 @@ workflow:
     database_name: yuku
     collection_name: gruplac_production_data
     insert_all: False
+    thresholds: [65, 90, 95]
     num_jobs: 6
     verbose: 1
 ```
 * WARNING *. This process can take more than an hour.
 
-Note: In case you want to insert all documents that fail to be associated through the similarity processes as new documents, you need to change the value of the insert_all flag to True in the workflow
+Note: 
+-In case you want to insert all documents that fail to be associated through the similarity processes as new documents, you need to change the value of the insert_all flag to True in the workflow
+-The thresholds parameter only accepts a list of three corresponding values for: A threshold for author names, a low threshold for works and a high threshold for works.
 
 # License
 BSD-3-Clause License 
