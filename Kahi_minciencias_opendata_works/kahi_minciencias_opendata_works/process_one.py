@@ -317,7 +317,7 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
             thresholds = {"author_thd": 65, "paper_thd_low": 90, "paper_thd_high": 95}
 
         def str_normilize(word):
-            return unidecode(word).lower().strip().replace(".","")
+            return unidecode(word).lower().strip().replace(".", "")
 
         def check_work(title_work, authors, response):
             author_found = False
@@ -390,17 +390,17 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
 
         elif title_work:
             # No authors
-            title = sub('[_\|,]','',title_work).lower()
+            title = sub('[_|,\\\\]', '', title_work).lower()
             es_results = es_handler.search_work(
                 title=title,
-                source = "",
-                year = "0",
-                authors = [],
-                volume = "",
-                issue = "",
-                page_start = "",
-                page_end = "",
-                use_es_thold =True,
+                source="",
+                year="0",
+                authors=[],
+                volume="",
+                issue="",
+                page_start="",
+                page_end="",
+                use_es_thold=True,
                 es_thold=0,
                 hits=20
             )
