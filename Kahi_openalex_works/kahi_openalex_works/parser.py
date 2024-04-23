@@ -1,4 +1,5 @@
 from kahi_impactu_utils.Utils import lang_poll
+from kahi_impactu_utils.String import parse_mathml
 from time import time
 from datetime import datetime as dt
 
@@ -22,8 +23,9 @@ def parse_openalex(reg, empty_work, verbose=0):
         if "http" in reg["title"]:
             reg["title"] = reg["title"].split("//")[-1]
         lang = lang_poll(reg["title"], verbose=verbose)
+        title = parse_mathml(reg["title"])
         entry["titles"].append(
-            {"title": reg["title"], "lang": lang, "source": "openalex"})
+            {"title": title, "lang": lang, "source": "openalex"})
     for source, idx in reg["ids"].items():
         if "doi" in source:
             idx = idx.replace("https://doi.org/", "").lower()
