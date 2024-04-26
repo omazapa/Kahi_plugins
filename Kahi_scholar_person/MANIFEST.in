@@ -1,0 +1,2 @@
+recursive-include kahi_scholar_person/ *.py
+recursive-include kahi_scholar_person/ *.*
