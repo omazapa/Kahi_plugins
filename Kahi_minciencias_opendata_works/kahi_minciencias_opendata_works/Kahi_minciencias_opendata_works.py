@@ -66,6 +66,8 @@ class Kahi_minciencias_opendata_works(KahiBase):
         ) else None
         self.insert_all = config["minciencias_opendata_works"]["insert_all"] if "insert_all" in config["minciencias_opendata_works"].keys(
         ) else False
+        self.thresholds = config["minciencias_opendata_works"]["thresholds"] if "thresholds" in config["minciencias_opendata_works"].keys(
+        ) else None
         self.n_jobs = config["minciencias_opendata_works"]["num_jobs"] if "num_jobs" in config["minciencias_opendata_works"].keys(
         ) else 1
         self.verbose = config["minciencias_opendata_works"]["verbose"] if "verbose" in config["minciencias_opendata_works"].keys(
@@ -129,6 +131,7 @@ class Kahi_minciencias_opendata_works(KahiBase):
                     self.empty_work(),
                     self.es_handler,
                     insert_all=self.insert_all,
+                    thresholds=self.thresholds,
                     verbose=self.verbose
                 ) for work in paper_cursor
             )
