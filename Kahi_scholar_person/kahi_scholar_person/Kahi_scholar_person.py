@@ -23,7 +23,6 @@ class Kahi_scholar_person(KahiBase):
                 - database_url: The url of the scholar works database.
                 - database_name: The name of the scholar works database.
                 - collection_name: The name of the collection in the scholar works database.
-                - task: The task to be performed. It can be "doi" or empty for similarity.
                 - num_jobs: The number of jobs to be used in parallel processing.
                 - verbose: The verbosity level.
         """
