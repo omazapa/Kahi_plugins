@@ -1,5 +1,6 @@
 from kahi_impactu_utils.Utils import doi_processor
 from unidecode import unidecode
+from time import time
 import copy
 
 def process_authors(s_work, verbose=0):
