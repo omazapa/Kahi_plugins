@@ -1,6 +1,7 @@
 from kahi_scholar_person.parser import parse_scholar
 from time import time
 
+
 def process_one(paper, db, collection, empty_person, verbose):
     author_db = None
     authors = parse_scholar(paper, empty_person)

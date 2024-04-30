@@ -1,7 +1,8 @@
+from kahi_scholar_person.process_one import process_one
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from joblib import Parallel, delayed
-from kahi_scholar_person.process_one import process_one
+
 
 class Kahi_scholar_person(KahiBase):
 
