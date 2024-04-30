@@ -1,5 +1,5 @@
 from kahi_impactu_utils.Utils import lang_poll
-from kahi_impactu_utils.String import parse_mathml
+from kahi_impactu_utils.String import parse_mathml, parse_html
 from time import time
 from datetime import datetime as dt
 
@@ -24,6 +24,7 @@ def parse_openalex(reg, empty_work, verbose=0):
             reg["title"] = reg["title"].split("//")[-1]
         lang = lang_poll(reg["title"], verbose=verbose)
         title = parse_mathml(reg["title"])
+        title = parse_html(title)
         entry["titles"].append(
             {"title": title, "lang": lang, "source": "openalex"})
     for source, idx in reg["ids"].items():
