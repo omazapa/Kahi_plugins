@@ -17,9 +17,10 @@ def parse_scienti(reg, empty_work, verbose=0):
     """
     entry = empty_work.copy()
     entry["updated"] = [{"source": "scienti", "time": int(time())}]
-    lang = lang_poll(reg["TXT_NME_PROD"], verbose=verbose)
+    title = reg["TXT_NME_PROD"].strip().replace("\t", "").replace('"', '')
+    lang = lang_poll(title, verbose=verbose)
     entry["titles"].append(
-        {"title": reg["TXT_NME_PROD"], "lang": lang, "source": "scienti"})
+        {"title": title, "lang": lang, "source": "scienti"})
     entry["external_ids"].append(
         {"provenance": "scienti", "source": "COD_RH", "id": reg["COD_RH"]})
     entry["external_ids"].append(

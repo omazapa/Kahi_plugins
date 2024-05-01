@@ -83,7 +83,7 @@ def main():
             'kahi',
             'pymongo',
             'joblib',
-            'kahi_impactu_utils',
+            'kahi_impactu_utils>=0.0.10',
             'mohan',
             'thefuzz'
         ],
