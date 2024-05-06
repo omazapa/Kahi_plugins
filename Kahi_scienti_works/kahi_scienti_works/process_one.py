@@ -31,6 +31,28 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
     authors_ids = []
     for upd in colav_reg["updated"]:
         if upd["source"] == "scienti":
+            # scienti groups
+            if "group" in scienti_reg.keys():
+                for group in scienti_reg["group"]:
+                    group_reg = db["affiliations"].find_one(
+                        {"external_ids.id": group["COD_ID_GRUPO"]})
+                    if group_reg is None:
+                        group_reg = db["affiliations"].find_one(
+                            {"external_ids.id": group["NRO_ID_GRUPO"]})
+                    if group_reg:
+                        found = False
+                        for rgroup in colav_reg["groups"]:
+                            if group_reg["_id"] == rgroup["id"]:
+                                found = True
+                                break
+                        if not found:
+                            colav_reg["groups"].append(
+                                {"id": group_reg["_id"], "name": group_reg["names"][0]["name"]})
+                    if not group_reg:
+                        print(
+                            f'WARNING: group with ids {scienti_reg["group"]["COD_ID_GRUPO"]} and {scienti_reg["group"]["NRO_ID_GRUPO"]} not found in affiliation')
+
+            # authors
             authors_ids = [str(colav_author["id"])
                            for colav_author in colav_reg["authors"] if "id" in colav_author.keys()]
             # adding new author and affiliations to the register
@@ -137,7 +159,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
             collection.update_one(
                 {"_id": colav_reg["_id"]},
                 {"$push": {"authors": entry['authors'][0]}, "$inc": {
-                    "author_count": 1}}
+                    "author_count": 1}, "$set": {"groups": colav_reg["groups"]}}
             )
 
             return None  # Register already on db
@@ -209,10 +231,10 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
     if "group" in scienti_reg.keys():
         for group in scienti_reg["group"]:
             group_reg = db["affiliations"].find_one(
-                {"external_ids.id": scienti_reg["group"]["COD_ID_GRUPO"]})
+                {"external_ids.id": group["COD_ID_GRUPO"]})
             if group_reg is None:
                 group_reg = db["affiliations"].find_one(
-                    {"external_ids.id": scienti_reg["group"]["NRO_ID_GRUPO"]})
+                    {"external_ids.id": group["NRO_ID_GRUPO"]})
             if group_reg:
                 found = False
                 for rgroup in colav_reg["groups"]:
