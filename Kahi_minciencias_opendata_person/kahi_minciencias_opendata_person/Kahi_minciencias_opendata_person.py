@@ -4,7 +4,7 @@ from pandas import read_csv, isna
 from time import time
 from datetime import datetime as dt
 from joblib import Parallel, delayed
-from kahi_impactu_utils.Utils import get_id_from_url, get_id_type_from_url
+from kahi_impactu_utils.Utils import get_id_from_url, get_id_type_from_url, parse_sex
 
 
 def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, verbose):
@@ -75,7 +75,7 @@ def process_one(client, db_name, empty_person, auid, cv, articulos_, subset, ver
         ".", "").replace(" ", "").strip(),
     if isinstance(cv["Nombre en citaciones"], str):
         entry["aliases"].append(cv["Nombre en citaciones"].lower())
-    entry["sex"] = cv["Sexo"][0].lower()
+    entry["sex"] = parse_sex(cv["Sexo"][0])
 
     entry["external_ids"].append({
         "source": "minciencias",
