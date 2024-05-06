@@ -1,7 +1,7 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, ASCENDING, TEXT
 from time import time
-from kahi_impactu_utils.Utils import check_date_format, get_id_from_url
+from kahi_impactu_utils.Utils import check_date_format, get_id_from_url, parse_sex
 from kahi_impactu_utils.String import title_case
 
 
@@ -305,7 +305,7 @@ class Kahi_scienti_person(KahiBase):
                                 author["TXT_CITACION_BIBLIO"].lower())
                     if "TPO_SEXO" in author.keys():
                         if author["TPO_SEXO"] is not None:
-                            entry["sex"] = author["TPO_SEXO"].lower()
+                            entry["sex"] = parse_sex(author["TPO_SEXO"])
                     if "TPO_PERFIL" in author.keys():
                         ranking = {
                             "date": "", "rank": author["TPO_PERFIL"], "source": "scienti"}
