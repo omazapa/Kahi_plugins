@@ -117,9 +117,10 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
             entry["updated"].append(
                 {"source": "minciencias", "time": int(time())})
             entry["names"].append(
-                {"source": "minciencias", "lang": "es", "name": reg["nme_grupo_gr"]})
+                {"source": "minciencias", "lang": "es", "name": reg["nme_grupo_gr"] if "nme_grupo_gr" in reg.keys() else ""})
             entry["types"].append({"source": "minciencias", "type": "group"})
-            entry["year_established"] = check_date_format(reg["fcreacion_gr"])
+            entry["year_established"] = check_date_format(reg["fcreacion_gr"]) if "fcreacion_gr" in reg.keys(
+            ) else ""
             entry["external_ids"].append(
                 {"source": "minciencias", "id": reg["cod_grupo_gr"]})
             entry["subjects"].append({
@@ -128,108 +129,109 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
                 "subjects": [
                     {
                         "level": 0,
-                        "name": reg["nme_gran_area_gr"],
+                        "name": reg["nme_gran_area_gr"] if "nme_gran_area_gr" in reg.keys() else "",
                         "id": "",
-                        "external_ids": [{"source": "OECD", "id": reg["id_area_con_gr"][0]}]
+                        "external_ids": [{"source": "OECD", "id": reg["id_area_con_gr"][0] if "id_area_con_gr" in reg.keys() else ""}]
                     },
                     {
                         "level": 1,
-                        "name": reg["nme_area_gr"],
+                        "name": reg["nme_area_gr"] if "nme_area_gr" in reg.keys() else "",
                         "id": "",
-                        "external_ids": [{"source": "OECD", "id": reg["id_area_con_gr"][1]}]
+                        "external_ids": [{"source": "OECD", "id": reg["id_area_con_gr"][1] if "id_area_con_gr" in reg.keys() else ""}]
                     },
                 ]
             })
 
             # START AVAL INSTITUTION SECTION
-            for inst_aval in reg["inst_aval"].split("|"):
-                inst_aval = inst_aval.lower().strip()
+            if "inst_aval" in reg.keys():
+                for inst_aval in reg["inst_aval"].split("|"):
+                    inst_aval = inst_aval.lower().strip()
 
-                inst_aval = self.rename_institution(inst_aval)
+                    inst_aval = self.rename_institution(inst_aval)
 
-                inst_aval = unidecode(inst_aval)
-                institutions = self.collection.find(
-                    {"$text": {"$search": inst_aval}, "addresses.country": "Colombia"}).limit(50)
-                institution = ""
-                score = 10
-                for inst in institutions:
-                    method = ""
-                    name = ""
-                    for n in inst["names"]:
-                        if n["lang"] == "es":
-                            name = n["name"]
-                            break
-                        elif n["lang"] == "en":
-                            name = n["name"]
-                    name_mod = name.lower().replace("(colombia)", "").replace(
-                        "(", "").replace(")", "").replace("bogotá", "")
-                    # name_mod=name_mod.replace("universidad","").replace("de","").replace("del","").replace("los","").strip()
-                    name_mod = unidecode(name_mod)
+                    inst_aval = unidecode(inst_aval)
+                    institutions = self.collection.find(
+                        {"$text": {"$search": inst_aval}, "addresses.country": "Colombia"}).limit(50)
+                    institution = ""
+                    score = 10
+                    for inst in institutions:
+                        method = ""
+                        name = ""
+                        for n in inst["names"]:
+                            if n["lang"] == "es":
+                                name = n["name"]
+                                break
+                            elif n["lang"] == "en":
+                                name = n["name"]
+                        name_mod = name.lower().replace("(colombia)", "").replace(
+                            "(", "").replace(")", "").replace("bogotá", "")
+                        # name_mod=name_mod.replace("universidad","").replace("de","").replace("del","").replace("los","").strip()
+                        name_mod = unidecode(name_mod)
 
-                    if "santander" in name_mod and "industrial" in name_mod:
-                        name_mod = "industrial santander"
-                    if "santander" in name_mod and "industrial" not in name_mod:
-                        name_mod = "universidad santander"
-                    if "francisco" in name_mod and "paula" in name_mod and "santander" in name_mod:
-                        inst_aval = "francisco paula"
-                    score = fuzz.ratio(name_mod, inst_aval)
-                    if score > 90:
-                        method = "ratio"
-                        institution = inst
-                        break
-                    elif score > 39:
-                        score = fuzz.partial_ratio(name_mod, inst_aval)
-                        # print("Partial ratio score: {}. {} -against- {}".format(score,name,reg["INST_AVAL"]))
-                        if score > 93:
-                            method = "partial ratio"
+                        if "santander" in name_mod and "industrial" in name_mod:
+                            name_mod = "industrial santander"
+                        if "santander" in name_mod and "industrial" not in name_mod:
+                            name_mod = "universidad santander"
+                        if "francisco" in name_mod and "paula" in name_mod and "santander" in name_mod:
+                            inst_aval = "francisco paula"
+                        score = fuzz.ratio(name_mod, inst_aval)
+                        if score > 90:
+                            method = "ratio"
                             institution = inst
                             break
-                        elif score > 55:
-                            score = fuzz.token_set_ratio(name_mod, inst_aval)
-                            # print("Token set ratio score: {}. {} -against- {}".format(score,name,reg["INST_AVAL"]))
-                            if score > 98:
-                                method = "token set ratio"
-                                # print("Token set ratio score: {}. {} -against- {}".format(score,name,inst_aval))
+                        elif score > 39:
+                            score = fuzz.partial_ratio(name_mod, inst_aval)
+                            # print("Partial ratio score: {}. {} -against- {}".format(score,name,reg["INST_AVAL"]))
+                            if score > 93:
+                                method = "partial ratio"
                                 institution = inst
                                 break
-                if institution != "":
-                    name = ""
-                    for n in inst["names"]:
-                        if n["lang"] == "es":
-                            name = n["name"]
-                            break
-                        elif n["lang"] == "en":
-                            name = n["name"]
-                    entry["relations"].append(
-                        {"types": institution["types"], "id": institution["_id"], "name": name})
-                    entry["addresses"].append({
-                        "lat": institution["addresses"][0].get("lat", None),
-                        "lng": institution["addresses"][0].get("lng", None),
-                        "postcode": institution["addresses"][0].get("postcode", None),
-                        "state": institution["addresses"][0].get("state", None),
-                        "city": institution["addresses"][0].get("city", None),
-                        "country": institution["addresses"][0].get("country", None),
-                        "country_code": institution["addresses"][0].get("country_code", None)
-                    })
-                else:
-                    if score == 98 and method == "token set ratio":
-                        print(
-                            "(LAST) {} score: {}. {} -against- {}".format(method, score, name, inst_aval))
-                    entry["addresses"].append({
-                        "lat": "",
-                        "lng": "",
-                        "postcode": "",
-                        "state": reg["nme_departamento_gr"],
-                        "city": reg["nme_municipio_gr"],
-                        "country": "Colombia",
-                        "country_code": "CO"
-                    })
+                            elif score > 55:
+                                score = fuzz.token_set_ratio(name_mod, inst_aval)
+                                # print("Token set ratio score: {}. {} -against- {}".format(score,name,reg["INST_AVAL"]))
+                                if score > 98:
+                                    method = "token set ratio"
+                                    # print("Token set ratio score: {}. {} -against- {}".format(score,name,inst_aval))
+                                    institution = inst
+                                    break
+                    if institution != "":
+                        name = ""
+                        for n in inst["names"]:
+                            if n["lang"] == "es":
+                                name = n["name"]
+                                break
+                            elif n["lang"] == "en":
+                                name = n["name"]
+                        entry["relations"].append(
+                            {"types": institution["types"], "id": institution["_id"], "name": name})
+                        entry["addresses"].append({
+                            "lat": institution["addresses"][0].get("lat", None),
+                            "lng": institution["addresses"][0].get("lng", None),
+                            "postcode": institution["addresses"][0].get("postcode", None),
+                            "state": institution["addresses"][0].get("state", None),
+                            "city": institution["addresses"][0].get("city", None),
+                            "country": institution["addresses"][0].get("country", None),
+                            "country_code": institution["addresses"][0].get("country_code", None)
+                        })
+                    else:
+                        if score == 98 and method == "token set ratio":
+                            print(
+                                "(LAST) {} score: {}. {} -against- {}".format(method, score, name, inst_aval))
+                        entry["addresses"].append({
+                            "lat": "",
+                            "lng": "",
+                            "postcode": "",
+                            "state": reg["nme_departamento_gr"],
+                            "city": reg["nme_municipio_gr"],
+                            "country": "Colombia",
+                            "country_code": "CO"
+                        })
             # END AVAL INSTITUTION
             entry_rank = {
                 "source": "minciencias",
-                "rank": reg["nme_clasificacion_gr"],
-                "order": reg["orden_clas_gr"],
-                "date": check_date_format(reg["ano_convo"])
+                "rank": reg["nme_clasificacion_gr"] if "nme_clasificacion_gr" in reg.keys() else "",
+                "order": reg["orden_clas_gr"] if "orden_clas_gr" in reg.keys() else "",
+                "date": check_date_format(reg["ano_convo"] if "ano_convo" in reg.keys() else ""),
             }
             entry["ranking"].append(entry_rank)
             # END CLASSIFICATION SECTION
