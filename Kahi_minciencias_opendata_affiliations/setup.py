@@ -83,9 +83,7 @@ def main():
         install_requires=[
             'kahi',
             'pymongo',
-            'pandas',
             'thefuzz',
-            'datetime',
             'unidecode'
         ],
     )

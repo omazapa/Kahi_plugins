@@ -1,10 +1,10 @@
-from kahi.KahiBase import KahiBase
+from kahi_impactu_utils.Utils import check_date_format
 from pymongo import MongoClient, TEXT
-from pandas import read_csv
-from time import time
-import unidecode
+from joblib import Parallel, delayed
+from kahi.KahiBase import KahiBase
+from unidecode import unidecode
 from thefuzz import fuzz
-from datetime import datetime as dt
+from time import time
 
 
 class Kahi_minciencias_opendata_affiliations(KahiBase):
@@ -13,6 +13,8 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
 
     def __init__(self, config):
         self.config = config
+
+        self.mongodb_url = config["database_url"]
 
         self.client = MongoClient(config["database_url"])
 
@@ -24,8 +26,23 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
         self.collection.create_index("names.name")
         self.collection.create_index([("names.name", TEXT)])
 
-        self.file_path = config["minciencias_opendata_affiliations"]["file_path"]
-        self.grupos_minciencias = read_csv(self.file_path)
+        self.openadata_client = MongoClient(
+            config["minciencias_opendata_affiliations"]["database_url"])
+        if config["minciencias_opendata_affiliations"]["database_name"] not in self.openadata_client.list_database_names():
+            raise Exception("Database {} not found in {}".format(
+                config["minciencias_opendata_affiliations"]['database_name'], config["minciencias_opendata_affiliations"]["database_url"]))
+
+        self.openadata_db = self.openadata_client[config["minciencias_opendata_affiliations"]["database_name"]]
+
+        if config["minciencias_opendata_affiliations"]["collection_name"] not in self.openadata_db.list_collection_names():
+            raise Exception("Collection {} not found in {}".format(
+                config["minciencias_opendata_affiliations"]['collection_name'], config["minciencias_opendata_affiliations"]["database_url"]))
+
+        self.openadata_collection = self.openadata_db[
+            config["minciencias_opendata_affiliations"]["collection_name"]]
+
+        self.n_jobs = config["minciencias_opendata_affiliations"]["num_jobs"] if "num_jobs" in config["minciencias_opendata_affiliations"].keys(
+        ) else 1
 
         self.verbose = config["minciencias_opendata_affiliations"][
             "verbose"] if "verbose" in config["minciencias_opendata_affiliations"].keys() else 0
@@ -83,52 +100,54 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
         else:
             return name
 
-    def process_openadata(self):
-        for idgr in self.grupos_minciencias["COD_GRUPO_GR"].unique():
-            db_reg = self.collection.find_one({"external_ids.id": idgr})
+    def process_one(self, aff, collection, empty_affiliation, verbose):
+        if not aff["max_edad_doc"]:
+            return
+        reg = aff["max_edad_doc"]
+        idgr = reg["cod_grupo_gr"] if "cod_grupo_gr" in reg.keys() else None
+        if idgr:
+            db_reg = collection.find_one({"external_ids.id": idgr})
             if db_reg:
                 if idgr not in self.inserted_cod_grupo:
                     self.inserted_cod_grupo.append(idgr)
-                continue
+                return
+
             self.inserted_cod_grupo.append(idgr)
-            subset = self.grupos_minciencias[self.grupos_minciencias["COD_GRUPO_GR"] == idgr]
-            reg = subset.iloc[-1]
-            entry = self.empty_affiliation()
+            entry = empty_affiliation.copy()
             entry["updated"].append(
                 {"source": "minciencias", "time": int(time())})
             entry["names"].append(
-                {"lang": "es", "name": reg["NME_GRUPO_GR"], "source": "minciencias"})
+                {"source": "minciencias", "lang": "es", "name": reg["nme_grupo_gr"]})
             entry["types"].append({"source": "minciencias", "type": "group"})
-            entry["year_established"] = int(reg["FCREACION_GR"].split("/")[-1])
+            entry["year_established"] = check_date_format(reg["fcreacion_gr"])
             entry["external_ids"].append(
-                {"source": "minciencias", "id": reg["COD_GRUPO_GR"]})
-
+                {"source": "minciencias", "id": reg["cod_grupo_gr"]})
             entry["subjects"].append({
+                "provenance": "minciencias",
                 "source": "OECD",
                 "subjects": [
                     {
                         "level": 0,
-                        "name": reg["NME_GRAN_AREA_GR"],
+                        "name": reg["nme_gran_area_gr"],
                         "id": "",
-                        "external_ids": [{"source": "OECD", "id": reg["ID_AREA_CON_GR"][0]}]
+                        "external_ids": [{"source": "OECD", "id": reg["id_area_con_gr"][0]}]
                     },
                     {
                         "level": 1,
-                        "name": reg["NME_AREA_GR"],
+                        "name": reg["nme_area_gr"],
                         "id": "",
-                        "external_ids": [{"source": "OECD", "id": reg["ID_AREA_CON_GR"][1]}]
+                        "external_ids": [{"source": "OECD", "id": reg["id_area_con_gr"][1]}]
                     },
                 ]
             })
 
             # START AVAL INSTITUTION SECTION
-            for inst_aval in reg["INST_AVAL"].split("|"):
-                inst_aval = inst_aval.split("-")[0]
+            for inst_aval in reg["inst_aval"].split("|"):
                 inst_aval = inst_aval.lower().strip()
 
                 inst_aval = self.rename_institution(inst_aval)
 
-                inst_aval = unidecode.unidecode(inst_aval)
+                inst_aval = unidecode(inst_aval)
                 institutions = self.collection.find(
                     {"$text": {"$search": inst_aval}, "addresses.country": "Colombia"}).limit(50)
                 institution = ""
@@ -145,7 +164,7 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
                     name_mod = name.lower().replace("(colombia)", "").replace(
                         "(", "").replace(")", "").replace("bogotá", "")
                     # name_mod=name_mod.replace("universidad","").replace("de","").replace("del","").replace("los","").strip()
-                    name_mod = unidecode.unidecode(name_mod)
+                    name_mod = unidecode(name_mod)
 
                     if "santander" in name_mod and "industrial" in name_mod:
                         name_mod = "industrial santander"
@@ -200,25 +219,66 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
                         "lat": "",
                         "lng": "",
                         "postcode": "",
-                        "state": reg["NME_DEPARTAMENTO_GR"],
-                        "city": reg["NME_MUNICIPIO_GR"],
+                        "state": reg["nme_departamento_gr"],
+                        "city": reg["nme_municipio_gr"],
                         "country": "Colombia",
                         "country_code": "CO"
                     })
             # END AVAL INSTITUTION
-
-            # START LOOP OVER DIFFERENT CLASSIFICATIONS IN TIME
-            for idx, reg in subset.iterrows():
-                entry_rank = {
-                    "source": "minciencias",
-                    "rank": reg["NME_CLASIFICACION_GR"],
-                    "order": reg["ORDEN_CLAS_GR"],
-                    "date": int(dt.strptime(reg["ANO_CONVO"], "%d/%m/%Y").timestamp())
-                }
-                entry["ranking"].append(entry_rank)
+            entry_rank = {
+                "source": "minciencias",
+                "rank": reg["nme_clasificacion_gr"],
+                "order": reg["orden_clas_gr"],
+                "date": check_date_format(reg["ano_convo"])
+            }
+            entry["ranking"].append(entry_rank)
             # END CLASSIFICATION SECTION
             self.collection.insert_one(entry)
 
+    def process_openadata(self):
+        # Pipeline to find duplicate documents and keep the one with the highest edad_anos_gr in each group
+        pipeline = [
+            # Sort documents by edad_anos_gr descending
+            {'$sort': {'edad_anos_gr': -1}},
+            {'$group': {
+                '_id': '$cod_grupo_gr',
+                # Keep IDs of duplicate documents
+                'document_ids': {'$addToSet': '$_id'},
+                # Keep all documents in the group
+                'documents': {'$push': '$$ROOT'},
+                # Count the number of documents with the same cod_grupo_gr
+                'count': {'$sum': 1}
+            }},
+            # Filter only groups that have more than one document (duplicates)
+            {'$match': {'count': {'$gt': 1}}},
+            {'$project': {
+                '_id': 1,
+                'document_ids': 1,
+                # Keep the first document (the one with the highest edad_anos_gr)
+                'max_edad_doc': {'$arrayElemAt': ['$documents', 0]}
+            }}
+        ]
+        affiliation_cursor = self.openadata_collection.aggregate(
+            pipeline, allowDiskUse=True)
+
+        with MongoClient(self.mongodb_url) as client:
+            db = client[self.config["database_name"]]
+            collection = db["affiliations"]
+
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(self.process_one)(
+                    aff,
+                    collection,
+                    self.empty_affiliation(),
+                    self.verbose,
+                ) for aff in affiliation_cursor
+            )
+            client.close()
+
     def run(self):
         self.process_openadata()
+        self.client.close()
         return 0
