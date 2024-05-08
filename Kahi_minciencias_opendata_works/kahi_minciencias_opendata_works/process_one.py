@@ -123,6 +123,19 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
         else:
             if verbose > 4:
                 print("No author data")
+    # groups
+    group_id = openadata_reg["cod_grupo_gr"]
+    rgroup = db["affiliations"].find_one({"external_ids.id": group_id})
+    if rgroup:
+        found = False
+        for group in colav_reg["groups"]:
+            if group["id"] == rgroup["_id"]:
+                found = True
+                break
+        if not found:
+            colav_reg["groups"].append(
+                {"id": rgroup["_id"], "name": rgroup["names"][0]["name"]})
+
     collection.update_one(
         {"_id": colav_reg["_id"]},
         {"$set": {
@@ -130,7 +143,8 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
             "titles": colav_reg["titles"],
             "external_ids": colav_reg["external_ids"],
             "types": colav_reg["types"],
-            "authors": colav_reg["authors"]
+            "authors": colav_reg["authors"],
+            "groups": colav_reg["groups"]
         }}
     )
 
@@ -208,7 +222,7 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
                     try:
                         group_id = entry['authors'][0]['affiliations'][0]['external_ids'][0]['id']
                         affiliations_db = db["affiliations"].find_one(
-                            {"external_ids.source": "scienti", "external_ids.id": group_id})
+                            {"external_ids.id": group_id})
                         if not affiliations_db:
                             affiliations_db = db["affiliations"].find_one(
                                 {"external_ids.id": group_id})
@@ -314,7 +328,8 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
         else:
             if verbose > 4:
                 print("Invalid thresholds values provided, using default values")
-            thresholds = {"author_thd": 65, "paper_thd_low": 90, "paper_thd_high": 95}
+            thresholds = {"author_thd": 65,
+                          "paper_thd_low": 90, "paper_thd_high": 95}
 
         def str_normilize(word):
             return unidecode(word).lower().strip().replace(".", "")
@@ -326,14 +341,16 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
                     _authors = []
                     for author in response["_source"]["authors"]:
                         _authors.append(str_normilize(author))
-                    scores = process.extract(str_normilize(authors[0]), _authors, scorer=fuzz.partial_ratio)
+                    scores = process.extract(str_normilize(
+                        authors[0]), _authors, scorer=fuzz.partial_ratio)
                     for score in scores:
                         if score[1] >= thresholds["author_thd"]:
                             author_found = True
                             break
             es_title = response["_source"]["title"]
             if es_title:
-                score = fuzz.ratio(str_normilize(title_work), str_normilize(es_title))
+                score = fuzz.ratio(str_normilize(title_work),
+                                   str_normilize(es_title))
                 if author_found and score >= thresholds["paper_thd_low"]:
                     return
             return
@@ -412,10 +429,13 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
                     return
 
             for es_work in es_results:
-                colav_reg = collection.find_one({"_id": ObjectId(es_work["_id"])})
+                colav_reg = collection.find_one(
+                    {"_id": ObjectId(es_work["_id"])})
                 if colav_reg:
-                    titles = [titles.get('title') for titles in colav_reg["titles"]]
-                    display_name, score = process.extractOne(title_work, titles)
+                    titles = [titles.get('title')
+                              for titles in colav_reg["titles"]]
+                    display_name, score = process.extractOne(
+                        title_work, titles)
                     if score > thresholds["paper_thd_high"]:
                         process_one_update(
                             openadata_reg, colav_reg, db, collection, empty_work, verbose)
