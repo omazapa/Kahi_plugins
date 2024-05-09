@@ -223,9 +223,6 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
                         group_id = entry['authors'][0]['affiliations'][0]['external_ids'][0]['id']
                         affiliations_db = db["affiliations"].find_one(
                             {"external_ids.id": group_id})
-                        if not affiliations_db:
-                            affiliations_db = db["affiliations"].find_one(
-                                {"external_ids.id": group_id})
                         if affiliations_db:
                             entry['authors'][0]['affiliations'].append(
                                 {
