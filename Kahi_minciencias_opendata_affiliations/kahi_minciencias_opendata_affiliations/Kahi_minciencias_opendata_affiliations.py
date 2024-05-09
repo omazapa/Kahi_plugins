@@ -1,6 +1,7 @@
 from kahi_impactu_utils.Utils import check_date_format
 from pymongo import MongoClient, TEXT
 from joblib import Parallel, delayed
+from datetime import datetime as dt
 from kahi.KahiBase import KahiBase
 from unidecode import unidecode
 from thefuzz import fuzz
@@ -114,8 +115,11 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
                 db_reg["updated"].append(
                     {"time": int(time()), "source": "minciencias"})
                 if not db_reg["year_established"]:
-                    db_reg["year_established"] = check_date_format(
+                    date_established = check_date_format(
                         reg["fcreacion_gr"]) if "fcreacion_gr" in reg.keys() else ""
+                    if date_established:
+                        db_reg["year_established"] = dt.fromtimestamp(
+                            date_established).year
                 if not db_reg["addresses"]:
                     if not db_reg["relations"]:
                         pass
@@ -152,8 +156,11 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
             entry["names"].append(
                 {"source": "minciencias", "lang": "es", "name": reg["nme_grupo_gr"] if "nme_grupo_gr" in reg.keys() else ""})
             entry["types"].append({"source": "minciencias", "type": "group"})
-            entry["year_established"] = check_date_format(reg["fcreacion_gr"]) if "fcreacion_gr" in reg.keys(
-            ) else ""
+            year_established = ""
+            date_established = check_date_format(reg["fcreacion_gr"]) if "fcreacion_gr" in reg.keys() else ""
+            if date_established:
+                year_established = dt.fromtimestamp(date_established).year
+            entry["year_established"] = year_established
             entry["external_ids"].append(
                 {"source": "minciencias", "id": reg["cod_grupo_gr"]})
             entry["subjects"].append({
