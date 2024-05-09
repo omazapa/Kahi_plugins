@@ -247,6 +247,12 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
             if verbose > 4:
                 print("No author data")
                 return
+    # group
+    group_id = openadata_reg["cod_grupo_gr"]
+    rgroup = db["affiliations"].find_one({"external_ids.id": group_id})
+    if rgroup:
+        entry["groups"].append(
+            {"id": rgroup["_id"], "name": rgroup["names"][0]["name"]})
 
     # insert in mongo
     response = collection.insert_one(entry)
