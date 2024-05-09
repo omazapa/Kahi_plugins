@@ -100,16 +100,49 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
         else:
             return name
 
-    def process_one(self, aff, collection, empty_affiliation, verbose):
-        if not aff["max_edad_doc"]:
+    def process_one(self, reg, collection, empty_affiliation, verbose):
+        if "cod_grupo_gr" not in reg.keys() or not reg["cod_grupo_gr"]:
             return
-        reg = aff["max_edad_doc"]
-        idgr = reg["cod_grupo_gr"] if "cod_grupo_gr" in reg.keys() else None
+        idgr = reg["cod_grupo_gr"]
         if idgr:
             db_reg = collection.find_one({"external_ids.id": idgr})
             if db_reg:
                 if idgr not in self.inserted_cod_grupo:
                     self.inserted_cod_grupo.append(idgr)
+                if "minciencias" in [idx["source"] for idx in db_reg["updated"]]:
+                    return
+                db_reg["updated"].append(
+                    {"time": int(time()), "source": "minciencias"})
+                if not db_reg["year_established"]:
+                    db_reg["year_established"] = check_date_format(
+                        reg["fcreacion_gr"]) if "fcreacion_gr" in reg.keys() else ""
+                if not db_reg["addresses"]:
+                    if not db_reg["relations"]:
+                        pass
+                    else:
+                        if not db_reg["relations"][0]["id"]:
+                            pass
+                        else:
+                            aff_db = collection.find_one({"_id": db_reg["relations"][0]["id"]})
+                            if aff_db:
+                                db_reg["addresses"].append({
+                                    "lat": aff_db["addresses"][0].get("lat", None),
+                                    "lng": aff_db["addresses"][0].get("lng", None),
+                                    "postcode": aff_db["addresses"][0].get("postcode", None),
+                                    "state": aff_db["addresses"][0].get("state", None),
+                                    "city": aff_db["addresses"][0].get("city", None),
+                                    "country": aff_db["addresses"][0].get("country", None),
+                                    "country_code": aff_db["addresses"][0].get("country_code", None)
+                                })
+                collection.update_one(
+                    {"_id": db_reg["_id"]},
+                    {"$set": {
+                        "updated": db_reg["updated"],
+                        "year_established": db_reg.get("year_established"),
+                        "addresses": db_reg.get("addresses")
+                    }}, upsert=True)
+                if verbose > 4:
+                    print("Updated group {}".format(idgr))
                 return
 
             self.inserted_cod_grupo.append(idgr)
@@ -236,33 +269,27 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
             entry["ranking"].append(entry_rank)
             # END CLASSIFICATION SECTION
             self.collection.insert_one(entry)
+            if verbose > 4:
+                print("Inserted group {}".format(idgr))
 
     def process_openadata(self):
         # Pipeline to find duplicate documents and keep the one with the highest edad_anos_gr in each group
         pipeline = [
-            # Sort documents by edad_anos_gr descending
-            {'$sort': {'edad_anos_gr': -1}},
-            {'$group': {
-                '_id': '$cod_grupo_gr',
-                # Keep IDs of duplicate documents
-                'document_ids': {'$addToSet': '$_id'},
-                # Keep all documents in the group
-                'documents': {'$push': '$$ROOT'},
-                # Count the number of documents with the same cod_grupo_gr
-                'count': {'$sum': 1}
-            }},
-            # Filter only groups that have more than one document (duplicates)
-            {'$match': {'count': {'$gt': 1}}},
-            {'$project': {
-                '_id': 1,
-                'document_ids': 1,
-                # Keep the first document (the one with the highest edad_anos_gr)
-                'max_edad_doc': {'$arrayElemAt': ['$documents', 0]}
-            }}
+            {
+                "$sort": {"edad_anos_gr": -1}  # Sort documents by edad_anos_gr in descending order
+            },
+            {
+                "$group": {
+                    "_id": "$cod_grupo_gr",  # Group documents by the group code
+                    "doc": {"$first": "$$ROOT"}  # Select the first document of each group
+                }
+            },
+            {
+                "$replaceRoot": {"newRoot": "$doc"}  # Replace the root of the document with the selected documents
+            }
         ]
         affiliation_cursor = self.openadata_collection.aggregate(
             pipeline, allowDiskUse=True)
-
         with MongoClient(self.mongodb_url) as client:
             db = client[self.config["database_name"]]
             collection = db["affiliations"]
