@@ -45,12 +45,23 @@ def parse_scienti(reg, empty_work, verbose=0):
     if "SGL_CATEGORIA" in reg.keys():
         entry["ranking"].append(
             {"provenance": "scienti", "date": "", "rank": reg["SGL_CATEGORIA"], "source": "scienti"})
-    entry["types"].append(
-        {"provenance": "scienti", "source": "scienti", "type": reg["product_type"][0]["TXT_NME_TIPO_PRODUCTO"]})
-    if "product_type" in reg["product_type"][0].keys():
-        typ = reg["product_type"][0]["product_type"][0]["TXT_NME_TIPO_PRODUCTO"]
-        entry["types"].append(
-            {"provenance": "scienti", "source": "scienti", "type": typ})
+    # types section
+    tpo_obj = reg["product_type"][0]
+    for _ in range(0, 4):
+        tpo_base = {"provenance": "scienti", "source": "scienti"}
+        tpo_name = tpo_obj["TXT_NME_TIPO_PRODUCTO"]
+        level = tpo_obj["NRO_NIVEL"]
+        tpo_class = tpo_obj["TPO_CLASE"]
+        code = tpo_obj["COD_TIPO_PRODUCTO"]
+        tpo_base["type"] = tpo_name
+        tpo_base["level"] = level
+        tpo_base["class"] = tpo_class
+        tpo_base["code"] = code
+        entry["types"].append(tpo_base)
+        if "product_type" in tpo_obj.keys():
+            tpo_obj = tpo_obj["product_type"][0]
+        else:
+            break
 
     # details only for articles
     if "details" in reg.keys() and len(reg["details"]) > 0 and "article" in reg["details"][0].keys():
