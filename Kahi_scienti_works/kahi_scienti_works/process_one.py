@@ -178,10 +178,9 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
             colav_reg["external_ids"].append(ext)
             ext_ids.append(ext["id"])
     # types
-    types = [ext["source"] for ext in colav_reg["types"]]
-    for typ in entry["types"]:
-        if typ["source"] not in types:
-            colav_reg["types"].append(typ)
+    for rec in entry["types"]:
+        if rec not in colav_reg["types"]:
+            colav_reg["types"].append(rec)
 
     # external urls
     url_sources = [url["source"]
