@@ -220,7 +220,7 @@ def process_one_insert(ranking_udea_reg, db, collection, affiliation, empty_work
     if es_handler:
         work = {}
         work["title"] = entry["titles"][0]["title"]
-        work["source"] = entry["source"]["name"]
+        work["source"] = entry["source"]["name"] if "name" in  entry["source"].keys() else ""
         work["year"] = entry["year_published"]
         work["volume"] = entry["bibliographic_info"]["volume"] if "volume" in entry["bibliographic_info"].keys() else ""
         work["issue"] = entry["bibliographic_info"]["issue"] if "issue" in entry["bibliographic_info"].keys() else ""
