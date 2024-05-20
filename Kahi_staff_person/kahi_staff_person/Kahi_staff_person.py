@@ -3,7 +3,7 @@ from pymongo import MongoClient, TEXT
 from pandas import read_excel
 from time import time
 import re
-from kahi_impactu_utils.Utils import check_date_format
+from kahi_impactu_utils.Utils import check_date_format, parse_sex
 from kahi_impactu_utils.String import title_case
 
 
@@ -171,7 +171,7 @@ class Kahi_staff_person(KahiBase):
                     entry["birthdate"] = check_date_format(reg["fecha_nac"])
                 else:
                     entry["birthdate"] = None
-                entry["sex"] = reg["sexo"].lower()
+                entry["sex"] = parse_sex(reg["sexo"].lower())
                 degree = {"date": "", "degree": reg["nivelacad"], "id": "", "institutions": [
                 ], "source": "staff"}
                 if degree not in entry["degrees"]:
