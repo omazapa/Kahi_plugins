@@ -25,6 +25,7 @@ def parse_openalex(reg, empty_work, verbose=0):
         lang = lang_poll(reg["title"], verbose=verbose)
         title = parse_mathml(reg["title"])
         title = parse_html(title)
+        title = title.strip()
         entry["titles"].append(
             {"title": title, "lang": lang, "source": "openalex"})
     for source, idx in reg["ids"].items():
