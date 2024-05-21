@@ -12,7 +12,87 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
     reg_db = collection.find_one({"external_ids.id": auid})
     if reg_db:
         # Author update
+        sources = [x["source"] for x in reg_db["updated"]]
+        if "minciencias" in sources:
+            return
+        # Updated
+        reg_db["updated"].append({
+            "source": "minciencias",
+            "time": int(time())})
+        # Identifiers
+        ids = set()
+        if "red_identificadores" in cvlac_profile.keys():
+            if cvlac_profile["red_identificadores"]:
+                for rid in cvlac_profile["red_identificadores"].values():
+                    ids.add(rid)
+        if "redes_identificadoes" in cvlac_profile.keys():
+            if cvlac_profile["redes_identificadoes"]:
+                for rid in cvlac_profile["redes_identificadoes"].values():
+                    ids.add(rid)
+        if ids:
+            for _id in list(ids):
+                if isinstance(_id, str):
+                    value = get_id_from_url(_id)
+                    if value:
+                        rec = {
+                            "provenance": "minciencias",
+                            "source": get_id_type_from_url(_id),
+                            "id": value
+                        }
+                        if rec["id"] not in [x["id"] for x in reg_db["external_ids"]]:
+                            if rec not in reg_db["external_ids"]:
+                                reg_db["external_ids"].append(rec)
+        # Subjects
+        reg_db["subjects"].append({
+            "provenance": "minciencias",
+            "source": "OECD",
+            "subjects": [
+                {
+                    "level": 0,
+                    "name": author["nme_gran_area_pr"],
+                    "id": "",
+                    "external_ids": [{"source": "OECD", "id": author["id_area_con_pr"][0]}]
+                },
+                {
+                    "level": 1,
+                    "name": author["nme_area_pr"],
+                    "id": "",
+                    "external_ids": [{"source": "OECD", "id": author["id_area_con_pr"][1]}]
+                },
+            ]
+        })
+        # Works
+        papers = []
+        for prod in groups_production_list:
+            if prod["_id"] == author["id_persona_pr"]:
+                papers = prod["products"]
+                break
+        for reg in papers:
+            if reg["id_producto_pd"]:
+                reg_db["related_works"].append({"provenance": "minciencias", "source": "minciencias", "id": reg["id_producto_pd"]})
+        # Ranking
+        entry_rank = {
+            "source": "minciencias",
+            "rank": author["nme_clasificacion_pr"],
+            "id": author["id_clas_pr"],
+            "order": author["orden_clas_pr"],
+            "date": check_date_format(author["ano_convo"])
+        }
+        reg_db["ranking"].append(entry_rank)
+        # Update the record
+        collection.update_one(
+            {"_id": reg_db["_id"]},
+            {"$set": {
+                "updated": reg_db["updated"],
+                "external_ids": reg_db["external_ids"],
+                "subjects": reg_db["subjects"],
+                "related_works": reg_db["related_works"],
+                "ranking": reg_db["ranking"]
+            }})
+        if verbose > 4:
+            print("Updated author {}".format(auid))
         return
+
     # Author creation
     if "0000000082" in author["id_persona_pr"]:
         cvlac_profile["datos_generales"]["Sexo"] = "Mujer"
@@ -96,6 +176,7 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
 
     # subjects
     entry["subjects"].append({
+        "provenance": "minciencias",
         "source": "OECD",
         "subjects": [
             {

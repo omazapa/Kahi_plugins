@@ -26,15 +26,18 @@ To use this plugin you must have kahi installed in your system and construct a y
 config:
   database_url: localhost:27017
   database_name: kahi
-  log_database: kahi_log
+  log_database: kahi
   log_collection: log
 workflow:
-  minciencias_opendata_person:
-    researchers: /current/data/colombia/scienti-abiertos/2-Investigadores_Reconocidos_por_convocatoria.csv
-    cvlac: /current/data/colombia/scienti-abiertos/4-cvlac.csv
-    groups_production: /current/data/colombia/scienti-abiertos/1-Producci_n_Grupos_Investigaci_n.csv
+   minciencias_opendata_person:
+    database_url: localhost:27017
+    database_name: yuku
+    researchers: cvlac_data
+    cvlac: cvlac_stage
+    groups_production: gruplac_production_data
+    num_jobs: 12
+    verbose: 5
 ```
-
 
 # License
 BSD-3-Clause License 
