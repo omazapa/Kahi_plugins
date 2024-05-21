@@ -83,7 +83,7 @@ class Kahi_scienti_person(KahiBase):
                         if "orcid" in author["COD_ORCID"]:
                             orcid_id = get_id_from_url(author["COD_ORCID"])
                         else:
-                            orcid_id = author["COD_ORCID"]
+                            orcid_id = "https://orcid.org/" + author["COD_ORCID"]
                         if orcid_id:
                             rec = {"provenance": "scienti",
                                    "source": "orcid", "id": author["COD_ORCID"]}
@@ -221,7 +221,7 @@ class Kahi_scienti_person(KahiBase):
                             if "orcid" in author["COD_ORCID"]:
                                 orcid_id = get_id_from_url(author["COD_ORCID"])
                             else:
-                                orcid_id = author["COD_ORCID"]
+                                orcid_id = "https://orcid.org/" + author["COD_ORCID"]
                             if orcid_id:
                                 author_db = self.collection.find_one(
                                     {"external_ids.id": orcid_id})
