@@ -87,7 +87,7 @@ def parse_scholar(reg, empty_work, verbose=0):
         entry["bibliographic_info"]["bibtex"] = reg["bibtex"]
         typ = reg["bibtex"].split("{")[0].replace("@", "")
         entry["types"].append({"provenance": "scholar",
-                               "source": "scholar", "type": typ})
+                               "source": "scholar", "type": typ, "level": None})
     if "cites" in reg.keys():
         entry["citations_count"].append(
             {"provenance": "scholar",

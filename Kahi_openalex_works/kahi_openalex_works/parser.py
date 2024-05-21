@@ -35,7 +35,8 @@ def parse_openalex(reg, empty_work, verbose=0):
     entry["year_published"] = reg["publication_year"]
     entry["date_published"] = int(dt.strptime(
         reg["publication_date"], "%Y-%m-%d").timestamp())
-    entry["types"].append({"source": "openalex", "type": reg["type"]})
+    entry["types"].append(
+        {"provenance": "openalex", "source": "openalex", "type": reg["type"], "level": None})
     entry["citations_by_year"] = reg["counts_by_year"]
 
     if reg["primary_location"] and reg["primary_location"]['source']:
