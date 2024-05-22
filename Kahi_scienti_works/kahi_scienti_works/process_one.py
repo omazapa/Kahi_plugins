@@ -28,7 +28,6 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
     entry = parse_scienti(
         scienti_reg, empty_work.copy(), verbose=verbose)
     # updated
-    authors_ids = []
     for upd in colav_reg["updated"]:
         if upd["source"] == "scienti":
             # scienti groups
@@ -53,11 +52,10 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                             f'WARNING: group with ids {scienti_reg["group"]["COD_ID_GRUPO"]} and {scienti_reg["group"]["NRO_ID_GRUPO"]} not found in affiliation')
 
             # authors
-            authors_ids = [str(colav_author["id"])
-                           for colav_author in colav_reg["authors"] if "id" in colav_author.keys()]
-            # adding new author and affiliations to the register
             if "openalex" in [upd["source"] for upd in colav_reg["updated"]]:
                 return None
+            # TODO: this is always 1 author, then a loop is not needed
+            # this has to be fixed
             for i, author in enumerate(entry["authors"]):
                 author_db = None
                 for ext in author["external_ids"]:
@@ -66,7 +64,19 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                     if author_db:
                         break
                 if author_db:
-                    if str(author_db["_id"]) in authors_ids:
+                    improve_author = False
+                    found = False
+                    for a in colav_reg["authors"]:
+                        if author_db["_id"] == a["id"]:
+                            found = True
+                            if a["affiliations"] == []:
+                                improve_author = True
+                                collection.update_one(
+                                    {"_id": colav_reg["_id"]},
+                                    {"$pull": {"authors": {"id": a["id"]}}, "$inc": {
+                                     "author_count": -1}}
+                                )
+                    if found and not improve_author:
                         return None
                     sources = [ext["source"]
                                for ext in author_db["external_ids"]]
@@ -155,7 +165,6 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                                 "name": aff["name"],
                                 "types": []
                             }
-
             collection.update_one(
                 {"_id": colav_reg["_id"]},
                 {"$push": {"authors": entry['authors'][0]}, "$inc": {
@@ -226,6 +235,25 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                         "affiliations": author["affiliations"]
                     }
                     break
+    # the first author is the original one always (already inserted)
+    if "author_others" in scienti_reg.keys():
+        for author in scienti_reg["author_others"][1:]:
+            if author["COD_RH_REF"]:
+                author_db = db["person"].find_one(
+                    {"external_ids.id": author["COD_RH_REF"]})
+                if author_db:
+                    found = False
+                    for author_rec in colav_reg["authors"]:
+                        if author_db["_id"] == author_rec["id"]:
+                            found = True
+                    if not found:
+                        rec = {"id": author_db["_id"],
+                               "full_name": author_db["full_name"],
+                               # we dont have affiliation of the author from the paper, we can´t assume one.
+                               "affiliations": []
+                               }
+                        entry["authors"].append(rec)
+
     # scienti groups
     if "group" in scienti_reg.keys():
         for group in scienti_reg["group"]:
@@ -438,6 +466,20 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, verb
                         "name": aff["name"],
                         "types": []
                     }
+    # the first author is the original one always (already inserted)
+    if "author_others" in scienti_reg.keys():
+        for author in scienti_reg["author_others"][1:]:
+            if author["COD_RH_REF"]:
+                author_db = db["person"].find_one(
+                    {"external_ids.id": author["COD_RH_REF"]})
+                if author_db:
+                    rec = {"id": author_db["_id"],
+                           "full_name": author_db["full_name"],
+                           # we dont have affiliation of the author from the paper, we can´t assume one.
+                           "affiliations": []
+                           }
+                    entry["authors"].append(rec)
+
     entry["author_count"] = len(entry["authors"])
     # scienti group
     if "group" in scienti_reg.keys():
