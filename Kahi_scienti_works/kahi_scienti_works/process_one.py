@@ -28,7 +28,6 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
     entry = parse_scienti(
         scienti_reg, empty_work.copy(), verbose=verbose)
     # updated
-    authors_ids = []
     for upd in colav_reg["updated"]:
         if upd["source"] == "scienti":
             # scienti groups
