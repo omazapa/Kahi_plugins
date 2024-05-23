@@ -125,6 +125,7 @@ class Kahi_openalex_person(KahiBase):
                                                     ["collection_name"]]
         self.openalex_collection_works = self.openalex_db[config["openalex_person"]
                                                           ["collection_name_works"]]
+        self.openalex_collection_works.create_index("authorships.author.id")
 
         self.n_jobs = config["openalex_person"]["num_jobs"] if "num_jobs" in config["openalex_person"].keys(
         ) else 1
