@@ -1,8 +1,9 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, ASCENDING, TEXT
 from time import time
-from kahi_impactu_utils.Utils import check_date_format, get_id_from_url, parse_sex
+from kahi_impactu_utils.Utils import check_date_format, get_id_from_url, parse_sex, doi_processor
 from kahi_impactu_utils.String import title_case
+import re
 
 
 class Kahi_scienti_person(KahiBase):
@@ -60,6 +61,7 @@ class Kahi_scienti_person(KahiBase):
                 client.close()
 
     def update_inserted(self, config, verbose=0):
+        # The authors that have been inserted by staff are updated.
         client = MongoClient(config["database_url"])
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
@@ -74,7 +76,7 @@ class Kahi_scienti_person(KahiBase):
             if scienti_reg:
                 author = scienti_reg["author"][0]
                 rec = {"provenance": "scienti",
-                       "source": "scienti", "id": author["COD_RH"]}
+                       "source": "scienti", "id": {"COD_RH": author["COD_RH"]}}
                 if rec not in person["external_ids"]:
                     person["external_ids"].append(rec)
                 if "COD_ORCID" in author.keys():
@@ -86,7 +88,7 @@ class Kahi_scienti_person(KahiBase):
                             orcid_id = "https://orcid.org/" + author["COD_ORCID"]
                         if orcid_id:
                             rec = {"provenance": "scienti",
-                                   "source": "orcid", "id": author["COD_ORCID"]}
+                                   "source": "orcid", "id": orcid_id}
                             if rec not in person["external_ids"]:
                                 person["external_ids"].append(rec)
                 person["first_names"] = title_case(author["TXT_NAMES_RH"]).strip().split()
@@ -173,20 +175,60 @@ class Kahi_scienti_person(KahiBase):
                                     person["affiliations"].append(group_entry)
 
                     au = prod["author"][0]
-                    if "TPO_PERFIL" not in au.keys():
-                        continue
-                    if au["TPO_PERFIL"] in ranks:
-                        continue
-                    date = ""
-                    if "DTA_CREACION" in prod.keys():
-                        date = check_date_format(prod["DTA_CREACION"])
-                    rank_entry = {
-                        "date": date,
-                        "rank": au["TPO_PERFIL"],
-                        "source": "scienti"
-                    }
-                    rank.append(rank_entry)
-                    ranks.append(au["TPO_PERFIL"])
+                    if "TPO_PERFIL" in au.keys():
+                        if au["TPO_PERFIL"] not in ranks:
+                            date = ""
+                            if "DTA_CREACION" in prod.keys():
+                                date = check_date_format(prod["DTA_CREACION"])
+                            rank_entry = {
+                                "date": date,
+                                "rank": au["TPO_PERFIL"],
+                                "source": "scienti"
+                            }
+                            rank.append(rank_entry)
+                            ranks.append(au["TPO_PERFIL"])
+
+                    # Related works
+                    doi = ""
+                    if "TXT_DOI" in prod.keys() and prod["TXT_DOI"]:
+                        doi = doi_processor(prod["TXT_DOI"])
+                        if doi:
+                            rec = {
+                                "provenance": "scienti",
+                                "source": "doi",
+                                "id": "https://doi.org/" + doi}
+                            if rec not in person["related_works"]:
+                                person["related_works"].append(rec)
+
+                    if "TXT_WEB_PRODUCTO" in prod.keys() and prod["TXT_WEB_PRODUCTO"] and "10." in prod["TXT_WEB_PRODUCTO"]:
+                        doi = doi_processor(prod["TXT_WEB_PRODUCTO"])
+                        if doi:
+                            extracted_doi = re.compile(r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
+                            if extracted_doi:
+                                doi = extracted_doi.group(0)
+                                for keyword in ['abstract', 'homepage', 'tpmd200765', 'event_abstract']:
+                                    doi = doi.split(f'/{keyword}')[0] if keyword in doi else doi
+                            rec = {
+                                "provenance": "scienti",
+                                "source": "doi",
+                                "id": "https://doi.org/" + doi}
+                            if rec not in person["related_works"]:
+                                person["related_works"].append(rec)
+
+                    scienti_rec = ""
+                    cod_rh = prod.get("COD_RH", "")
+                    cod_producto = prod.get("COD_PRODUCTO", "")
+                    if cod_rh and cod_producto:
+                        scienti_rec = {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}
+                    if scienti_rec:
+                        rec = {
+                            "provenance": "scienti",
+                            "source": "scienti",
+                            "id": scienti_rec
+                        }
+                        if rec not in person["related_works"]:
+                            person["related_works"].append(rec)
+
                 self.collection.update_one({"_id": person["_id"]}, {"$set": {
                     "external_ids": person["external_ids"],
                     "first_names": person["first_names"],
@@ -197,7 +239,8 @@ class Kahi_scienti_person(KahiBase):
                     "affiliations": person["affiliations"],
                     "ranking": rank,
                     "marital_status": marital,
-                    "birthplace": birthplace
+                    "birthplace": birthplace,
+                    "related_works": person["related_works"],
                 }})
 
     def insert_scienti(self, config, verbose=0):
@@ -205,7 +248,7 @@ class Kahi_scienti_person(KahiBase):
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
         for rh in scienti.distinct("author.COD_RH"):
-            author_db = self.collection.find_one({"external_ids.id": rh})
+            author_db = self.collection.find_one({"external_ids.id.COD_RH": rh})
             if author_db:
                 continue
             author_scienti = scienti.find_one({"author.COD_RH": rh})
@@ -234,7 +277,7 @@ class Kahi_scienti_person(KahiBase):
                                 scopus_id = get_id_from_url(
                                     author["AUTHOR_ID_SCP"])
                             else:
-                                scopus_id = author["AUTHOR_ID_SCP"]
+                                scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + author["AUTHOR_ID_SCP"]
                             # get_id_from_url can return None (we need to double check)
                             if scopus_id:
                                 author_db = self.collection.find_one(
@@ -260,14 +303,14 @@ class Kahi_scienti_person(KahiBase):
                             if rec not in entry["external_ids"]:
                                 entry["external_ids"].append(rec)
                     entry["external_ids"].append(
-                        {"provenance": "scienti", "source": "scienti", "id": author["COD_RH"]})
+                        {"provenance": "scienti", "source": "scienti", "id": {"COD_RH": author["COD_RH"]}})
                     if "COD_ORCID" in author.keys():
                         if author["COD_ORCID"]:
                             orcid_id = None
                             if "orcid" in author["COD_ORCID"]:
                                 orcid_id = get_id_from_url(author["COD_ORCID"])
                             else:
-                                orcid_id = author["COD_ORCID"]
+                                orcid_id = "https://orcid.org/" + author["COD_ORCID"]
                             if orcid_id:
                                 entry["external_ids"].append(
                                     {"provenance": "scienti",
@@ -279,11 +322,13 @@ class Kahi_scienti_person(KahiBase):
                                 scopus_id = get_id_from_url(
                                     author["AUTHOR_ID_SCP"])
                             else:
-                                scopus_id = author["AUTHOR_ID_SCP"]
+                                scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + author["AUTHOR_ID_SCP"]
                             # get_id_from_url can return None (we need to double check)
                             if scopus_id:
-                                entry["external_ids"].append(
-                                    {"provenance": "scienti", "source": "scopus", "id": scopus_id})
+                                entry["external_ids"].append({
+                                    "provenance": "scienti",
+                                    "source": "scopus",
+                                    "id": scopus_id})
                     # implement the right split names here
                     entry["first_names"] = title_case(
                         author["TXT_NAMES_RH"]).strip().split()
@@ -395,7 +440,6 @@ class Kahi_scienti_person(KahiBase):
                                     if group_entry not in entry["affiliations"]:
                                         entry["affiliations"].append(
                                             group_entry)
-
                         au = prod["author"][0]
                         if "TPO_PERFIL" not in au.keys():
                             continue
@@ -411,6 +455,42 @@ class Kahi_scienti_person(KahiBase):
                         }
                         rank.append(rank_entry)
                         ranks.append(au["TPO_PERFIL"])
+
+                        # Related works
+                        doi = ""
+                        if "TXT_DOI" in prod.keys() and prod["TXT_DOI"]:
+                            doi = doi_processor(prod["TXT_DOI"])
+                            if doi:
+                                entry["related_works"].append(
+                                    {"provenance": "scienti",
+                                     "source": "doi",
+                                     "id": "https://doi.org/" + doi})
+                        if "TXT_WEB_PRODUCTO" in prod.keys() and prod["TXT_WEB_PRODUCTO"] and "10." in prod["TXT_WEB_PRODUCTO"]:
+                            doi = doi_processor(prod["TXT_WEB_PRODUCTO"])
+                            if doi:
+                                extracted_doi = re.compile(r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
+                                if extracted_doi:
+                                    doi = extracted_doi.group(0)
+                                    for keyword in ['abstract', 'homepage', 'tpmd200765', 'event_abstract']:
+                                        doi = doi.split(f'/{keyword}')[0] if keyword in doi else doi
+                                entry["related_works"].append(
+                                    {"provenance": "scienti",
+                                     "source": "doi",
+                                     "id": "https://doi.org/" + doi})
+
+                        scienti_rec = ""
+                        cod_rh = prod.get("COD_RH", "")
+                        cod_producto = prod.get("COD_PRODUCTO", "")
+                        if cod_rh and cod_producto:
+                            scienti_rec = {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}
+                        if scienti_rec:
+                            rec = {
+                                "provenance": "scienti",
+                                "source": "scienti",
+                                "id": scienti_rec
+                            }
+                            if rec not in entry["related_works"]:
+                                entry["related_works"].append(rec)
                     if rank:
                         entry["ranking"] = rank
 
@@ -421,46 +501,65 @@ class Kahi_scienti_person(KahiBase):
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
         author_others = scienti.find(
-            {"author_others": {"$exists": True}, "author_others.COD_RH_REF": {"$ne": None}}, {"author_others": 1})
+            {"author_others": {
+                "$exists": True},
+                "author_others.COD_RH_REF": {"$ne": None}}, {
+                    "author_others": 1,
+                    "COD_RH": 1,
+                    "COD_PRODUCTO": 1,
+                    "TXT_DOI": 1,
+                    "TXT_WEB_PRODUCTO": 1})
         for author_others_reg in author_others:
             for author in author_others_reg["author_others"]:
+                author_db = None
                 if "COD_RH_REF" in author.keys():
                     if author["COD_RH_REF"]:
                         author_db = self.collection.find_one(
-                            {"external_ids.id": author["COD_RH_REF"]})
-                    if author_db:
-                        continue
-                if "NRO_DOC_IDENTIFICACION" in author.keys():
+                            {"external_ids.id.COD_RH": author["COD_RH_REF"]})
+
+                if not author_db and "NRO_DOC_IDENTIFICACION" in author.keys():
                     if author["NRO_DOC_IDENTIFICACION"]:
                         author_db = self.collection.find_one(
                             {"external_ids.id": author["NRO_DOC_IDENTIFICACION"]})
-                    if author_db:
-                        continue
-                if "COD_ORCID" in author.keys():
+
+                if not author_db and "COD_ORCID" in author.keys():
                     if author["COD_ORCID"]:
                         orcid_id = None
                         if "orcid" in author["COD_ORCID"]:
                             orcid_id = get_id_from_url(author["COD_ORCID"])
                         else:
-                            orcid_id = author["COD_ORCID"]
+                            orcid_id = "https://orcid.org/" + author["COD_ORCID"]
                         if orcid_id:
                             author_db = self.collection.find_one(
                                 {"external_ids.id": orcid_id})
-                    if author_db:
-                        continue
-                if "AUTOR_ID_SCP" in author.keys():
+
+                if not author_db and "AUTOR_ID_SCP" in author.keys():
                     if author["AUTOR_ID_SCP"]:
                         scopus_id = None
                         if "scopus" in author["AUTOR_ID_SCP"]:
                             scopus_id = get_id_from_url(author["AUTOR_ID_SCP"])
                         else:
-                            scopus_id = author["AUTOR_ID_SCP"]
+                            scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + author["AUTOR_ID_SCP"]
                         # get_id_from_url can return None (we need to double check)
                         if scopus_id:
                             author_db = self.collection.find_one(
                                 {"external_ids.id": scopus_id})
-                    if author_db:
-                        continue
+
+                if author_db:
+                    # The other author is already in the database, we need to update the entry
+                    # Related works
+                    rec = {
+                        "provenance": "scienti",
+                        "source": "scienti",
+                        "id": {"COD_RH": author_others_reg["COD_RH"], "COD_PRODUCTO": author_others_reg["COD_PRODUCTO"]}}
+                    if rec not in author_db["related_works"]:
+                        author_db["related_works"].append(rec)
+
+                    self.collection.update_one({"_id": author_db["_id"]}, {"$set": {
+                        "related_works": author_db["related_works"]
+                    }})
+                    continue
+
                 entry = self.empty_person()
                 entry["updated"].append(
                     {"time": int(time()), "source": "scienti"})
@@ -491,16 +590,17 @@ class Kahi_scienti_person(KahiBase):
                         if "orcid" in author["COD_ORCID"]:
                             orcid_id = get_id_from_url(author["COD_ORCID"])
                         else:
-                            orcid_id = author["COD_ORCID"]
+                            orcid_id = "https://orcid.org/" + author["COD_ORCID"]
                         if orcid_id:
-                            rec = {"provenance": "scienti",
-                                   "source": "orcid", "id":
-                                   author["COD_ORCID"]}
+                            rec = {
+                                "provenance": "scienti",
+                                "source": "orcid",
+                                "id": orcid_id}
                             if rec not in entry["external_ids"]:
                                 entry["external_ids"].append(rec)
                 if "COD_RH_REF" in author.keys():
                     rec = {"provenance": "scienti",
-                           "source": "scienti", "id": author["COD_RH_REF"]}
+                           "source": "scienti", "id": {"COD_RH": author["COD_RH_REF"]}}
                     if rec not in entry["external_ids"]:
                         entry["external_ids"].append(rec)
                 if "AUTOR_ID_SCP" in author.keys():
@@ -509,12 +609,51 @@ class Kahi_scienti_person(KahiBase):
                         if "scopus" in author["AUTOR_ID_SCP"]:
                             scopus_id = get_id_from_url(author["AUTOR_ID_SCP"])
                         else:
-                            scopus_id = author["AUTOR_ID_SCP"]
+                            scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + author["AUTOR_ID_SCP"]
                         if scopus_id:
                             rec = {"provenance": "scienti",
                                    "source": "scopus", "id": scopus_id}
                             if rec not in entry["external_ids"]:
                                 entry["external_ids"].append(rec)
+                # Related works
+                doi = ""
+                if "TXT_DOI" in author_others_reg.keys() and author_others_reg["TXT_DOI"]:
+                    doi = doi_processor(author_others_reg["TXT_DOI"])
+                    if doi:
+                        rec = {
+                            "provenance": "scienti",
+                            "source": "doi",
+                            "id": "https://doi.org/" + doi}
+                        if rec not in entry["related_works"]:
+                            entry["related_works"].append(rec)
+                if "TXT_WEB_PRODUCTO" in author_others_reg.keys() and author_others_reg["TXT_WEB_PRODUCTO"] and "10." in author_others_reg["TXT_WEB_PRODUCTO"]:
+                    doi = doi_processor(author_others_reg["TXT_WEB_PRODUCTO"])
+                    if doi:
+                        extracted_doi = re.compile(r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
+                        if extracted_doi:
+                            doi = extracted_doi.group(0)
+                            for keyword in ['abstract', 'homepage', 'tpmd200765', 'event_abstract']:
+                                doi = doi.split(f'/{keyword}')[0] if keyword in doi else doi
+                        rec = {
+                            "provenance": "scienti",
+                            "source": "doi",
+                            "id": "https://doi.org/" + doi}
+                        if rec not in entry["related_works"]:
+                            entry["related_works"].append(rec)
+
+                scienti_rec = ""
+                cod_rh = author_others_reg.get("COD_RH", "")
+                cod_producto = author_others_reg.get("COD_PRODUCTO", "")
+                if cod_rh and cod_producto:
+                    scienti_rec = {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}
+                if scienti_rec:
+                    rec = {
+                        "provenance": "scienti",
+                        "source": "scienti",
+                        "id": scienti_rec
+                    }
+                    if rec not in entry["related_works"]:
+                        entry["related_works"].append(rec)
 
                 if entry["external_ids"] == []:
                     continue
