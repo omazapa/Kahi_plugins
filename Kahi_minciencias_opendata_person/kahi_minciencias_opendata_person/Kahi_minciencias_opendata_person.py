@@ -9,7 +9,7 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
     if not author or not cvlac_profile:
         return
     auid = author["id_persona_pr"]
-    reg_db = collection.find_one({"external_ids.id": auid})
+    reg_db = collection.find_one({"external_ids.id.COD_RH": auid})
     if reg_db:
         # Author update
         sources = [x["source"] for x in reg_db["updated"]]
@@ -69,7 +69,10 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
                 break
         for reg in papers:
             if reg["id_producto_pd"]:
-                reg_db["related_works"].append({"provenance": "minciencias", "source": "minciencias", "id": reg["id_producto_pd"]})
+                cod_rh, cod_producto = reg["id_producto_pd"].split("-")[-2], reg["id_producto_pd"].split("-")[-1]
+                rec = {"provenance": "minciencias", "source": "scienti", "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}}
+                if rec not in reg_db["related_works"]:
+                    reg_db["related_works"].append({"provenance": "minciencias", "source": "scienti", "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}})
         # Ranking
         entry_rank = {
             "source": "minciencias",
@@ -251,7 +254,8 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
         # Works
         for reg in papers:
             if reg["id_producto_pd"]:
-                entry["related_works"].append({"provenance": "minciencias", "source": "minciencias", "id": reg["id_producto_pd"]})
+                cod_rh, cod_producto = reg["id_producto_pd"].split("-")[-2], reg["id_producto_pd"].split("-")[-1]
+                entry["related_works"].append({"provenance": "minciencias", "source": "scienti", "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}})
 
     # print("Adding ranks to ", auid)
     entry_rank = {
