@@ -18,9 +18,14 @@ def parse_ranking_udea(reg, affiliation, empty_work):
     """
     entry = empty_work.copy()
     entry["updated"] = [{"source": "ranking_udea", "time": int(time())}]
+    title = reg["titulo"].strip().replace('""', '')
+    if title.count('"') == 1:
+        title = title.replace('"', '')
+    if title.startswith('"') and title.endswith('"'):
+        title = title.replace('"', '')
     lang = lang_poll(reg["titulo"])
     entry["titles"].append(
-        {"title": reg["titulo"], "lang": lang, "source": "ranking_udea"})
+        {"title": title, "lang": lang, "source": "ranking_udea"})
     if reg["DOI"]:
         if not isna(reg["DOI"]):
             doi = doi_processor(reg["DOI"])
