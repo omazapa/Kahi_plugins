@@ -63,10 +63,10 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
             for ext in minciencias_author["external_ids"]:
 
                 author_db = db["person"].find_one(
-                    {"external_ids.source": "scienti", "external_ids.id": ext["id"]})
+                    {"external_ids.source": "scienti", "external_ids.id.COD_RH": ext["id"]})
                 if not author_db:
                     author_db = db["person"].find_one(
-                        {"external_ids.id": ext["id"]})
+                        {"external_ids.id.COD_RH": ext["id"]})
                 if author_db:
                     group_id = minciencias_author["affiliations"][0]['external_ids'][0]['id']
 
@@ -188,10 +188,10 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
         if "external_ids" in minciencias_author.keys() and minciencias_author["affiliations"]:
             for ext in minciencias_author["external_ids"]:
                 author_db = db["person"].find_one(
-                    {"external_ids.source": "scienti", "external_ids.id": ext["id"]})
+                    {"external_ids.source": "scienti", "external_ids.id.COD_RH": ext["id"]})
                 if not author_db:
                     author_db = db["person"].find_one(
-                        {"external_ids.id": ext["id"]})
+                        {"external_ids.id.COD_RH": ext["id"]})
                 if author_db:
                     group_id = minciencias_author["affiliations"][0]['external_ids'][0]['id']
                     affiliations_db = db["affiliations"].find_one(
@@ -367,10 +367,10 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
         if 'id_persona_pd' in openadata_reg.keys():
             if openadata_reg["id_persona_pd"]:
                 author_db = db["person"].find_one(
-                    {"external_ids.source": "scienti", "external_ids.id": openadata_reg["id_persona_pd"]}, {"_id": 1, "full_name": 1})
+                    {"external_ids.source": "scienti", "external_ids.id.COD_RH": openadata_reg["id_persona_pd"]}, {"_id": 1, "full_name": 1})
                 if not author_db:
                     author_db = db["person"].find_one(
-                        {"external_ids.id": openadata_reg["id_persona_pd"]}, {"_id": 1, "full_name": 1})
+                        {"external_ids.id.COD_RH": openadata_reg["id_persona_pd"]}, {"_id": 1, "full_name": 1})
                 if author_db:
                     authors.append(author_db["full_name"])
 
