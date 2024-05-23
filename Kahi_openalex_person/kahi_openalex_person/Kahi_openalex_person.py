@@ -5,7 +5,7 @@ from joblib import Parallel, delayed
 from kahi_impactu_utils.Utils import get_id_from_url
 
 
-def process_one(oa_author, client, db_name, empty_person, max_tries=10):
+def process_one(oa_author, client, db_name, empty_person, related_works, max_tries=10):
     db = client[db_name]
     collection = db["person"]
 
@@ -32,9 +32,18 @@ def process_one(oa_author, client, db_name, empty_person, max_tries=10):
                     if rec not in author["external_ids"]:
                         author["external_ids"].append(rec)
         author["updated"].append({"source": "openalex", "time": int(time())})
+
+        for rwork in related_works:
+            for key in rwork["ids"].keys():
+                rec = {"provenance": "openalex",
+                       "source": key, "id": rwork["ids"][key]}
+                if rec not in author["related_works"]:
+                    author["related_works"].append(rec)
+
         collection.update_one({"_id": author["_id"]}, {"$set": {
             "updated": author["updated"],
-            "external_ids": author["external_ids"]
+            "external_ids": author["external_ids"],
+            "related_works": author["related_works"]
         }})
     else:
         entry = empty_person.copy()
@@ -75,7 +84,12 @@ def process_one(oa_author, client, db_name, empty_person, max_tries=10):
                         "start_date": -1,
                         "end_date": -1
                     })
-
+        for rwork in related_works:
+            for key in rwork["ids"].keys():
+                rec = {"provenance": "openalex",
+                       "source": key, "id": rwork["ids"][key]}
+                if rec not in entry["related_works"]:
+                    entry["related_works"].append(rec)
         collection.insert_one(entry)
 
 
@@ -109,6 +123,8 @@ class Kahi_openalex_person(KahiBase):
                                                                       config["openalex_person"]['collection_name'], config["openalex_person"]["database_url"]))
         self.openalex_collection = self.openalex_db[config["openalex_person"]
                                                     ["collection_name"]]
+        self.openalex_collection_works = self.openalex_db[config["openalex_person"]
+                                                          ["collection_name_works"]]
 
         self.n_jobs = config["openalex_person"]["num_jobs"] if "num_jobs" in config["openalex_person"].keys(
         ) else 1
@@ -128,7 +144,9 @@ class Kahi_openalex_person(KahiBase):
                 author,
                 client,
                 self.config["database_name"],
-                self.empty_person()
+                self.empty_person(),
+                list(self.openalex_collection_works.find(
+                    {"authorships.author.id": author["id"]}, {"ids": 1, "_id": 0}))  # related works
             ) for author in author_cursor
         )
         client.close()

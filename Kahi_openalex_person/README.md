@@ -33,6 +33,7 @@ workflow:
     database_url: localhost:27017
     database_name: openalexco
     collection_name: authors
+    collection_name_works: works #required for related works
     num_jobs: 20
     verbose: 2
 ```
