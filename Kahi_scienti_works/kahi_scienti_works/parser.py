@@ -1,8 +1,9 @@
 from kahi_impactu_utils.Utils import lang_poll, doi_processor, check_date_format
 from time import time
+import re
 
 
-def parse_scienti(reg, empty_work, verbose=0):
+def parse_scienti(reg, empty_work, doi=None, verbose=0):
     """
     Parse a record from the scienti database into a work entry, using the empty_work as template.
 
@@ -25,10 +26,26 @@ def parse_scienti(reg, empty_work, verbose=0):
         {"provenance": "scienti", "source": "COD_RH", "id": reg["COD_RH"]})
     entry["external_ids"].append(
         {"provenance": "scienti", "source": "COD_PRODUCTO", "id": reg["COD_PRODUCTO"]})
-    if "TXT_DOI" in reg.keys():
-        if reg["TXT_DOI"]:
-            entry["external_ids"].append(
-                {"source": "doi", "id": doi_processor(reg["TXT_DOI"])})
+    if doi:
+        entry["external_ids"].append(
+            {"source": "doi", "id": doi})
+    else:
+        if "TXT_DOI" in reg.keys():
+            if reg["TXT_DOI"]:
+                entry["external_ids"].append(
+                    {"source": "doi", "id": doi_processor(reg["TXT_DOI"])})
+            else:
+                if "TXT_WEB_PRODUCTO" in reg.keys() and reg["TXT_WEB_PRODUCTO"] and "10." in reg["TXT_WEB_PRODUCTO"]:
+                    doi = doi_processor(reg["TXT_WEB_PRODUCTO"])
+                    if doi:
+                        extracted_doi = re.compile(r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
+                        if extracted_doi:
+                            doi = extracted_doi.group(0)
+                            for keyword in ['abstract', 'homepage', 'tpmd200765', 'event_abstract']:
+                                doi = doi.split(f'/{keyword}')[0] if keyword in doi else doi
+                if doi:
+                    entry["external_ids"].append(
+                        {"source": "doi", "id": doi})
     if "TXT_WEB_PRODUCTO" in reg.keys():
         entry["external_urls"].append(
             {"source": "scienti", "url": reg["TXT_WEB_PRODUCTO"]})
@@ -141,7 +158,7 @@ def parse_scienti(reg, empty_work, verbose=0):
         "full_name": author["TXT_TOTAL_NAMES"],
         "types": [],
         "affiliations": affiliations,
-        "external_ids": [{"provenance": "scienti", "source": "scienti", "id": author["COD_RH"]}]
+        "external_ids": [{"provenance": "scienti", "source": "scienti", "id": {"COD_RH": author["COD_RH"]}}]
     }
     if author["TPO_DOCUMENTO_IDENT"] == "P":
         author_entry["external_ids"].append(

@@ -1,5 +1,6 @@
 from kahi_scienti_works.parser import parse_scienti
 from kahi_impactu_utils.Utils import lang_poll, doi_processor, compare_author
+import re
 from time import time
 from bson import ObjectId
 
@@ -240,7 +241,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
         for author in scienti_reg["author_others"][1:]:
             if author["COD_RH_REF"]:
                 author_db = db["person"].find_one(
-                    {"external_ids.id": author["COD_RH_REF"]})
+                    {"external_ids.id.COD_RH": author["COD_RH_REF"]})
                 if author_db:
                     found = False
                     for author_rec in colav_reg["authors"]:
@@ -290,7 +291,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
     )
 
 
-def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, verbose=0):
+def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=None, verbose=0):
     """
     Function to insert a new register in the database if it is not found in the colav(kahi works) database.
     This means that the register is not on the database and it is being inserted.
@@ -317,7 +318,7 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, verb
         Verbosity level. The default is 0.
     """
     # parse
-    entry = parse_scienti(scienti_reg, empty_work.copy())
+    entry = parse_scienti(scienti_reg, empty_work.copy(), doi)
     # link
     source_db = None
     if "external_ids" in entry["source"].keys():
@@ -471,7 +472,7 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, verb
         for author in scienti_reg["author_others"][1:]:
             if author["COD_RH_REF"]:
                 author_db = db["person"].find_one(
-                    {"external_ids.id": author["COD_RH_REF"]})
+                    {"external_ids.id.COD_RH": author["COD_RH_REF"]})
                 if author_db:
                     rec = {"id": author_db["_id"],
                            "full_name": author_db["full_name"],
@@ -548,6 +549,15 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
     if "TXT_DOI" in scienti_reg.keys():
         if scienti_reg["TXT_DOI"]:
             doi = doi_processor(scienti_reg["TXT_DOI"])
+    if not doi:
+        if "TXT_WEB_PRODUCTO" in scienti_reg.keys() and scienti_reg["TXT_WEB_PRODUCTO"] and "10." in scienti_reg["TXT_WEB_PRODUCTO"]:
+            doi = doi_processor(scienti_reg["TXT_WEB_PRODUCTO"])
+            if doi:
+                extracted_doi = re.compile(r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
+                if extracted_doi:
+                    doi = extracted_doi.group(0)
+                    for keyword in ['abstract', 'homepage', 'tpmd200765', 'event_abstract']:
+                        doi = doi.split(f'/{keyword}')[0] if keyword in doi else doi
     if doi:
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
@@ -557,7 +567,7 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
                 scienti_reg, colav_reg, db, collection, empty_work, verbose=verbose)
         else:  # insert a new register
             process_one_insert(
-                scienti_reg, db, collection, empty_work, es_handler, verbose=verbose)
+                scienti_reg, db, collection, empty_work, es_handler, doi, verbose=verbose)
     elif similarity:  # does not have a doi identifier
         # elasticsearch section
         if es_handler:

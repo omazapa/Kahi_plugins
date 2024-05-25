@@ -146,8 +146,8 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
 
     entry["external_ids"].append({
         "provenance": "minciencias",
-        "source": "COD_RH",
-        "id": cvlac_profile["id_persona_pr"]
+        "source": "scienti",
+        "id": {"COD_RH": cvlac_profile["id_persona_pr"]}
     })
 
     # all the ids are mixed, so we need to check each one in the next columns
