@@ -30,7 +30,8 @@ def process_one(kahi_col, wikid_col, inst, verbose):
     if "P18" in rec["claims"].keys() and len(rec["claims"]["P18"]) > 0:
         img = rec["claims"]["P18"][0]["mainsnak"]["datavalue"]["value"]
         url_img = f"https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/{img}&width=300"
-        inst["external_urls"].append({"source": "logo", "url": url_img})
+        inst["external_urls"].append(
+            {"provenance": "wikidata", "source": "logo", "url": url_img})
     inst["updated"].append({"source": "wikidata", "time": int(time())})
     kahi_col.update_one({"_id": inst["_id"]}, {
         "$set": {"names": inst["names"], "external_urls": inst["external_urls"], "updated": inst["updated"]}})
