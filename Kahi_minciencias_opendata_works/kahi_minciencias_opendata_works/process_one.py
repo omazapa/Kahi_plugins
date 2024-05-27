@@ -300,8 +300,12 @@ def check_work(title_work, authors, response, thresholds):
     if es_title:
         score = fuzz.ratio(str_normilize(title_work),
                            str_normilize(es_title))
-        if author_found and score >= thresholds["paper_thd_low"]:
-            return True
+        if author_found:
+            if score >= thresholds["paper_thd_low"]:
+                return True
+        else:
+            if score >= thresholds["paper_thd_high"]:
+                return True
     return False
 
 
