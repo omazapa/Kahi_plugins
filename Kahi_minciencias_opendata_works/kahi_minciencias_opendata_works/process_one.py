@@ -342,7 +342,7 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
 
                 if COD_RH and COD_PROD:
                     colav_reg = collection.find_one(
-                        {"external_ids.id": {"$all": [COD_RH, COD_PROD]}})
+                        {"external_ids.id": {"COD_RH": COD_RH, "COD_PRODUCTO": COD_PROD}})
                     if colav_reg:
                         process_one_update(
                             openadata_reg, colav_reg, db, collection, empty_work, verbose)

@@ -23,9 +23,7 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
     entry["titles"].append(
         {"title": title, "lang": lang, "source": "scienti"})
     entry["external_ids"].append(
-        {"provenance": "scienti", "source": "COD_RH", "id": reg["COD_RH"]})
-    entry["external_ids"].append(
-        {"provenance": "scienti", "source": "COD_PRODUCTO", "id": reg["COD_PRODUCTO"]})
+        {"provenance": "scienti", "source": "scienti", "id": {"COD_RH": reg["COD_RH"], "COD_PRODUCTO": reg["COD_PRODUCTO"]}})
     if doi:
         entry["external_ids"].append(
             {"source": "doi", "id": doi})
