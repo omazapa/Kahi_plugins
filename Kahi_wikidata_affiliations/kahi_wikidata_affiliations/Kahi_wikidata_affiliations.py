@@ -17,7 +17,7 @@ def process_one(kahi_col, wikid_col, inst, verbose):
             wikidata_id = j["id"]
             break
     rec = wikid_col.find_one({"id": wikidata_id}, {
-                             "labels": 1, "claims.P18.mainsnak.datavalue.value": 1})
+                             "labels": 1, "claims.P154.mainsnak.datavalue.value": 1, "claims.P18.mainsnak.datavalue.value": 1})
 
     if not rec:
         if verbose > 4:
@@ -27,7 +27,12 @@ def process_one(kahi_col, wikid_col, inst, verbose):
         name = {"name": rec["labels"][lang]["value"], "lang": lang,
                 "source": "wikidata", "provenance": "wikidata"}
         inst["names"].append(name)
-    if "P18" in rec["claims"].keys() and len(rec["claims"]["P18"]) > 0:
+    if "P154" in rec["claims"].keys() and len(rec["claims"]["P154"]) > 0:
+        img = rec["claims"]["P154"][0]["mainsnak"]["datavalue"]["value"]
+        url_img = f"https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/{img}&width=300"
+        inst["external_urls"].append(
+            {"provenance": "wikidata", "source": "logo", "url": url_img})
+    elif "P18" in rec["claims"].keys() and len(rec["claims"]["P18"]) > 0:
         img = rec["claims"]["P18"][0]["mainsnak"]["datavalue"]["value"]
         url_img = f"https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/{img}&width=300"
         inst["external_urls"].append(
