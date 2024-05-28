@@ -6,7 +6,18 @@ from joblib import Parallel, delayed
 
 def process_one(kahi_col, wikid_col, inst, verbose):
     """
+    This function processes one institution, and seve the the titles and images from wikidata.
+    Images are taken from P154 (logo) or P18 (image) if P154 is not present then P18 is used.
 
+    Parameters:
+    ----------
+    kahi_col: pymongo.collection.Collection
+        collection of institutions
+    wikid_col: pymongo.collection.Collection
+        collection of wikidata records
+    inst: dict
+        institution record
+    verbose: int
     """
     for name in inst["names"]:
         if name["source"] == "wikidata":
@@ -28,13 +39,16 @@ def process_one(kahi_col, wikid_col, inst, verbose):
                 "source": "wikidata", "provenance": "wikidata"}
         inst["names"].append(name)
     if "P154" in rec["claims"].keys() and len(rec["claims"]["P154"]) > 0:
-        img = rec["claims"]["P154"][0]["mainsnak"]["datavalue"]["value"]
-        url_img = f"https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/{img}&width=300"
-        inst["external_urls"].append(
-            {"provenance": "wikidata", "source": "logo", "url": url_img})
+        if "datavalue" in rec["claims"]["P154"][0]["mainsnak"].keys():
+            img = rec["claims"]["P154"][0]["mainsnak"]["datavalue"]["value"]
+            url_img = f"https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/{
+                img}&width=300"
+            inst["external_urls"].append(
+                {"provenance": "wikidata", "source": "logo", "url": url_img})
     elif "P18" in rec["claims"].keys() and len(rec["claims"]["P18"]) > 0:
         img = rec["claims"]["P18"][0]["mainsnak"]["datavalue"]["value"]
-        url_img = f"https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/{img}&width=300"
+        url_img = f"https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/{
+            img}&width=300"
         inst["external_urls"].append(
             {"provenance": "wikidata", "source": "logo", "url": url_img})
     inst["updated"].append({"source": "wikidata", "time": int(time())})
@@ -43,10 +57,27 @@ def process_one(kahi_col, wikid_col, inst, verbose):
 
 
 class Kahi_wikidata_affiliations(KahiBase):
+    """
+    Plugin to process wikidata affiliations.
+    Information is taken from the wikidata collection and added to the affiliations collection.
+
+    This plugin is not making requests to wikidata api, it is using the data from the wikidata collection.
+    please raead https://github.com/colav-playground/wikidata_laod for more information on how to load the data.
+    """
 
     config = {}
 
     def __init__(self, config):
+        """
+        Config is a dictionary with the following keys:
+        wikidata_affiliations:
+            database_name: wikidata
+            collection_name: data
+            num_jobs: 5
+            verbose: 5
+
+        This has to be added in the workflow file in yml.
+        """
         self.config = config
 
         self.mongodb_url = config["database_url"]
