@@ -23,9 +23,7 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
     entry["titles"].append(
         {"title": title, "lang": lang, "source": "scienti"})
     entry["external_ids"].append(
-        {"provenance": "scienti", "source": "COD_RH", "id": reg["COD_RH"]})
-    entry["external_ids"].append(
-        {"provenance": "scienti", "source": "COD_PRODUCTO", "id": reg["COD_PRODUCTO"]})
+        {"provenance": "scienti", "source": "scienti", "id": {"COD_RH": reg["COD_RH"], "COD_PRODUCTO": reg["COD_PRODUCTO"]}})
     if doi:
         entry["external_ids"].append(
             {"source": "doi", "id": doi})
@@ -38,11 +36,13 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
                 if "TXT_WEB_PRODUCTO" in reg.keys() and reg["TXT_WEB_PRODUCTO"] and "10." in reg["TXT_WEB_PRODUCTO"]:
                     doi = doi_processor(reg["TXT_WEB_PRODUCTO"])
                     if doi:
-                        extracted_doi = re.compile(r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
+                        extracted_doi = re.compile(
+                            r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
                         if extracted_doi:
                             doi = extracted_doi.group(0)
                             for keyword in ['abstract', 'homepage', 'tpmd200765', 'event_abstract']:
-                                doi = doi.split(f'/{keyword}')[0] if keyword in doi else doi
+                                doi = doi.split(
+                                    f'/{keyword}')[0] if keyword in doi else doi
                 if doi:
                     entry["external_ids"].append(
                         {"source": "doi", "id": doi})
