@@ -248,7 +248,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                     break
     # the first author is the original one always (already inserted)
     if "author_others" in scienti_reg.keys():
-        for author in scienti_reg["author_others"][1:]:
+        for i, author in enumerate(scienti_reg["author_others"][1:]):
             if author["COD_RH_REF"]:
                 author_db = db["person"].find_one(
                     {"external_ids.id.COD_RH": author["COD_RH_REF"]})
@@ -257,13 +257,20 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                     for author_rec in colav_reg["authors"]:
                         if author_db["_id"] == author_rec["id"]:
                             found = True
+                        else:
+                            name_match = compare_author(
+                                author_rec['id'], author_rec['full_name'], author_db['full_name'])
+                            if name_match:
+                                found = True
+                                author_rec["id"] = author_db["_id"]
+                                author_rec["full_name"] = author_db['full_name']
                     if not found:
                         rec = {"id": author_db["_id"],
                                "full_name": author_db["full_name"],
                                # we dont have affiliation of the author from the paper, we can´t assume one.
                                "affiliations": []
                                }
-                        entry["authors"].append(rec)
+                        colav_reg["authors"].append(rec)
 
     # scienti groups
     if "group" in scienti_reg.keys():
@@ -383,14 +390,31 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
             "name": entry["source"]["title"] if "title" in entry["source"].keys() else ""
         }
 
+    author = entry["authors"][0]
     # search authors and affiliations in db
-    for i, author in enumerate(entry["authors"]):
-        author_db = None
+    author_db = None
+    for ext in author["external_ids"]:
+        author_db = db["person"].find_one(
+            {"external_ids.id": ext["id"]})
+        if author_db:
+            break
+    if author_db:
+        sources = [ext["source"]
+                   for ext in author_db["external_ids"]]
+        ids = [ext["id"] for ext in author_db["external_ids"]]
         for ext in author["external_ids"]:
-            author_db = db["person"].find_one(
-                {"external_ids.id": ext["id"]})
-            if author_db:
-                break
+            if ext["id"] not in ids:
+                author_db["external_ids"].append(ext)
+                sources.append(ext["source"])
+                ids.append(ext["id"])
+        author = {
+            "id": author_db["_id"],
+            "full_name": author_db["full_name"],
+            "affiliations": author["affiliations"]
+        }
+    else:
+        author_db = db["person"].find_one(
+            {"full_name": author["full_name"]})
         if author_db:
             sources = [ext["source"]
                        for ext in author_db["external_ids"]]
@@ -400,44 +424,43 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
                     author_db["external_ids"].append(ext)
                     sources.append(ext["source"])
                     ids.append(ext["id"])
-            entry["authors"][i] = {
+            author = {
                 "id": author_db["_id"],
                 "full_name": author_db["full_name"],
                 "affiliations": author["affiliations"]
             }
-            # if "external_ids" in author.keys(): ## por qué se borra esto?
-            #     del (author["external_ids"])
         else:
-            author_db = db["person"].find_one(
-                {"full_name": author["full_name"]})
-            if author_db:
-                sources = [ext["source"]
-                           for ext in author_db["external_ids"]]
-                ids = [ext["id"] for ext in author_db["external_ids"]]
-                for ext in author["external_ids"]:
-                    if ext["id"] not in ids:
-                        author_db["external_ids"].append(ext)
-                        sources.append(ext["source"])
-                        ids.append(ext["id"])
-                entry["authors"][i] = {
-                    "id": author_db["_id"],
-                    "full_name": author_db["full_name"],
-                    "affiliations": author["affiliations"]
-                }
-            else:
-                entry["authors"][i] = {
-                    "id": "",
-                    "full_name": author["full_name"],
-                    "affiliations": author["affiliations"]
-                }
-        for j, aff in enumerate(author["affiliations"]):
-            aff_db = None
-            if "external_ids" in aff.keys():
-                for ext in aff["external_ids"]:
-                    aff_db = db["affiliations"].find_one(
-                        {"external_ids.id": ext["id"]})
-                    if aff_db:
-                        break
+            author = {
+                "id": "",
+                "full_name": author["full_name"],
+                "affiliations": author["affiliations"]
+            }
+    for j, aff in enumerate(author["affiliations"]):
+        aff_db = None
+        if "external_ids" in aff.keys():
+            for ext in aff["external_ids"]:
+                aff_db = db["affiliations"].find_one(
+                    {"external_ids.id": ext["id"]})
+                if aff_db:
+                    break
+        if aff_db:
+            name = aff_db["names"][0]["name"]
+            for n in aff_db["names"]:
+                if n["source"] == "ror":
+                    name = n["name"]
+                    break
+                if n["lang"] == "en":
+                    name = n["name"]
+                if n["lang"] == "es":
+                    name = n["name"]
+            author["affiliations"][j] = {
+                "id": aff_db["_id"],
+                "name": name,
+                "types": aff_db["types"]
+            }
+        else:
+            aff_db = db["affiliations"].find_one(
+                {"names.name": aff["name"]})
             if aff_db:
                 name = aff_db["names"][0]["name"]
                 for n in aff_db["names"]:
@@ -448,35 +471,18 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
                         name = n["name"]
                     if n["lang"] == "es":
                         name = n["name"]
-                entry["authors"][i]["affiliations"][j] = {
+                author["affiliations"][j] = {
                     "id": aff_db["_id"],
                     "name": name,
                     "types": aff_db["types"]
                 }
             else:
-                aff_db = db["affiliations"].find_one(
-                    {"names.name": aff["name"]})
-                if aff_db:
-                    name = aff_db["names"][0]["name"]
-                    for n in aff_db["names"]:
-                        if n["source"] == "ror":
-                            name = n["name"]
-                            break
-                        if n["lang"] == "en":
-                            name = n["name"]
-                        if n["lang"] == "es":
-                            name = n["name"]
-                    entry["authors"][i]["affiliations"][j] = {
-                        "id": aff_db["_id"],
-                        "name": name,
-                        "types": aff_db["types"]
-                    }
-                else:
-                    entry["authors"][i]["affiliations"][j] = {
-                        "id": "",
-                        "name": aff["name"],
-                        "types": []
-                    }
+                author["affiliations"][j] = {
+                    "id": "",
+                    "name": aff["name"],
+                    "types": []
+                }
+    entry["authors"][0] = author
     # the first author is the original one always (already inserted)
     if "author_others" in scienti_reg.keys():
         for author in scienti_reg["author_others"][1:]:
