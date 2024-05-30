@@ -154,9 +154,9 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
                 "name": inst["NME_INST"]
             })
 
-    ##Minimal author entry to search the author in the database
-    ## affiliations are added to the author entry for this paper
-    ## external_ids are added to the author entry for searching purposes
+    # Minimal author entry to search the author in the database
+    # affiliations are added to the author entry for this paper
+    # external_ids are added to the author entry for searching purposes
     author = reg["author"][0]
     author_entry = {
         "full_name": author["TXT_TOTAL_NAMES"],
