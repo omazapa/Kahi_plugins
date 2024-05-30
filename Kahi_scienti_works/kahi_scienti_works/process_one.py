@@ -113,7 +113,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                             author_db["external_ids"].append(ext)
                             sources.append(ext["source"])
                             ids.append(ext["id"])
-                    entry["authors"][i] = {
+                    author = {
                         "id": author_db["_id"],
                         "full_name": author_db["full_name"],
                         "affiliations": author["affiliations"]
