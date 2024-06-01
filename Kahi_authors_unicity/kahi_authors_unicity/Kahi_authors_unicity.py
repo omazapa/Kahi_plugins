@@ -182,8 +182,7 @@ class Kahi_authors_unicity(KahiBase):
         author_docs_ = list(collection.find({"_id": {"$in": author_found}}))
 
         if not author_docs_:
-            print("No authors found with the provided IDs {}".format(
-                [doc["_id"] for doc in author_found]))
+            # print("No authors found with the provided IDs.")
             return
 
         target_doc = self.find_target_doc(author_docs_, "doi")
