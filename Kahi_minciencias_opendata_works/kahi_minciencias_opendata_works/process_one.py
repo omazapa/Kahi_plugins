@@ -279,6 +279,36 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
             print("No elasticsearch index provided")
 
 
+def str_normilize(word):
+    return unidecode(word).lower().strip().replace(".", "")
+
+
+def check_work(title_work, authors, response, thresholds):
+    author_found = False
+    if authors:
+        if authors[0] != "":
+            _authors = []
+            for author in response["_source"]["authors"]:
+                _authors.append(str_normilize(author))
+            scores = process.extract(str_normilize(
+                authors[0]), _authors, scorer=fuzz.partial_ratio)
+            for score in scores:
+                if score[1] >= thresholds["author_thd"]:
+                    author_found = True
+                    break
+    es_title = response["_source"]["title"]
+    if es_title:
+        score = fuzz.ratio(str_normilize(title_work),
+                           str_normilize(es_title))
+        if author_found:
+            if score >= thresholds["paper_thd_low"]:
+                return True
+        else:
+            if score >= thresholds["paper_thd_high"]:
+                return True
+    return False
+
+
 def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_all, thresholds, verbose=0):
     """
     Function to process a single register from the minciencias opendata database.
@@ -316,7 +346,7 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
 
                 if COD_RH and COD_PROD:
                     colav_reg = collection.find_one(
-                        {"external_ids.id": {"$all": [COD_RH, COD_PROD]}})
+                        {"external_ids.id": {"COD_RH": COD_RH, "COD_PRODUCTO": COD_PROD}})
                     if colav_reg:
                         process_one_update(
                             openadata_reg, colav_reg, db, collection, empty_work, verbose)
@@ -333,30 +363,6 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
                 print("Invalid thresholds values provided, using default values")
             thresholds = {"author_thd": 65,
                           "paper_thd_low": 90, "paper_thd_high": 95}
-
-        def str_normilize(word):
-            return unidecode(word).lower().strip().replace(".", "")
-
-        def check_work(title_work, authors, response):
-            author_found = False
-            if authors:
-                if authors[0] != "":
-                    _authors = []
-                    for author in response["_source"]["authors"]:
-                        _authors.append(str_normilize(author))
-                    scores = process.extract(str_normilize(
-                        authors[0]), _authors, scorer=fuzz.partial_ratio)
-                    for score in scores:
-                        if score[1] >= thresholds["author_thd"]:
-                            author_found = True
-                            break
-            es_title = response["_source"]["title"]
-            if es_title:
-                score = fuzz.ratio(str_normilize(title_work),
-                                   str_normilize(es_title))
-                if author_found and score >= thresholds["paper_thd_low"]:
-                    return
-            return
 
         authors = []
         title_work = ""
@@ -390,7 +396,7 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
             )
             if responses:
                 for response in responses:
-                    out = check_work(title_work, authors, response)
+                    out = check_work(title_work, authors, response, thresholds)
                     if out:
                         colav_reg = collection.find_one(
                             {"_id": ObjectId(response["_id"])})
