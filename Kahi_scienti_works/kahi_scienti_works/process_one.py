@@ -258,7 +258,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                         if author_db["_id"] == author_rec["id"]:
                             found = True
                         else:
-                            #only the name can be compared, because we dont have the affiliation of the author from the paper in author_others
+                            # only the name can be compared, because we dont have the affiliation of the author from the paper in author_others
                             name_match = compare_author(
                                 author_rec['id'], author_rec['full_name'], author_db['full_name'])
                             if name_match:
