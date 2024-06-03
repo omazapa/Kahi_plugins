@@ -155,25 +155,16 @@ class Kahi_authors_unicity(KahiBase):
         if not author_docs:
             return
 
-        # Extract doc id and full_name from authors
-        author_dicts = {author["_id"]: author["full_name"]
-                        for author in author_docs}
-
         author_found = None
         # Compare each author with others
-        for doc in author_docs:
-            doc_id = doc["_id"]
-            doc_name = doc["full_name"]
-            for other_id, other_name in author_dicts.items():
-                if doc_id == other_id:
+        for author in author_docs:
+            for other_author in author_docs:
+                if author["_id"] == other_author["_id"]:
                     continue
                 # Perform the author comparison
-                author_match = compare_author(doc_id, other_name, doc_name)
+                author_match = compare_author(author, other_author)
                 if author_match:
-                    if verbose > 4:
-                        print("{} - {} - {}".format(other_name,
-                              doc_name, author_match["method"]))
-                    author_found = [doc_id, other_id]
+                    author_found = [author["_id"], other_author["_id"]]
                     break
             if author_found:
                 break
