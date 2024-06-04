@@ -30,6 +30,9 @@ class Kahi_authors_unicity(KahiBase):
         self.authors_threshold = config["authors_unicity"]["max_authors_threshold"] if "max_authors_threshold" in config["authors_unicity"].keys(
         ) else 0
 
+        self.task = config["authors_unicity"]["task"] if "task" in config["authors_unicity"].keys(
+        ) else None
+
         self.n_jobs = config["authors_unicity"]["num_jobs"] if "num_jobs" in config["authors_unicity"].keys(
         ) else 1
 
@@ -182,63 +185,69 @@ class Kahi_authors_unicity(KahiBase):
 
     def process_authors(self):
         # ORCID unicity
-        pipeline = [
-            {"$unwind": "$external_ids"},
-            {"$match": {"external_ids.source": "orcid"}},
-            {"$group": {"_id": "$external_ids.id", "document_ids": {
-                "$addToSet": "$_id"}, "count": {"$sum": 1}}},
-            {"$match": {"count": {"$gt": 1}}}
-        ]
-        authors_cursor = list(self.collection.aggregate(
-            pipeline, allowDiskUse=True))
+        if isinstance(self.task, list) and "orcid" in self.task:
+            pipeline = [
+                {"$unwind": "$external_ids"},
+                {"$match": {"external_ids.source": "orcid"}},
+                {"$group": {"_id": "$external_ids.id", "document_ids": {
+                    "$addToSet": "$_id"}, "count": {"$sum": 1}}},
+                {"$match": {"count": {"$gt": 1}}}
+            ]
+            authors_cursor = list(self.collection.aggregate(
+                pipeline, allowDiskUse=True))
 
-        with MongoClient(self.mongodb_url) as client:
-            Parallel(
-                n_jobs=self.n_jobs,
-                verbose=1,
-                backend="threading")(
-                delayed(self.orcid_unicity)(
-                    reg,
-                    self.collection,
-                    self.verbose
-                ) for reg in authors_cursor
-            )
-            client.close()
-        if self.verbose > 1:
-            print("ORCID unicity for {} groups of authors is done!".format(
-                len(authors_cursor)))
+            with MongoClient(self.mongodb_url) as client:
+                Parallel(
+                    n_jobs=self.n_jobs,
+                    verbose=1,
+                    backend="threading")(
+                    delayed(self.orcid_unicity)(
+                        reg,
+                        self.collection,
+                        self.verbose
+                    ) for reg in authors_cursor
+                )
+                client.close()
+            if self.verbose > 1:
+                print("ORCID unicity for {} groups of authors is done!".format(
+                    len(authors_cursor)))
 
         # DOI unicity
-        if self.authors_threshold == 0:
-            pepeline_count = {"$gt": 1}
-        else:
-            pepeline_count = {"$gt": 1, "$lte": self.authors_threshold}
-        pipeline = [
-            {"$unwind": "$related_works"},
-            {"$match": {"related_works.source": "doi"}},
-            {"$group": {"_id": "$related_works.id", "authors": {
-                "$addToSet": "$_id"}, "count": {"$sum": 1}}},
-            {"$match": {"count": pepeline_count}}
-        ]
-        authors_cursor = list(self.collection.aggregate(
-            pipeline, allowDiskUse=True))
+        if isinstance(self.task, list) and "doi" in self.task:
+            if self.authors_threshold == 0:
+                pepeline_count = {"$gt": 1}
+            else:
+                pepeline_count = {"$gt": 1, "$lte": self.authors_threshold}
+            pipeline = [
+                {"$unwind": "$related_works"},
+                {"$match": {"related_works.source": "doi"}},
+                {"$group": {"_id": "$related_works.id", "authors": {
+                    "$addToSet": "$_id"}, "count": {"$sum": 1}}},
+                {"$match": {"count": pepeline_count}}
+            ]
+            authors_cursor = list(self.collection.aggregate(
+                pipeline, allowDiskUse=True))
 
-        with MongoClient(self.mongodb_url) as client:
-            Parallel(
-                n_jobs=self.n_jobs,
-                verbose=1,
-                backend="threading")(
-                delayed(self.doi_unicity)(
-                    reg,
-                    self.collection,
-                    self.verbose
-                ) for reg in authors_cursor
-            )
-            client.close()
-        if self.verbose > 1:
-            print("DOI unicity for {} groups of authors is done!".format(
-                len(authors_cursor)))
+        else:
+            if self.verbose > 1:
+                print("Invalid task! Please provide a valid task.")
+
+            with MongoClient(self.mongodb_url) as client:
+                Parallel(
+                    n_jobs=self.n_jobs,
+                    verbose=1,
+                    backend="threading")(
+                    delayed(self.doi_unicity)(
+                        reg,
+                        self.collection,
+                        self.verbose
+                    ) for reg in authors_cursor
+                )
+                client.close()
+            if self.verbose > 1:
+                print("DOI unicity for {} groups of authors is done!".format(
+                    len(authors_cursor)))
 
     def run(self):
         self.process_authors()
-        return
+        return 0

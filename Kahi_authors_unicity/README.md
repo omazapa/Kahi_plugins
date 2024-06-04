@@ -33,11 +33,16 @@ workflow:
     collection_name: person
     max_authors_threshold: 0
     num_jobs: 20
+    task:
+    - orcid
+    - doi
     verbose: 1
 ```
 max_authors_threshold is used to filter the works to be processed with DOI according to their number of authors, use 0 to process all the works.
 
-* WARNING *. This process could take several minutes
+Task corresponds to a list of unicity processes, the available options are “orcid” and “doi”. It is possible to set only one option.
+
+* WARNING *. The doi unicity process could take several minutes
 
 # License
 BSD-3-Clause License 
