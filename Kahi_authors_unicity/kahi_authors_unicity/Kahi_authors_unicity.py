@@ -228,10 +228,6 @@ class Kahi_authors_unicity(KahiBase):
             authors_cursor = list(self.collection.aggregate(
                 pipeline, allowDiskUse=True))
 
-        else:
-            if self.verbose > 1:
-                print("Invalid task! Please provide a valid task.")
-
             with MongoClient(self.mongodb_url) as client:
                 Parallel(
                     n_jobs=self.n_jobs,
@@ -247,6 +243,10 @@ class Kahi_authors_unicity(KahiBase):
             if self.verbose > 1:
                 print("DOI unicity for {} groups of authors is done!".format(
                     len(authors_cursor)))
+
+        else:
+            if self.verbose > 1:
+                print("Invalid task! Please provide a valid task.")
 
     def run(self):
         self.process_authors()
