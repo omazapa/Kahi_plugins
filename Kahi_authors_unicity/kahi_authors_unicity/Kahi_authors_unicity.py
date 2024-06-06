@@ -42,6 +42,20 @@ class Kahi_authors_unicity(KahiBase):
     # Function to merge affiliations
 
     def merge_affiliations(self, target_doc, doc):
+        """
+        Merges affiliations from one document into another.
+
+        If 'affiliations' exist in the source document ('doc'), they are merged into the target document ('target_doc').
+
+        Parameters:
+        ----------
+        self : object
+            The object instance.
+        target_doc : dict
+            The target document where affiliations will be merged.
+        doc : dict
+            The source document containing affiliations to be merged.
+        """
         if 'affiliations' in doc:
             if 'affiliations' not in target_doc:
                 target_doc['affiliations'] = []
@@ -54,6 +68,18 @@ class Kahi_authors_unicity(KahiBase):
     # Function to merge list fields
 
     def merge_lists(self, target_ids, source_ids):
+        """
+        Merges lists by appending unique items from the source list to the target list.
+
+        Parameters:
+        ----------
+        self : object
+            The object instance.
+        target_ids : list
+            The target list where unique items will be appended.
+        source_ids : list
+            The source list containing items to be merged.
+        """
         for item in source_ids:
             if item not in target_ids:
                 target_ids.append(item)
@@ -61,6 +87,20 @@ class Kahi_authors_unicity(KahiBase):
     # Function to merge other fields
 
     def merge_fields(self, target, source, fields):
+        """
+        Merges specified fields from a source dictionary into a target dictionary.
+
+        Parameters:
+        ----------
+        self : object
+            The object instance.
+        target : dict
+            The target dictionary where fields will be merged.
+        source : dict
+            The source dictionary containing fields to be merged.
+        fields : list
+            A list of field names to be merged from the source dictionary into the target dictionary.
+        """
         for field in fields:
             if not target[field]:
                 target[field] = source[field]
@@ -68,6 +108,20 @@ class Kahi_authors_unicity(KahiBase):
     # Function to merge, store and delete documents
 
     def merge_documents(self, authors_docs, target_doc, collection):
+        """
+        Merges information from multiple author documents into a target document, updates the target document in the collection, and deletes other documents.
+
+        Parameters:
+        ----------
+        self : object
+            The object instance.
+        authors_docs : list
+            A list of author documents containing information to be merged into the target document.
+        target_doc : dict
+            The target document where information will be merged.
+        collection : Collection
+            The MongoDB collection to be used.
+        """
         target_id = target_doc["_id"]
 
         for doc in authors_docs:
@@ -104,10 +158,25 @@ class Kahi_authors_unicity(KahiBase):
                      for doc in authors_docs if doc['_id'] != target_id]
         collection.delete_many({"_id": {"$in": other_ids}})
 
-        return
-
     # Find the target document based on the 'provenance' of 'external_ids'
     def find_target_doc(self, author_docs, _id):
+        """
+        Finds the target document among a list of author documents based on specified criteria.
+
+        Parameters:
+        ----------
+        self : object
+            The object instance.
+        author_docs : list
+            A list of author documents to search through.
+        _id : str
+            The identifier ('orcid' or 'doi') indicating which type of document to prioritize.
+
+        Returns:
+        ----------
+        dict or None
+            The target document found based on the specified criteria, or None if no target document is found.
+        """
         target_doc = None
 
         # Define the priority order of provenance to search for
@@ -135,7 +204,19 @@ class Kahi_authors_unicity(KahiBase):
 
     # Function to process authors unicity based on ORCID
 
-    def orcid_unicity(self, reg, collection, verbose=0):
+    def orcid_unicity(self, reg, collection):
+        """
+        Checks unicity by ORCID id among a group of author documents.
+
+        Parameters:
+        ----------
+        self : object
+            The object instance.
+        reg : dict
+            A dictionary containing a registry of agggrupated author documents by ORCID id.
+        collection : Collection
+            The MongoDB collection to be used.
+        """
         # Fetch all author documents by given IDs
         author_ids = reg["document_ids"]
         author_docs = list(collection.find(
@@ -150,7 +231,19 @@ class Kahi_authors_unicity(KahiBase):
 
     # Function to compare authors based on DOI
 
-    def doi_unicity(self, reg, collection, verbose=0):
+    def doi_unicity(self, reg, collection):
+        """
+        Checks unicity by DOI among a group of author documents.
+
+        Parameters:
+        ----------
+        self : object
+            The object instance.
+        reg : dict
+            A dictionary containing a registry of agggrupated author documents by DOI.
+        collection : Collection
+            The MongoDB collection to be used.
+        """
         # Fetch author documents from the database
         author_ids = reg["authors"]
         author_docs = list(collection.find({"_id": {"$in": author_ids}}))
@@ -159,8 +252,19 @@ class Kahi_authors_unicity(KahiBase):
             return
 
         author_found = None
-        # Compare each author with others
+
+        # Set the authors_filter flag to True
+        authors_filter = True
+
         for author in author_docs:
+            # Filter authors based on the source of the related_works
+            if authors_filter:
+                source_match = any(
+                    source in ['staff', 'scienti', 'minciencias'] for source in [updt["source"] for updt in author["updated"]]
+                )
+                if not source_match:
+                    continue  # Skip the author if the source of the related_works is not in ['staff', 'scienti', 'minciencias']
+
             for other_author in author_docs:
                 if author["_id"] == other_author["_id"]:
                     continue
@@ -184,6 +288,14 @@ class Kahi_authors_unicity(KahiBase):
             self.merge_documents(author_docs_, target_doc, collection)
 
     def process_authors(self):
+        """
+        Processes authors' information including checking unicity by ORCID id and DOI among author documents.
+
+        Parameters:
+        ----------
+        self : object
+            The object instance.
+        """
         # ORCID unicity
         if isinstance(self.task, list) and "orcid" in self.task:
             pipeline = [
