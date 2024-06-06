@@ -204,7 +204,7 @@ class Kahi_authors_unicity(KahiBase):
 
     # Function to process authors unicity based on ORCID
 
-    def orcid_unicity(self, reg, collection):
+    def orcid_unicity(self, reg, collection, verbose=0):
         """
         Checks unicity by ORCID id among a group of author documents.
 
@@ -231,7 +231,7 @@ class Kahi_authors_unicity(KahiBase):
 
     # Function to compare authors based on DOI
 
-    def doi_unicity(self, reg, collection):
+    def doi_unicity(self, reg, collection, verbose=0):
         """
         Checks unicity by DOI among a group of author documents.
 
@@ -311,7 +311,7 @@ class Kahi_authors_unicity(KahiBase):
             with MongoClient(self.mongodb_url) as client:
                 Parallel(
                     n_jobs=self.n_jobs,
-                    verbose=1,
+                    verbose=self.verbose,
                     backend="threading")(
                     delayed(self.orcid_unicity)(
                         reg,
@@ -343,7 +343,7 @@ class Kahi_authors_unicity(KahiBase):
             with MongoClient(self.mongodb_url) as client:
                 Parallel(
                     n_jobs=self.n_jobs,
-                    verbose=1,
+                    verbose=self.verbose,
                     backend="threading")(
                     delayed(self.doi_unicity)(
                         reg,
