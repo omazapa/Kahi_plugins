@@ -123,3 +123,4 @@ class Kahi_elasticsearch_works(KahiBase):
             self.delete()
         else:
             raise Exception("Please specify a task to execute")
+        return 0
