@@ -139,8 +139,8 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
 
     full_name = split_names(cvlac_profile["datos_generales"]["Nombre"])
     entry["full_name"] = full_name["full_name"]
-    entry["first_names"] = full_name["names"]
-    entry["last_names"] = full_name["surenames"]
+    entry["first_names"] = full_name["first_names"]
+    entry["last_names"] = full_name["last_names"]
 
     entry["sex"] = parse_sex(cvlac_profile["datos_generales"]["Sexo"].lower()) if "Sexo" in cvlac_profile["datos_generales"].keys() else ""
 
