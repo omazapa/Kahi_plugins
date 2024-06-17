@@ -123,9 +123,11 @@ class Kahi_authors_unicity(KahiBase):
             The MongoDB collection to be used.
         """
         target_id = target_doc["_id"]
-
+        other_ids = []
         for doc in authors_docs:
             if doc['_id'] != target_id:
+                if not compare_author(target_doc, doc):
+                    continue
                 # updated
                 target_update_sources = {profile["source"]
                                          for profile in target_doc["updated"]}
@@ -149,13 +151,11 @@ class Kahi_authors_unicity(KahiBase):
                     self.merge_lists(target_doc[field], doc[field])
                 # affiliations
                 self.merge_affiliations(target_doc, doc)
-
+                other_ids.append(doc["_id"])
         # Update the target document with new external ids
         collection.update_one({"_id": target_id}, {"$set": target_doc})
 
         # Delete all other documents that are not the target_id
-        other_ids = [doc['_id']
-                     for doc in authors_docs if doc['_id'] != target_id]
         collection.delete_many({"_id": {"$in": other_ids}})
 
     # Find the target document based on the 'provenance' of 'external_ids'
@@ -263,7 +263,8 @@ class Kahi_authors_unicity(KahiBase):
                     source in ['staff', 'scienti', 'minciencias'] for source in [updt["source"] for updt in author["updated"]]
                 )
                 if not source_match:
-                    continue  # Skip the author if the source of the related_works is not in ['staff', 'scienti', 'minciencias']
+                    # Skip the author if the source of the related_works is not in ['staff', 'scienti', 'minciencias']
+                    continue
 
             for other_author in author_docs:
                 if author["_id"] == other_author["_id"]:
