@@ -380,4 +380,4 @@ class Kahi_minciencias_opendata_person(KahiBase):
 
     def run(self):
         self.process_openadata()
-        return
+        return 0
