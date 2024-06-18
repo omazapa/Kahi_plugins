@@ -4,6 +4,7 @@ from time import time
 from joblib import Parallel, delayed
 from kahi_impactu_utils.Utils import get_id_from_url
 
+
 def process_one(oa_author, client, db_name, empty_person, related_works, max_tries=10):
     db = client[db_name]
     collection = db["person"]
