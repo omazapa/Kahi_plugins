@@ -2,7 +2,7 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
-
+from kahi_impactu_utils.Utils import get_id_from_url
 
 def process_one(oa_author, client, db_name, empty_person, related_works, max_tries=10):
     db = client[db_name]
@@ -17,6 +17,7 @@ def process_one(oa_author, client, db_name, empty_person, related_works, max_tri
         if not name.lower() in entry["aliases"]:
             entry["aliases"].append(name.lower())
     for source, idx in oa_author["ids"].items():
+        idx = get_id_from_url(idx)
         if idx:
             entry["external_ids"].append(
                 {"provenance": "openalex", "source": source, "id": idx})
