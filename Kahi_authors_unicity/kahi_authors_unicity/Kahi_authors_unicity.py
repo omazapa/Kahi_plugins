@@ -308,7 +308,7 @@ class Kahi_authors_unicity(KahiBase):
             ]
             authors_cursor = list(self.collection.aggregate(
                 pipeline, allowDiskUse=True))
-
+            print("INFO: ORCID unicity for groups of authors is started!")
             with MongoClient(self.mongodb_url) as client:
                 Parallel(
                     n_jobs=self.n_jobs,
@@ -341,6 +341,7 @@ class Kahi_authors_unicity(KahiBase):
             authors_cursor = list(self.collection.aggregate(
                 pipeline, allowDiskUse=True))
 
+            print("INFO: DOI unicity for groups of authors is started!")
             with MongoClient(self.mongodb_url) as client:
                 Parallel(
                     n_jobs=self.n_jobs,
