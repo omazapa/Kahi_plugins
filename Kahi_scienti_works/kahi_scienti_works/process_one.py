@@ -210,7 +210,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
         if 'external_ids' in scienti_author.keys():
             author_ids = scienti_author['external_ids']
             author_db = db['person'].find_one(
-                {'external_ids': {'$elemMatch': {'$or': author_ids}}}, {"_id": 1, "full_name": 1, "affiliations": 1, "first_names": 1, "last_names": 1, "initials": 1})
+                {'external_ids': {'$elemMatch': {'$or': author_ids}}}, {"_id": 1, "full_name": 1, "affiliations": 1, "first_names": 1, "last_names": 1, "initials": 1, "external_ids": 1})
 
         if author_db:
             name_match = None
@@ -225,7 +225,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                     continue
                 author_reg = db['person'].find_one(
                     # this is required to get  first_names and last_names
-                    {'_id': author['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1})
+                    {'_id': author['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1, "external_ids": 1})
                 name_match = compare_author(author_reg, author_db)
                 doi1 = get_doi(entry)
                 doi2 = get_doi(colav_reg)
@@ -258,7 +258,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
         for i, author in enumerate(scienti_reg["author_others"][1:]):
             if author["COD_RH_REF"]:
                 author_db = db["person"].find_one(
-                    {"external_ids.id.COD_RH": author["COD_RH_REF"]}, {"_id": 1, "full_name": 1, "affiliations": 1, "first_names": 1, "last_names": 1, "initials": 1})
+                    {"external_ids.id.COD_RH": author["COD_RH_REF"]}, {"_id": 1, "full_name": 1, "affiliations": 1, "first_names": 1, "last_names": 1, "initials": 1, "external_ids": 1})
                 if author_db:
                     found = False
                     for author_rec in colav_reg["authors"]:
