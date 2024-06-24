@@ -110,7 +110,7 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                                 # only the name can be compared, because we dont have the affiliation of the author from the paper in author_others
                                 author_reg = db['person'].find_one(
                                     # this is required to get  first_names and last_names
-                                    {'_id': author['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1})
+                                    {'_id': author['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1})
 
                                 name_match = compare_author(
                                     author_reg, author_db)
