@@ -71,7 +71,7 @@ class Kahi_ranking_udea_works(KahiBase):
         index = []
         for i, rec in enumerate(self.ranking["cedula"]):
             # row index - cedula - timestamp
-            index.append(f"{str(i)}-{rec}-{str(time.time())}")
+            index.append(f"{str(i)}-{rec}-{str(time())}")
         self.ranking['index'] = index
         self.ranking = self.ranking.to_dict(orient="records")
 
