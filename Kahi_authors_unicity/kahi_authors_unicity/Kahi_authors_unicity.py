@@ -338,8 +338,8 @@ class Kahi_authors_unicity(KahiBase):
                     "$addToSet": "$_id"}, "count": {"$sum": 1}}},
                 {"$match": {"count": pepeline_count}}
             ]
-            authors_cursor = self.collection.aggregate(
-                pipeline, allowDiskUse=True)
+            authors_cursor = list(self.collection.aggregate(
+                pipeline, allowDiskUse=True))
 
             print("INFO: DOI unicity for groups of authors is started!")
             with MongoClient(self.mongodb_url) as client:
