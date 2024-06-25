@@ -93,8 +93,7 @@ class Kahi_minciencias_opendata_works(KahiBase):
 
                 # Check if collection exists
                 if collection_name not in db.list_collection_names():
-                    raise ValueError(f"Collection {collection_name} in database {
-                                     db_name} not found")
+                    raise ValueError(f"Collection {collection_name} in database {db_name} not found")
 
         except ConnectionFailure:
             raise ConnectionFailure("Failed to connect to MongoDB server.")
