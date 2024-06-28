@@ -132,12 +132,18 @@ def parse_scholar(reg, empty_person, verbose=0):
     authors_work = process_authors(reg, verbose=0)
     if authors_work:
         for author in authors_work:
+            if author["full_name"] == 'others':
+                continue
             entry = copy.deepcopy(empty_person)
             entry["updated"].append({"source": "scholar", "time": int(time())})
             entry["full_name"] = author["full_name"]
             if author["author"]:
-                entry["last_names"] = author["author"].split(
-                    ",")[0].capitalize().replace("-", " ")
+                name_parts = author["author"].split(",")
+                if len(name_parts) > 1:
+                    entry["last_names"] = name_parts[0].capitalize().replace(
+                        "-", " ").split()
+                    entry["first_names"] = name_parts[1].capitalize().replace(
+                        "-", " ").split()
                 entry["aliases"].append(author["author"])
             if author["alias"]:
                 entry["aliases"].append(author["alias"])
