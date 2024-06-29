@@ -1,4 +1,4 @@
-from kahi_impactu_utils.Utils import doi_processor
+from kahi_impactu_utils.Utils import doi_processor, split_names, get_name_connector
 from unidecode import unidecode
 from time import time
 import copy
@@ -138,12 +138,24 @@ def parse_scholar(reg, empty_person, verbose=0):
             entry["updated"].append({"source": "scholar", "time": int(time())})
             entry["full_name"] = author["full_name"]
             if author["author"]:
-                name_parts = author["author"].split(",")
-                if len(name_parts) > 1:
-                    entry["last_names"] = name_parts[0].capitalize().replace(
-                        "-", " ").split()
-                    entry["first_names"] = name_parts[1].capitalize().replace(
-                        "-", " ").split()
+                # chaking if the names has connector, more that 4 terms or if it doest have simcolon
+                name_parts = author["full_name"].split()
+                connectors = [e.title() for e in get_name_connector()]
+                if len(name_parts) >= 4 or set(connectors).intersection(name_parts) or len(author["author"].split(",")) == 1:
+                    # if so then just use split_name
+                    author_data = split_names(author["full_name"])
+                    entry["last_names"] = author_data["last_names"]
+                    entry["first_names"] = author_data["first_names"]
+                    entry["initials"] = author_data["initials"]
+                else:
+                    name_parts = author["author"].split(",")
+                    if len(name_parts) > 1:
+                        entry["last_names"] = name_parts[0].replace(
+                            "-", " ").title().split()
+                        entry["first_names"] = name_parts[1].replace(
+                            "-", " ").title().split()
+                        entry["initials"] = ''.join(
+                            [i[0] for i in entry["first_names"]])
                 entry["aliases"].append(author["author"])
             if author["alias"]:
                 entry["aliases"].append(author["alias"])
