@@ -1,4 +1,6 @@
 from kahi_impactu_utils.Utils import compare_author
+from kahi_impactu_utils.MongoClient import ensure_mongodb, get_collection, close_mongodb
+
 from pymongo import MongoClient, TEXT
 from joblib import Parallel, delayed
 from kahi.KahiBase import KahiBase
@@ -15,19 +17,20 @@ class Kahi_authors_unicity(KahiBase):
         self.config = config
         self.merge_suffix = "_merged"
         self.mongodb_url = config["database_url"]
-        self.client = MongoClient(config["database_url"])
-        self.db = self.client[config["database_name"]]
+        self.collection_name = config["authors_unicity"]["collection_name"]
+        self.collection_merged_name = self.collection_name + self.merge_suffix
+        self.database_name = config["database_name"]
 
-        if config["authors_unicity"]["collection_name"] not in self.db.list_collection_names():
+        client = ensure_mongodb(config["database_url"])
+        db = client[config["database_name"]]
+
+        if config["authors_unicity"]["collection_name"] not in db.list_collection_names():
             raise Exception("Collection {} not found in {}".format(
                 config["authors_unicity"]['collection_name'], config["authors_unicity"]["database_url"]))
-        self.collection = self.db[config["authors_unicity"]["collection_name"]]
-        self.collection_merged = self.db[config["authors_unicity"]
-                                         ["collection_name"] + self.merge_suffix]
-
-        self.collection.create_index("external_ids.id")
-        self.collection.create_index("affiliations.id")
-        self.collection.create_index([("full_name", TEXT)])
+        collection = db[config["authors_unicity"]["collection_name"]]
+        collection.create_index("external_ids.id")
+        collection.create_index("affiliations.id")
+        collection.create_index([("full_name", TEXT)])
 
         self.authors_threshold = config["authors_unicity"]["max_authors_threshold"] if "max_authors_threshold" in config["authors_unicity"].keys(
         ) else 0
@@ -40,7 +43,6 @@ class Kahi_authors_unicity(KahiBase):
 
         self.verbose = config["authors_unicity"][
             "verbose"] if "verbose" in config["authors_unicity"].keys() else 0
-
     # Function to merge affiliations
 
     def merge_affiliations(self, target_doc, doc):
@@ -156,11 +158,16 @@ class Kahi_authors_unicity(KahiBase):
                 self.merge_affiliations(target_doc, doc)
                 other_docs.append(doc)
         # Update the target document with new external ids
+        collection_merged = get_collection(
+            self.mongodb_url, self.database_name, self.collection_merged_name)
+        collection = get_collection(
+            self.mongodb_url, self.database_name, self.collection_name)
         for other_doc in other_docs:
-            self.collection_merged.update_one({"_id": other_doc["_id"]}, {
-                                              "$set": other_doc}, upsert=True)
-            self.collection.delete_one({"_id": other_doc["_id"]})
-        self.collection.update_one({"_id": target_id}, {"$set": target_doc})
+            collection_merged.update_one({"_id": other_doc["_id"]}, {
+                "$set": other_doc}, upsert=True)
+            collection.delete_one({"_id": other_doc["_id"]})
+        collection.update_one({"_id": target_id}, {"$set": target_doc})
+        del other_docs
 
     # Find the target document based on the 'provenance' of 'external_ids'
     def find_target_doc(self, author_docs, _id):
@@ -248,9 +255,12 @@ class Kahi_authors_unicity(KahiBase):
         collection : Collection
             The MongoDB collection to be used.
         """
+        collection = get_collection(
+            self.mongodb_url, self.database_name, self.collection_name)
         # Fetch author documents from the database
         author_ids = reg["authors"]
-        author_docs = list(self.collection.find({"_id": {"$in": author_ids}}))
+        author_docs = collection.find({"_id": {"$in": author_ids}}, {
+                                      "first_names": 1, "last_names": 1, "full_name": 1, "updated": 1, "external_ids": 1, "initials": 1})
 
         if not author_docs:
             return
@@ -269,7 +279,8 @@ class Kahi_authors_unicity(KahiBase):
                     # Skip the author if the source of the related_works is not in ['staff', 'scienti', 'minciencias']
                     continue
 
-            for other_author in author_docs:
+            for other_author in collection.find({"_id": {"$in": author_ids}}, {
+                                      "first_names": 1, "last_names": 1, "full_name": 1, "updated": 1, "external_ids": 1, "initials": 1}):
                 if author["_id"] == other_author["_id"]:
                     continue
                 # Perform the author comparison
@@ -285,8 +296,9 @@ class Kahi_authors_unicity(KahiBase):
                             else:
                                 found.append(
                                     set([author["_id"], other_author["_id"]]))
+    
         for author_found in found:
-            author_docs_ = list(self.collection.find(
+            author_docs_ = list(collection.find(
                 {"_id": {"$in": list(author_found)}}))
 
             if not author_docs_:
@@ -295,6 +307,8 @@ class Kahi_authors_unicity(KahiBase):
             target_doc = self.find_target_doc(author_docs_, "doi")
             if target_doc:
                 self.merge_documents(author_docs_, target_doc)
+            del author_docs_
+        #close_mongodb(self.mongodb_url)
 
     def process_authors(self):
         """
@@ -314,24 +328,29 @@ class Kahi_authors_unicity(KahiBase):
                     "$addToSet": "$_id"}, "count": {"$sum": 1}}},
                 {"$match": {"count": {"$gt": 1}}}
             ]
-            authors_cursor = list(self.collection.aggregate(
+            collection = get_collection(
+                self.mongodb_url, self.database_name, self.collection_name)
+            authors_cursor = list(collection.aggregate(
                 pipeline, allowDiskUse=True))
+            close_mongodb(self.mongodb_url)
+            # close the connection before start multiprocess to avoid
+            # UserWarning: MongoClient opened before fork. May not be entirely fork-safe, proceed with caution.
+            # See PyMongo's documentation for details: https://pymongo.readthedocs.io/en/stable/faq.html#is-pymongo-fork-safe
             print("INFO: ORCID unicity for groups of authors is started!")
-            with MongoClient(self.mongodb_url) as client:
-                Parallel(
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose,
-                    backend="threading")(
-                    delayed(self.orcid_unicity)(
-                        reg,
-                        self.collection,
-                        self.verbose
-                    ) for reg in authors_cursor
-                )
-                client.close()
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(self.orcid_unicity)(
+                    reg,
+                    collection,
+                    self.verbose
+                ) for reg in authors_cursor
+            )
             if self.verbose > 1:
                 print("ORCID unicity for {} groups of authors is done!".format(
                     len(authors_cursor)))
+            del authors_cursor
 
         # DOI unicity
         if isinstance(self.task, list) and "doi" in self.task:
@@ -346,29 +365,34 @@ class Kahi_authors_unicity(KahiBase):
                     "$addToSet": "$_id"}, "count": {"$sum": 1}}},
                 {"$match": {"count": pepeline_count}}
             ]
-            authors_cursor = list(self.collection.aggregate(
+            collection = get_collection(
+                self.mongodb_url, self.database_name, self.collection_name)
+            authors_cursor = list(collection.aggregate(
                 pipeline, allowDiskUse=True))
-
+            close_mongodb(self.mongodb_url)
+            # close the connection before start multiprocess to avoid
+            # UserWarning: MongoClient opened before fork. May not be entirely fork-safe, proceed with caution.
+            # See PyMongo's documentation for details: https://pymongo.readthedocs.io/en/stable/faq.html#is-pymongo-fork-safe
             print("INFO: DOI unicity for groups of authors is started!")
-            with MongoClient(self.mongodb_url) as client:
-                Parallel(
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose,
-                    backend="threading")(
-                    delayed(self.doi_unicity)(
-                        reg,
-                        self.verbose
-                    ) for reg in authors_cursor
-                )
-                client.close()
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                #                backend="threading",
+                backend="multiprocessing")(
+                delayed(self.doi_unicity)(
+                    reg,
+                    self.verbose
+                ) for reg in authors_cursor
+            )
             if self.verbose > 1:
                 print("DOI unicity for {} groups of authors is done!".format(
                     len(authors_cursor)))
-
+            del authors_cursor
         else:
             if self.verbose > 1:
                 print("Invalid task! Please provide a valid task.")
 
     def run(self):
         self.process_authors()
+        close_mongodb(self.mongodb_url)
         return 0

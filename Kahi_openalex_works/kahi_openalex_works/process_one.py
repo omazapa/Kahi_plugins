@@ -226,6 +226,9 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
             if "external_ids" in author.keys():
                 del (author["external_ids"])
         else:
+            print(f"not found author in db {author}")
+            from sys import exit
+            exit(1)
             author_db = db["person"].find_one(
                 {"full_name": author["full_name"]})
             if author_db:

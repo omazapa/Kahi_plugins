@@ -30,7 +30,7 @@ def parse_openalex(reg, empty_work, verbose=0):
             {"title": title, "lang": lang, "source": "openalex"})
     for source, idx in reg["ids"].items():
         if "doi" in source:
-            idx = idx.replace("https://doi.org/", "").lower()
+            idx = idx.lower()
         entry["external_ids"].append({"source": source, "id": idx})
     entry["year_published"] = reg["publication_year"]
     entry["date_published"] = int(dt.strptime(
@@ -104,7 +104,7 @@ def parse_openalex(reg, empty_work, verbose=0):
         }
         if author["orcid"]:
             author_entry["external_ids"].append(
-                {"source": "orcid", "id": author["orcid"].replace("https://orcid.org/", "")})
+                {"source": "orcid", "id": author["orcid"]})
         entry["authors"].append(author_entry)
     # concepts section
     subjects = []
