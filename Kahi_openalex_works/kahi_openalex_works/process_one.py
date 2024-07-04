@@ -226,6 +226,9 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
             if "external_ids" in author.keys():
                 del (author["external_ids"])
         else:
+            if verbose > 1:
+                print(
+                    f"WARNING: author not found in db {author} maybe deleted author in openalex, trying to find by name")
             author_db = db["person"].find_one(
                 {"full_name": author["full_name"]})
             if author_db:
