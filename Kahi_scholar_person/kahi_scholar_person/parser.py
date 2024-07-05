@@ -160,7 +160,7 @@ def parse_scholar(reg, empty_person, verbose=0):
             if author["alias"]:
                 entry["aliases"].append(author["alias"])
             if author["scholar_id"]:
-                entry["external_ids"].append({"provenance": "scholar", "source": "profile",
+                entry["external_ids"].append({"provenance": "scholar", "source": "scholar",
                                              "id": "https://scholar.google.com/citations?user=" + author["scholar_id"]})
             if reg["cid"]:
                 entry["related_works"].append(
