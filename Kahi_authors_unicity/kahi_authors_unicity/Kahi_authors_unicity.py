@@ -13,7 +13,8 @@ class Kahi_authors_unicity(KahiBase):
 
     def __init__(self, config):
         self.config = config
-        self.merge_suffix = "_merged"
+        self.merged_suffix = "_merged"
+        self.sets_suffix = "_sets"
         self.mongodb_url = config["database_url"]
         self.client = MongoClient(config["database_url"])
         self.db = self.client[config["database_name"]]
@@ -23,7 +24,9 @@ class Kahi_authors_unicity(KahiBase):
                 config["authors_unicity"]['collection_name'], config["authors_unicity"]["database_url"]))
         self.collection = self.db[config["authors_unicity"]["collection_name"]]
         self.collection_merged = self.db[config["authors_unicity"]
-                                         ["collection_name"] + self.merge_suffix]
+                                         ["collection_name"] + self.merged_suffix]
+        self.collection_merged_sets = self.db[config["authors_unicity"]
+                                              ["collection_name"] + self.merged_suffix + self.sets_suffix]
 
         self.collection.create_index("external_ids.id")
         self.collection.create_index("affiliations.id")
@@ -293,13 +296,14 @@ class Kahi_authors_unicity(KahiBase):
             author_found = list(author_found)
             author_docs_ = list(self.collection.find(
                 {"_id": {"$in": author_found}}))
-
             if not author_docs_:
                 continue
 
             target_doc = self.find_target_doc(author_docs_, "doi")
             if target_doc:
                 self.merge_documents(author_docs_, target_doc)
+            self.collection_merged_sets.insert_one(
+                {"doi": reg["_id"], "target_author": target_doc, "set": author_found})
 
     def process_authors(self):
         """
@@ -322,6 +326,7 @@ class Kahi_authors_unicity(KahiBase):
             authors_cursor = list(self.collection.aggregate(
                 pipeline, allowDiskUse=True))
             print("INFO: ORCID unicity for groups of authors is started!")
+            print(f"INFO: the number of groups are {len(authors_cursor)}")
             Parallel(
                 n_jobs=self.n_jobs,
                 verbose=self.verbose,
@@ -332,7 +337,7 @@ class Kahi_authors_unicity(KahiBase):
                 ) for reg in authors_cursor
             )
             if self.verbose > 1:
-                print("ORCID unicity for {} groups of authors is done!".format(
+                print("INFO: ORCID unicity for {} groups of authors is done!".format(
                     len(authors_cursor)))
 
         # DOI unicity
