@@ -49,7 +49,7 @@ def process_one(oa_author, client, db_name, empty_person, related_works, max_tri
     for rwork in related_works:
         for key in rwork["ids"].keys():
             rec = {"provenance": "openalex",
-                   "source": key, "id": rwork["ids"][key]}
+                   "source": key, "id": rwork["ids"][key], "affiliations": rwork["authorships"]["institutions"], "year": rwork["publication_year"]}
             if rec not in entry["related_works"]:
                 entry["related_works"].append(rec)
     collection.insert_one(entry)
@@ -94,27 +94,31 @@ class Kahi_openalex_person(KahiBase):
         self.verbose = config["openalex_person"]["verbose"] if "verbose" in config["openalex_person"].keys(
         ) else 0
 
-        self.client.close()
+    def related_works(self, author_id):
+        return list(self.openalex_collection_works.aggregate([{"$project": {"authorships.author.id": 1, "ids": 1, "authorships.institutions.id": 1, "publication_year": 1}},
+                                                              {"$match": {
+                                                                  "authorships.author.id": author_id}},
+                                                              {"$unwind": "$authorships"},
+                                                              {"$match": {
+                                                                  "authorships.author.id": author_id}},
+                                                              ]))
 
     def process_openalex(self):
         author_cursor = self.openalex_collection.find(no_cursor_timeout=True)
-        client = MongoClient(self.mongodb_url)
         Parallel(
             n_jobs=self.n_jobs,
             verbose=self.verbose,
             backend="threading")(
             delayed(process_one)(
                 author,
-                client,
+                self.client,
                 self.config["database_name"],
                 self.empty_person(),
-                list(self.openalex_collection_works.find(
-                    # related works
-                    {"authorships.author.id": author["id"]}, {"ids": 1, "_id": 0}))
+                self.related_works(author["id"])
             ) for author in author_cursor
         )
-        client.close()
 
     def run(self):
         self.process_openalex()
+        self.client.close()
         return 0
