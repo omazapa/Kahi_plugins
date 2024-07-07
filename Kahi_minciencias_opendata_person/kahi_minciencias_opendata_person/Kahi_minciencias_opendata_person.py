@@ -5,6 +5,90 @@ from joblib import Parallel, delayed
 from kahi_impactu_utils.Utils import get_id_from_url, get_id_type_from_url, parse_sex, check_date_format, split_names
 
 
+def process_info_from_works(db, author, entry, groups_production_list):
+    # Works
+    papers = []
+    for prod in groups_production_list:
+        if prod["_id"] == author["id_persona_pr"]:
+            papers = prod["products"]
+            break
+    if papers:
+        groups_cod = []
+        inst_cod = []
+        for reg in papers:
+            if reg["cod_grupo_gr"] in groups_cod:
+                continue
+            groups_cod.append(reg["cod_grupo_gr"])
+            group_db = db["affiliations"].find_one(
+                {"external_ids.id": reg["cod_grupo_gr"]})
+            if group_db:
+                name = group_db["names"][0]["name"]
+                for n in group_db["names"]:
+                    if n["lang"] == "es":
+                        name = n["name"]
+                        break
+                    elif n["lang"] == "en":
+                        name = n["name"]
+                aff = {
+                    "name": name,
+                    "id": group_db["_id"],
+                    "types": group_db["types"],
+                    "start_date": check_date_format(reg["fcreacion_pd"]),
+                    "end_date": "",
+                    "position": ""
+                }
+                found = False
+                for i in entry["affiliations"]:
+                    if i["id"] == aff["id"]:
+                        found = True
+                        break
+                if not found:
+                    entry["affiliations"].append(aff)
+                if "relations" in group_db.keys():
+                    if group_db["relations"]:
+                        for rel in group_db["relations"]:
+                            if rel["id"] in inst_cod:
+                                continue
+                            inst_cod.append(rel["id"])
+                            if "names" in rel.keys():
+                                name = rel["names"][0]["name"]
+                                for n in rel["names"]:
+                                    if n["lang"] == "es":
+                                        name = n["name"]
+                                        break
+                                    elif n["lang"] == "en":
+                                        name = n["name"]
+                            else:
+                                name = rel["name"]
+                            aff = {
+                                "name": name,
+                                "id": rel["id"],
+                                "types": rel["types"] if "types" in rel.keys() else [],
+                                "start_date": check_date_format(reg["fcreacion_pd"]),
+                                "end_date": "",
+                                "position": ""
+                            }
+
+                            found = False
+                            for i in entry["affiliations"]:
+                                if i["id"] == aff["id"]:
+                                    found = True
+                                    break
+                            if not found:
+                                entry["affiliations"].append(aff)
+
+    for reg in papers:
+        if reg["id_producto_pd"]:
+            cod_rh, cod_producto = reg["id_producto_pd"].split(
+                "-")[-2], reg["id_producto_pd"].split("-")[-1]
+            rec = {"provenance": "minciencias", "source": "scienti",
+                   "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}}
+            if rec not in entry["related_works"]:
+                rw = {"provenance": "minciencias", "source": "scienti", "id": {
+                    "COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}}
+                entry["related_works"].append(rw)
+
+
 def process_one(author, db, collection, empty_person, cvlac_profile, groups_production_list, verbose):
     if not author or not cvlac_profile:
         return
@@ -13,8 +97,8 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
     if reg_db:
         # Author update
         sources = [x["source"] for x in reg_db["updated"]]
-        if "minciencias" in sources:
-            return
+        # if "minciencias" in sources:
+        #     return
         # Updated
         reg_db["updated"].append({
             "source": "minciencias",
@@ -61,21 +145,6 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
                 },
             ]
         })
-        # Works
-        papers = []
-        for prod in groups_production_list:
-            if prod["_id"] == author["id_persona_pr"]:
-                papers = prod["products"]
-                break
-        for reg in papers:
-            if reg["id_producto_pd"]:
-                cod_rh, cod_producto = reg["id_producto_pd"].split(
-                    "-")[-2], reg["id_producto_pd"].split("-")[-1]
-                rec = {"provenance": "minciencias", "source": "scienti",
-                       "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}}
-                if rec not in reg_db["related_works"]:
-                    reg_db["related_works"].append({"provenance": "minciencias", "source": "scienti", "id": {
-                                                   "COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}})
         # Ranking
         entry_rank = {
             "source": "minciencias",
@@ -85,6 +154,9 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
             "date": check_date_format(author["ano_convo"])
         }
         reg_db["ranking"].append(entry_rank)
+
+        # Affiliations and related_works
+        process_info_from_works(db, author, reg_db, groups_production_list)
         # Update the record
         collection.update_one(
             {"_id": reg_db["_id"]},
@@ -93,7 +165,8 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
                 "external_ids": reg_db["external_ids"],
                 "subjects": reg_db["subjects"],
                 "related_works": reg_db["related_works"],
-                "ranking": reg_db["ranking"]
+                "ranking": reg_db["ranking"],
+                "affiliations": reg_db["affiliations"]
             }})
         if verbose > 4:
             print("Updated author {}".format(auid))
@@ -202,68 +275,8 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
         ]
     })
 
-    papers = []
-    for prod in groups_production_list:
-        if prod["_id"] == author["id_persona_pr"]:
-            papers = prod["products"]
-            break
-
-    if papers:
-        groups_cod = []
-        inst_cod = []
-        for reg in papers:
-            if reg["cod_grupo_gr"] in groups_cod:
-                continue
-            groups_cod.append(reg["cod_grupo_gr"])
-            group_db = db["affiliations"].find_one(
-                {"external_ids.id": reg["cod_grupo_gr"]})
-            if group_db:
-                name = group_db["names"][0]["name"]
-                for n in group_db["names"]:
-                    if n["lang"] == "es":
-                        name = n["name"]
-                        break
-                    elif n["lang"] == "en":
-                        name = n["name"]
-                entry["affiliations"].append({
-                    "name": name,
-                    "id": group_db["_id"],
-                    "types": group_db["types"],
-                    "start_date": check_date_format(reg["fcreacion_pd"]),
-                    "end_date": "",
-                    "position": ""
-                })
-                if "relations" in group_db.keys():
-                    if group_db["relations"]:
-                        for rel in group_db["relations"]:
-                            if rel["id"] in inst_cod:
-                                continue
-                            inst_cod.append(rel["id"])
-                            if "names" in rel.keys():
-                                name = rel["names"][0]["name"]
-                                for n in rel["names"]:
-                                    if n["lang"] == "es":
-                                        name = n["name"]
-                                        break
-                                    elif n["lang"] == "en":
-                                        name = n["name"]
-                            else:
-                                name = rel["name"]
-                            entry["affiliations"].append({
-                                "name": name,
-                                "id": rel["id"],
-                                "types": rel["types"] if "types" in rel.keys() else [],
-                                "start_date": check_date_format(reg["fcreacion_pd"]),
-                                "end_date": "",
-                                "position": ""
-                            })
-        # Works
-        for reg in papers:
-            if reg["id_producto_pd"]:
-                cod_rh, cod_producto = reg["id_producto_pd"].split(
-                    "-")[-2], reg["id_producto_pd"].split("-")[-1]
-                entry["related_works"].append({"provenance": "minciencias", "source": "scienti", "id": {
-                                              "COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}})
+    # affiliations and related works
+    process_info_from_works(db, author, entry, groups_production_list)
 
     # print("Adding ranks to ", auid)
     entry_rank = {
