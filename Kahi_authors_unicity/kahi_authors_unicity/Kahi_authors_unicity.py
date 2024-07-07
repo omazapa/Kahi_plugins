@@ -153,7 +153,10 @@ class Kahi_authors_unicity(KahiBase):
                 for field in fields:
                     self.merge_lists(target_doc[field], doc[field])
                 # affiliations
-                self.merge_affiliations(target_doc, doc)
+                # affiliations can not be merged, it is causing poor data quailty
+                # see issue https://github.com/colav/impactu/issues/157
+                # we need to think is a strategy
+                # self.merge_affiliations(target_doc, doc)
                 other_docs.append(doc)
         # Update the target document with new external ids
         for other_doc in other_docs:
