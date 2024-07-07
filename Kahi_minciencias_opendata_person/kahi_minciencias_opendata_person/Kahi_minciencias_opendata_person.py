@@ -97,8 +97,8 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
     if reg_db:
         # Author update
         sources = [x["source"] for x in reg_db["updated"]]
-        # if "minciencias" in sources:
-        #     return
+        if "minciencias" in sources:
+            return
         # Updated
         reg_db["updated"].append({
             "source": "minciencias",
@@ -168,8 +168,6 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
                 "ranking": reg_db["ranking"],
                 "affiliations": reg_db["affiliations"]
             }})
-        if verbose > 4:
-            print("Updated author {}".format(auid))
         return
 
     # Author creation
