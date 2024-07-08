@@ -87,24 +87,18 @@ class Kahi_openalex_works(KahiBase):
             paper_cursor = self.openalex_collection.find(
                 {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "title": {"$ne": None}})
 
-        with MongoClient(self.mongodb_url) as client:
-            db = client[self.config["database_name"]]
-            works_collection = db["works"]
-
-            Parallel(
-                n_jobs=self.n_jobs,
-                verbose=self.verbose,
-                backend="threading")(
-                delayed(process_one)(
-                    paper,
-                    db,
-                    works_collection,
-                    self.empty_work(),
-                    self.es_handler,
-                    verbose=self.verbose
-                ) for paper in paper_cursor
-            )
-            client.close()
+        Parallel(
+            n_jobs=self.n_jobs,
+            verbose=self.verbose,
+            backend="multiprocessing",
+            batch_size=1000)(
+            delayed(process_one)(
+                paper,
+                self.config,
+                self.empty_work(),
+                verbose=self.verbose
+            ) for paper in paper_cursor
+        )
 
     def run(self):
         self.process_openalex()
