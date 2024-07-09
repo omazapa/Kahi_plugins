@@ -13,7 +13,8 @@ class Kahi_authors_unicity(KahiBase):
 
     def __init__(self, config):
         self.config = config
-
+        self.merged_suffix = "_merged"
+        self.sets_suffix = "_sets"
         self.mongodb_url = config["database_url"]
         self.client = MongoClient(config["database_url"])
         self.db = self.client[config["database_name"]]
@@ -22,6 +23,10 @@ class Kahi_authors_unicity(KahiBase):
             raise Exception("Collection {} not found in {}".format(
                 config["authors_unicity"]['collection_name'], config["authors_unicity"]["database_url"]))
         self.collection = self.db[config["authors_unicity"]["collection_name"]]
+        self.collection_merged = self.db[config["authors_unicity"]
+                                         ["collection_name"] + self.merged_suffix]
+        self.collection_merged_sets = self.db[config["authors_unicity"]
+                                              ["collection_name"] + self.merged_suffix + self.sets_suffix]
 
         self.collection.create_index("external_ids.id")
         self.collection.create_index("affiliations.id")
@@ -83,7 +88,6 @@ class Kahi_authors_unicity(KahiBase):
         for item in source_ids:
             if item not in target_ids:
                 target_ids.append(item)
-
     # Function to merge other fields
 
     def merge_fields(self, target, source, fields):
@@ -104,10 +108,9 @@ class Kahi_authors_unicity(KahiBase):
         for field in fields:
             if not target[field]:
                 target[field] = source[field]
-
     # Function to merge, store and delete documents
 
-    def merge_documents(self, authors_docs, target_doc, collection):
+    def merge_documents(self, authors_docs, target_doc):
         """
         Merges information from multiple author documents into a target document, updates the target document in the collection, and deletes other documents.
 
@@ -123,9 +126,11 @@ class Kahi_authors_unicity(KahiBase):
             The MongoDB collection to be used.
         """
         target_id = target_doc["_id"]
-
+        other_docs = []
         for doc in authors_docs:
             if doc['_id'] != target_id:
+                if not compare_author(target_doc, doc):
+                    continue
                 # updated
                 target_update_sources = {profile["source"]
                                          for profile in target_doc["updated"]}
@@ -140,7 +145,7 @@ class Kahi_authors_unicity(KahiBase):
 
                 # first_names, last_names, initials, sex, marital_status, birthplace, birthdate
                 self.merge_fields(target_doc, doc, [
-                                  "first_names", "last_names", "initials", "keywords", "sex", "marital_status", "birthplace", "birthdate"])
+                    "first_names", "last_names", "initials", "keywords", "sex", "marital_status", "birthplace", "birthdate"])
 
                 # aliases, external_ids, ranking, degrees, subjects, related_works
                 fields = ["aliases", "external_ids", "ranking",
@@ -148,15 +153,22 @@ class Kahi_authors_unicity(KahiBase):
                 for field in fields:
                     self.merge_lists(target_doc[field], doc[field])
                 # affiliations
-                self.merge_affiliations(target_doc, doc)
-
+                # affiliations can not be merged, it is causing poor data quailty
+                # see issue https://github.com/colav/impactu/issues/157
+                # we need to think is a strategy
+                # self.merge_affiliations(target_doc, doc)
+                other_docs.append(doc)
         # Update the target document with new external ids
-        collection.update_one({"_id": target_id}, {"$set": target_doc})
-
-        # Delete all other documents that are not the target_id
-        other_ids = [doc['_id']
-                     for doc in authors_docs if doc['_id'] != target_id]
-        collection.delete_many({"_id": {"$in": other_ids}})
+        for other_doc in other_docs:
+            if target_id != other_doc["_id"]:  # double check
+                self.collection_merged.update_one({"_id": other_doc["_id"]}, {
+                    "$set": other_doc}, upsert=True)
+                self.collection.delete_one({"_id": other_doc["_id"]})
+            else:
+                print(
+                    "Error: The target document and the other document have the same id")
+        # Update the target document in the collection
+        self.collection.update_one({"_id": target_id}, {"$set": target_doc})
 
     # Find the target document based on the 'provenance' of 'external_ids'
     def find_target_doc(self, author_docs, _id):
@@ -204,7 +216,7 @@ class Kahi_authors_unicity(KahiBase):
 
     # Function to process authors unicity based on ORCID
 
-    def orcid_unicity(self, reg, collection, verbose=0):
+    def orcid_unicity(self, reg, verbose=0):
         """
         Checks unicity by ORCID id among a group of author documents.
 
@@ -219,7 +231,7 @@ class Kahi_authors_unicity(KahiBase):
         """
         # Fetch all author documents by given IDs
         author_ids = reg["document_ids"]
-        author_docs = list(collection.find(
+        author_docs = list(self.collection.find(
             {"_id": {"$in": [ObjectId(aid) for aid in author_ids]}}))
         if not author_docs:
             print("No authors found with the provided IDs.")
@@ -227,11 +239,11 @@ class Kahi_authors_unicity(KahiBase):
 
         target_doc = self.find_target_doc(author_docs, "orcid")
         if target_doc:
-            self.merge_documents(author_docs, target_doc, collection)
+            self.merge_documents(author_docs, target_doc)
 
     # Function to compare authors based on DOI
 
-    def doi_unicity(self, reg, collection, verbose=0):
+    def doi_unicity(self, reg, verbose=0):
         """
         Checks unicity by DOI among a group of author documents.
 
@@ -246,46 +258,55 @@ class Kahi_authors_unicity(KahiBase):
         """
         # Fetch author documents from the database
         author_ids = reg["authors"]
-        author_docs = list(collection.find({"_id": {"$in": author_ids}}))
+        author_docs = self.collection.find({"_id": {"$in": author_ids}}, {
+            "first_names": 1, "last_names": 1, "full_name": 1, "updated": 1, "external_ids": 1, "initials": 1})
 
         if not author_docs:
             return
 
-        author_found = None
-
         # Set the authors_filter flag to True
         authors_filter = True
 
+        found = []  # we will create a list of sets of authors, every set in the list have to be merge
         for author in author_docs:
             # Filter authors based on the source of the related_works
             if authors_filter:
                 source_match = any(
-                    source in ['staff', 'scienti', 'minciencias'] for source in [updt["source"] for updt in author["updated"]]
+                    source in ['staff', 'scienti', 'minciencias', "scholar"] for source in [updt["source"] for updt in author["updated"]]
                 )
                 if not source_match:
-                    continue  # Skip the author if the source of the related_works is not in ['staff', 'scienti', 'minciencias']
+                    # Skip the author if the source of the related_works is not in ['staff', 'scienti', 'minciencias','scholar']
+                    continue
 
-            for other_author in author_docs:
+            for other_author in self.collection.find({"_id": {"$in": author_ids}}, {
+                    "first_names": 1, "last_names": 1, "full_name": 1, "updated": 1, "external_ids": 1, "initials": 1}):
                 if author["_id"] == other_author["_id"]:
                     continue
                 # Perform the author comparison
-                author_match = compare_author(author, other_author)
-                if author_match:
-                    author_found = [author["_id"], other_author["_id"]]
-                    break
-            if author_found:
-                break
-        if not author_found:
-            return
-        author_docs_ = list(collection.find({"_id": {"$in": author_found}}))
+                if compare_author(author, other_author):
+                    if not found:
+                        found.append(set([author["_id"], other_author["_id"]]))
+                    else:
+                        for i, author_set in enumerate(found):
+                            # if the author is in the current set then add it to the set
+                            if author_set.intersection([author["_id"], other_author["_id"]]):
+                                found[i] = author_set.union(
+                                    [author["_id"], other_author["_id"]])
+                            else:
+                                found.append(
+                                    set([author["_id"], other_author["_id"]]))
+        for author_found in found:
+            author_found = list(author_found)
+            author_docs_ = list(self.collection.find(
+                {"_id": {"$in": author_found}}))
+            if not author_docs_:
+                continue
 
-        if not author_docs_:
-            # print("No authors found with the provided IDs.")
-            return
-
-        target_doc = self.find_target_doc(author_docs_, "doi")
-        if target_doc:
-            self.merge_documents(author_docs_, target_doc, collection)
+            target_doc = self.find_target_doc(author_docs_, "doi")
+            if target_doc:
+                self.merge_documents(author_docs_, target_doc)
+            self.collection_merged_sets.insert_one(
+                {"doi": reg["_id"], "target_author": target_doc, "set": author_found})
 
     def process_authors(self):
         """
@@ -307,21 +328,19 @@ class Kahi_authors_unicity(KahiBase):
             ]
             authors_cursor = list(self.collection.aggregate(
                 pipeline, allowDiskUse=True))
-
-            with MongoClient(self.mongodb_url) as client:
-                Parallel(
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose,
-                    backend="threading")(
-                    delayed(self.orcid_unicity)(
-                        reg,
-                        self.collection,
-                        self.verbose
-                    ) for reg in authors_cursor
-                )
-                client.close()
+            print("INFO: ORCID unicity for groups of authors is started!")
+            print(f"INFO: the number of groups are {len(authors_cursor)}")
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(self.orcid_unicity)(
+                    reg,
+                    self.verbose
+                ) for reg in authors_cursor
+            )
             if self.verbose > 1:
-                print("ORCID unicity for {} groups of authors is done!".format(
+                print("INFO: ORCID unicity for {} groups of authors is done!".format(
                     len(authors_cursor)))
 
         # DOI unicity
@@ -340,18 +359,23 @@ class Kahi_authors_unicity(KahiBase):
             authors_cursor = list(self.collection.aggregate(
                 pipeline, allowDiskUse=True))
 
-            with MongoClient(self.mongodb_url) as client:
-                Parallel(
-                    n_jobs=self.n_jobs,
-                    verbose=self.verbose,
-                    backend="threading")(
-                    delayed(self.doi_unicity)(
-                        reg,
-                        self.collection,
-                        self.verbose
-                    ) for reg in authors_cursor
-                )
-                client.close()
+            print("INFO: DOI unicity for groups of authors is started!")
+            print("INFO: Number of groups of authors to process: {}".format(
+                len(authors_cursor)))
+            print("INFO: Number of jobs set to 1, this can not be parallelized!")
+            # this can not be parallelized, because we need to merge the authors and delete the documents
+            # different dois can have the same authors and this can produce that the target author in one doi can not be the target in another doi
+            # then all the authors similar can be deleted
+            # at the moment jobs were hardcode to 1
+            Parallel(
+                n_jobs=1,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(self.doi_unicity)(
+                    reg,
+                    self.verbose
+                ) for reg in authors_cursor
+            )
             if self.verbose > 1:
                 print("DOI unicity for {} groups of authors is done!".format(
                     len(authors_cursor)))

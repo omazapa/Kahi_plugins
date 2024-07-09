@@ -2,6 +2,8 @@
 from kahi_openalex_works.parser import parse_openalex
 from time import time
 from bson import ObjectId
+from pymongo import MongoClient
+from mohan.Similarity import Similarity
 
 
 def process_one_update(oa_reg, colav_reg, db, collection, empty_work, verbose=0):
@@ -197,7 +199,13 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
                 {"external_ids.id": ext["id"], "updated.source": "scienti"})
             if author_db:
                 break
-        if not author_db:  # if not found ids with scienti, let search it with other sources
+        if not author_db:  # if not found ids with scienti, let search it with openalex
+            for ext in author["external_ids"]:
+                author_db = db["person"].find_one(
+                    {"external_ids.id": ext["id"], "updated.source": "openalex"})
+                if author_db:
+                    break
+        if not author_db:  # if not found ids with scienti/openalex, let search it with other sources
             for ext in author["external_ids"]:
                 author_db = db["person"].find_one(
                     {"external_ids.id": ext["id"]})
@@ -220,6 +228,9 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
             if "external_ids" in author.keys():
                 del (author["external_ids"])
         else:
+            if verbose > 1:
+                print(
+                    f"WARNING: author not found in db {author} maybe deleted author in openalex, trying to find by name")
             author_db = db["person"].find_one(
                 {"full_name": author["full_name"]})
             if author_db:
@@ -315,7 +326,7 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
         es_handler.insert_work(_id=str(response.inserted_id), work=work)
 
 
-def process_one(oa_reg, db, collection, empty_work, es_handler, verbose=0):
+def process_one(oa_reg, config, empty_work, verbose=0):
     """
     Function to process a single register from the scholar database.
     This function is used to insert or update a register in the colav(kahi works) database.
@@ -335,6 +346,24 @@ def process_one(oa_reg, db, collection, empty_work, es_handler, verbose=0):
     verbose : int, optional
         Verbosity level. The default is 0.
     """
+    client = MongoClient(config["database_url"])
+    db = client[config["database_name"]]
+    collection = db["works"]
+    es_handler = None
+    if "es_index" in config["openalex_works"].keys() and "es_url" in config["openalex_works"].keys() and "es_user" in config["openalex_works"].keys() and "es_password" in config["openalex_works"].keys():
+        es_index = config["openalex_works"]["es_index"]
+        es_url = config["openalex_works"]["es_url"]
+        if config["openalex_works"]["es_user"] and config["openalex_works"]["es_password"]:
+            es_auth = (config["openalex_works"]["es_user"],
+                       config["openalex_works"]["es_password"])
+        else:
+            es_auth = None
+        es_handler = Similarity(
+            es_index, es_uri=es_url, es_auth=es_auth)
+    else:
+        es_handler = None
+        print("WARNING: No elasticsearch configuration provided")
+
     doi = None
     # register has doi
     if "doi" in oa_reg.keys():
@@ -393,3 +422,4 @@ def process_one(oa_reg, db, collection, empty_work, es_handler, verbose=0):
         else:
             if verbose > 4:
                 print("No elasticsearch index provided")
+    client.close()

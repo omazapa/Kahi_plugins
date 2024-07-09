@@ -5,6 +5,90 @@ from joblib import Parallel, delayed
 from kahi_impactu_utils.Utils import get_id_from_url, get_id_type_from_url, parse_sex, check_date_format, split_names
 
 
+def process_info_from_works(db, author, entry, groups_production_list):
+    # Works
+    papers = []
+    for prod in groups_production_list:
+        if prod["_id"] == author["id_persona_pr"]:
+            papers = prod["products"]
+            break
+    if papers:
+        groups_cod = []
+        inst_cod = []
+        for reg in papers:
+            if reg["cod_grupo_gr"] in groups_cod:
+                continue
+            groups_cod.append(reg["cod_grupo_gr"])
+            group_db = db["affiliations"].find_one(
+                {"external_ids.id": reg["cod_grupo_gr"]})
+            if group_db:
+                name = group_db["names"][0]["name"]
+                for n in group_db["names"]:
+                    if n["lang"] == "es":
+                        name = n["name"]
+                        break
+                    elif n["lang"] == "en":
+                        name = n["name"]
+                aff = {
+                    "name": name,
+                    "id": group_db["_id"],
+                    "types": group_db["types"],
+                    "start_date": check_date_format(reg["fcreacion_pd"]),
+                    "end_date": "",
+                    "position": ""
+                }
+                found = False
+                for i in entry["affiliations"]:
+                    if i["id"] == aff["id"]:
+                        found = True
+                        break
+                if not found:
+                    entry["affiliations"].append(aff)
+                if "relations" in group_db.keys():
+                    if group_db["relations"]:
+                        for rel in group_db["relations"]:
+                            if rel["id"] in inst_cod:
+                                continue
+                            inst_cod.append(rel["id"])
+                            if "names" in rel.keys():
+                                name = rel["names"][0]["name"]
+                                for n in rel["names"]:
+                                    if n["lang"] == "es":
+                                        name = n["name"]
+                                        break
+                                    elif n["lang"] == "en":
+                                        name = n["name"]
+                            else:
+                                name = rel["name"]
+                            aff = {
+                                "name": name,
+                                "id": rel["id"],
+                                "types": rel["types"] if "types" in rel.keys() else [],
+                                "start_date": check_date_format(reg["fcreacion_pd"]),
+                                "end_date": "",
+                                "position": ""
+                            }
+
+                            found = False
+                            for i in entry["affiliations"]:
+                                if i["id"] == aff["id"]:
+                                    found = True
+                                    break
+                            if not found:
+                                entry["affiliations"].append(aff)
+
+    for reg in papers:
+        if reg["id_producto_pd"]:
+            cod_rh, cod_producto = reg["id_producto_pd"].split(
+                "-")[-2], reg["id_producto_pd"].split("-")[-1]
+            rec = {"provenance": "minciencias", "source": "scienti",
+                   "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}}
+            if rec not in entry["related_works"]:
+                rw = {"provenance": "minciencias", "source": "scienti", "id": {
+                    "COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}}
+                entry["related_works"].append(rw)
+
+
 def process_one(author, db, collection, empty_person, cvlac_profile, groups_production_list, verbose):
     if not author or not cvlac_profile:
         return
@@ -61,18 +145,6 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
                 },
             ]
         })
-        # Works
-        papers = []
-        for prod in groups_production_list:
-            if prod["_id"] == author["id_persona_pr"]:
-                papers = prod["products"]
-                break
-        for reg in papers:
-            if reg["id_producto_pd"]:
-                cod_rh, cod_producto = reg["id_producto_pd"].split("-")[-2], reg["id_producto_pd"].split("-")[-1]
-                rec = {"provenance": "minciencias", "source": "scienti", "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}}
-                if rec not in reg_db["related_works"]:
-                    reg_db["related_works"].append({"provenance": "minciencias", "source": "scienti", "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}})
         # Ranking
         entry_rank = {
             "source": "minciencias",
@@ -82,6 +154,9 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
             "date": check_date_format(author["ano_convo"])
         }
         reg_db["ranking"].append(entry_rank)
+
+        # Affiliations and related_works
+        process_info_from_works(db, author, reg_db, groups_production_list)
         # Update the record
         collection.update_one(
             {"_id": reg_db["_id"]},
@@ -90,10 +165,9 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
                 "external_ids": reg_db["external_ids"],
                 "subjects": reg_db["subjects"],
                 "related_works": reg_db["related_works"],
-                "ranking": reg_db["ranking"]
+                "ranking": reg_db["ranking"],
+                "affiliations": reg_db["affiliations"]
             }})
-        if verbose > 4:
-            print("Updated author {}".format(auid))
         return
 
     # Author creation
@@ -139,10 +213,12 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
 
     full_name = split_names(cvlac_profile["datos_generales"]["Nombre"])
     entry["full_name"] = full_name["full_name"]
-    entry["first_names"] = full_name["names"]
-    entry["last_names"] = full_name["surenames"]
+    entry["first_names"] = full_name["first_names"]
+    entry["last_names"] = full_name["last_names"]
+    entry["initials"] = full_name["initials"]
 
-    entry["sex"] = parse_sex(cvlac_profile["datos_generales"]["Sexo"].lower()) if "Sexo" in cvlac_profile["datos_generales"].keys() else ""
+    entry["sex"] = parse_sex(cvlac_profile["datos_generales"]["Sexo"].lower(
+    )) if "Sexo" in cvlac_profile["datos_generales"].keys() else ""
 
     entry["external_ids"].append({
         "provenance": "minciencias",
@@ -197,65 +273,8 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
         ]
     })
 
-    papers = []
-    for prod in groups_production_list:
-        if prod["_id"] == author["id_persona_pr"]:
-            papers = prod["products"]
-            break
-
-    if papers:
-        groups_cod = []
-        inst_cod = []
-        for reg in papers:
-            if reg["cod_grupo_gr"] in groups_cod:
-                continue
-            groups_cod.append(reg["cod_grupo_gr"])
-            group_db = db["affiliations"].find_one({"external_ids.id": reg["cod_grupo_gr"]})
-            if group_db:
-                name = group_db["names"][0]["name"]
-                for n in group_db["names"]:
-                    if n["lang"] == "es":
-                        name = n["name"]
-                        break
-                    elif n["lang"] == "en":
-                        name = n["name"]
-                entry["affiliations"].append({
-                    "name": name,
-                    "id": group_db["_id"],
-                    "types": group_db["types"],
-                    "start_date": check_date_format(reg["fcreacion_pd"]),
-                    "end_date": "",
-                    "position": ""
-                })
-                if "relations" in group_db.keys():
-                    if group_db["relations"]:
-                        for rel in group_db["relations"]:
-                            if rel["id"] in inst_cod:
-                                continue
-                            inst_cod.append(rel["id"])
-                            if "names" in rel.keys():
-                                name = rel["names"][0]["name"]
-                                for n in rel["names"]:
-                                    if n["lang"] == "es":
-                                        name = n["name"]
-                                        break
-                                    elif n["lang"] == "en":
-                                        name = n["name"]
-                            else:
-                                name = rel["name"]
-                            entry["affiliations"].append({
-                                "name": name,
-                                "id": rel["id"],
-                                "types": rel["types"] if "types" in rel.keys() else [],
-                                "start_date": check_date_format(reg["fcreacion_pd"]),
-                                "end_date": "",
-                                "position": ""
-                            })
-        # Works
-        for reg in papers:
-            if reg["id_producto_pd"]:
-                cod_rh, cod_producto = reg["id_producto_pd"].split("-")[-2], reg["id_producto_pd"].split("-")[-1]
-                entry["related_works"].append({"provenance": "minciencias", "source": "scienti", "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}})
+    # affiliations and related works
+    process_info_from_works(db, author, entry, groups_production_list)
 
     # print("Adding ranks to ", auid)
     entry_rank = {
@@ -297,7 +316,8 @@ class Kahi_minciencias_opendata_person(KahiBase):
         if config["minciencias_opendata_person"]["researchers"] not in self.openadata_db.list_collection_names():
             raise Exception("Collection {} not found in {}".format(
                 config["minciencias_opendata_person"]['researchers'], config["minciencias_opendata_person"]["database_url"]))
-        self.researchers_collection = self.openadata_db[config["minciencias_opendata_person"]["researchers"]]
+        self.researchers_collection = self.openadata_db[
+            config["minciencias_opendata_person"]["researchers"]]
 
         if config["minciencias_opendata_person"]["cvlac"] not in self.openadata_db.list_collection_names():
             raise Exception("Collection {} not found in {}".format(
@@ -307,7 +327,8 @@ class Kahi_minciencias_opendata_person(KahiBase):
         if config["minciencias_opendata_person"]["groups_production"] not in self.openadata_db.list_collection_names():
             raise Exception("Collection {} not found in {}".format(
                 config["minciencias_opendata_person"]['groups_production'], config["minciencias_opendata_person"]["database_url"]))
-        self.groups_production = self.openadata_db[config["minciencias_opendata_person"]["groups_production"]]
+        self.groups_production = self.openadata_db[config["minciencias_opendata_person"]
+                                                   ["groups_production"]]
 
         self.n_jobs = config["minciencias_opendata_person"]["num_jobs"] if "num_jobs" in config["minciencias_opendata_person"].keys(
         ) else 1
@@ -319,18 +340,22 @@ class Kahi_minciencias_opendata_person(KahiBase):
 
         # Authors aggregate
         if self.verbose > 4:
-            print("Creating the aggregate for {} authors.".format(self.researchers_collection.count_documents({})))
+            print("Creating the aggregate for {} authors.".format(
+                self.researchers_collection.count_documents({})))
         pipeline = [
             {"$sort": {"edad_anos_pr": -1}},
             {"$group": {"_id": "$id_persona_pr", "doc": {"$first": "$$ROOT"}}},
             {"$replaceRoot": {"newRoot": "$doc"}}
         ]
-        authors_cursor = self.researchers_collection.aggregate(pipeline, allowDiskUse=True)
+        authors_cursor = self.researchers_collection.aggregate(
+            pipeline, allowDiskUse=True)
 
         # Group production aggregate
         if self.verbose > 4:
-            print("Creating the aggregate for {} products.".format(self.groups_production.count_documents({})))
-        categories = ['ART-00', 'ART-ART_A1', 'ART-ART_A2', 'ART-ART_B', 'ART-ART_C', 'ART-ART_D', 'ART-GC_ART']
+            print("Creating the aggregate for {} products.".format(
+                self.groups_production.count_documents({})))
+        categories = ['ART-00', 'ART-ART_A1', 'ART-ART_A2',
+                      'ART-ART_B', 'ART-ART_C', 'ART-ART_D', 'ART-GC_ART']
         pipeline = [
             {'$match': {'id_tipo_pd_med': {'$in': categories}}},
             {"$sort": {"ano_convo": -1}},
@@ -338,7 +363,8 @@ class Kahi_minciencias_opendata_person(KahiBase):
             {'$replaceRoot': {'newRoot': '$originalDoc'}},
             {'$group': {'_id': '$id_persona_pd', 'products': {'$push': '$$ROOT'}}}
         ]
-        production_cursor = self.groups_production.aggregate(pipeline, allowDiskUse=True)
+        production_cursor = self.groups_production.aggregate(
+            pipeline, allowDiskUse=True)
         if production_cursor:
             groups_production_list = list(production_cursor)
 
@@ -355,7 +381,8 @@ class Kahi_minciencias_opendata_person(KahiBase):
                     db,
                     person_collection,
                     self.empty_person(),
-                    self.cvlac_stage.find_one({"id_persona_pr": author["id_persona_pr"]}),
+                    self.cvlac_stage.find_one(
+                        {"id_persona_pr": author["id_persona_pr"]}),
                     groups_production_list,
                     self.verbose
                 ) for author in authors_cursor
