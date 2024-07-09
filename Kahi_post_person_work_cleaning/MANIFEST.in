@@ -1,0 +1,2 @@
+recursive-include kahi_post_person_work_cleaning/ *.py
+recursive-include kahi_post_person_work_cleaning/ *.*
