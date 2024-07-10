@@ -306,7 +306,7 @@ class Kahi_authors_unicity(KahiBase):
             if target_doc:
                 self.merge_documents(author_docs_, target_doc)
             self.collection_merged_sets.insert_one(
-                {"doi": reg["_id"], "target_author": target_doc, "set": author_found})
+                {"doi": reg["_id"], "target_author": {"_id": target_doc["_id"], "full_name": target_doc["full_name"]}, "set": author_found})
 
     def process_authors(self):
         """
