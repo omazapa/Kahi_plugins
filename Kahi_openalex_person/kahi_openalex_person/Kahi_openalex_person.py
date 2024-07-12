@@ -23,7 +23,32 @@ def process_one(oa_author, client, db_name, empty_person, related_works, max_tri
             entry["external_ids"].append(
                 {"provenance": "openalex", "source": source, "id": idx})
 
-    if "last_known_institution" in oa_author.keys():
+    if "last_known_institutions" in oa_author.keys():
+        if oa_author["last_known_institutions"]:
+            for inst in oa_author["last_known_institutions"]:
+                aff_reg = None
+                aff_reg = db["affiliations"].find_one(
+                    {"external_ids.id": inst["id"]})
+                if not aff_reg:
+                    if "ror" in inst.keys():
+                        aff_reg = db["affiliations"].find_one(
+                            {"external_ids.id": inst["ror"]})
+                if aff_reg:
+                    name = aff_reg["names"][0]["name"]
+                    for n in aff_reg["names"]:
+                        if n["lang"] == "es":
+                            name = n["name"]
+                            break
+                        elif n["lang"] == "en":
+                            name = n["name"]
+                    entry["affiliations"].append({
+                        "id": aff_reg["_id"],
+                        "name": name,
+                        "types": aff_reg["types"],
+                        "start_date": -1,
+                        "end_date": -1
+                    })
+    elif "last_known_institution" in oa_author.keys():
         if oa_author["last_known_institution"]:
             aff_reg = None
             for source, idx in oa_author["last_known_institution"].items():
@@ -46,6 +71,7 @@ def process_one(oa_author, client, db_name, empty_person, related_works, max_tri
                     "start_date": -1,
                     "end_date": -1
                 })
+
     for rwork in related_works:
         for key in rwork["ids"].keys():
             rec = {"provenance": "openalex",
