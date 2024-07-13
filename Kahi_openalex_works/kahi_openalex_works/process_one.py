@@ -367,8 +367,8 @@ def process_one(oa_reg, config, empty_work, verbose=0):
     doi = None
     # register has doi
     if "doi" in oa_reg.keys():
-        if oa_reg["doi"]:
-            doi = oa_reg["doi"].split(".org/")[-1].lower()
+        doi = oa_reg["doi"]
+
     if doi:
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
@@ -404,16 +404,25 @@ def process_one(oa_reg, config, empty_work, verbose=0):
             )
 
             if response:  # register already on db... update accordingly
-                colav_reg = collection.find_one(
-                    {"_id": ObjectId(response["_id"])})
-                if colav_reg:
-                    process_one_update(oa_reg, colav_reg, db,
-                                       collection, empty_work, verbose=verbose)
+                found = collection.count_documents(
+                    # we are assuming here, all works of apenalex are unique.
+                    # to avoid things like https://github.com/colav/impactu/issues/181
+                    {"exteral_ids.id": oa_reg["id"]})
+                if found:
+                    colav_reg = collection.find_one(
+                        {"_id": ObjectId(response["_id"])})
+                    if colav_reg:
+                        process_one_update(oa_reg, colav_reg, db,
+                                           collection, empty_work, verbose=verbose)
+                    else:
+                        if verbose > 4:
+                            print("Register with {} not found in mongodb".format(
+                                response["_id"]))
+                            print(response)
                 else:
-                    if verbose > 4:
-                        print("Register with {} not found in mongodb".format(
-                            response["_id"]))
-                        print(response)
+                    process_one_insert(oa_reg, db, collection,
+                                       empty_work, es_handler, verbose=0)
+
             else:  # insert new register
                 if verbose > 4:
                     print("INFO: found no register in elasticsearch")
