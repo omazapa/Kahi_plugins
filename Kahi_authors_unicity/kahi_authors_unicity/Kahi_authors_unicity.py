@@ -1,4 +1,3 @@
-from re import split
 from kahi_impactu_utils.Utils import compare_author, split_names, split_names_fix
 from pymongo import MongoClient, TEXT
 from joblib import Parallel, delayed
@@ -379,7 +378,7 @@ class Kahi_authors_unicity(KahiBase):
                 {"$match": {"related_works.source": "doi"}},
                 {"$group": {"_id": "$related_works.id", "authors": {
                     "$addToSet": "$_id"}, "count": {"$sum": 1}}},
-                {"$match": {"count":  pepeline_count}}
+                {"$match": {"count": pepeline_count}}
             ]
             authors_cursor = list(self.collection.aggregate(
                 pipeline, allowDiskUse=True))
