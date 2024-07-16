@@ -34,13 +34,9 @@ def parse_minciencias_opendata(reg, empty_work, verbose=0):
             if match:
                 COD_RH = match.group(1)
                 COD_PROD = match.group(2)
+                entry["external_ids"].append(
+                    {"provenance": "minciencias", "source": "scienti", "id": {"COD_RH": COD_RH, "COD_PRODUCTO": COD_PROD}})
 
-                if COD_RH:
-                    entry["external_ids"].append(
-                        {"provenance": "minciencias", "source": "COD_RH", "id": COD_RH})
-                if COD_PROD:
-                    entry["external_ids"].append(
-                        {"provenance": "minciencias", "source": "COD_PRODUCTO", "id": COD_PROD})
     if "id_tipo_pd_med" in reg.keys():
         date = ""
         if "ano_convo" in reg.keys():
