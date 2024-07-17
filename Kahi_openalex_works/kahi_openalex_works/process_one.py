@@ -364,10 +364,7 @@ def process_one(oa_reg, config, empty_work, verbose=0):
         es_handler = None
         print("WARNING: No elasticsearch configuration provided")
 
-    doi = None
-    # register has doi
-    if "doi" in oa_reg.keys():
-        doi = oa_reg["doi"]
+    doi = oa_reg["doi"]
 
     if doi:
         # is the doi in colavdb?

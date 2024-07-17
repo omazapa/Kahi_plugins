@@ -29,9 +29,8 @@ def parse_openalex(reg, empty_work, verbose=0):
         entry["titles"].append(
             {"title": title, "lang": lang, "source": "openalex"})
     for source, idx in reg["ids"].items():
-        if "doi" in source:
-            idx = idx.replace("https://doi.org/", "").lower()
-        entry["external_ids"].append({"source": source, "id": idx})
+        entry["external_ids"].append(
+            {"provenance": "openalex", "source": source, "id": idx})
     entry["year_published"] = reg["publication_year"]
     entry["date_published"] = int(dt.strptime(
         reg["publication_date"], "%Y-%m-%d").timestamp())

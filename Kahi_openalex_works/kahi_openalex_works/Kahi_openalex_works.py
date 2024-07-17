@@ -82,10 +82,15 @@ class Kahi_openalex_works(KahiBase):
         # selects papers with doi according to task variable
         if self.task == "doi":
             paper_cursor = self.openalex_collection.find(
-                {"$and": [{"doi": {"$ne": ""}}, {"doi": {"$ne": None}}, {"title": {"$ne": None}}]})
+                {"$and": [{"doi": {"$ne": None}}, {"title": {"$ne": None}}]})
+            count = self.openalex_collection.count_documents(
+                {"$and": [{"doi": {"$ne": None}}, {"title": {"$ne": None}}]})
         else:
-            paper_cursor = self.openalex_collection.find(
-                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "title": {"$ne": None}})
+            paper_cursor = list(self.openalex_collection.find(
+                {"$or": [{"doi": {"$eq": None}}], "title": {"$ne": None}}))
+            count = self.openalex_collection.count_documents(
+                {"$or": [{"doi": {"$eq": None}}], "title": {"$ne": None}})
+        print(f"INFO: proccesing {count} works with DOI")
 
         Parallel(
             n_jobs=self.n_jobs,
