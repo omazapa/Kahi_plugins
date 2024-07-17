@@ -74,10 +74,12 @@ def process_one(oa_author, client, db_name, empty_person, related_works, max_tri
 
     for rwork in related_works:
         for key in rwork["ids"].keys():
-            rec = {"provenance": "openalex",
-                   "source": key, "id": rwork["ids"][key]}
-            if rec not in entry["related_works"]:
-                entry["related_works"].append(rec)
+            if key == "doi":
+                rec = {"provenance": "openalex",
+                       "source": key, "id": rwork["ids"][key], "year": rwork["publication_year"], "institutions": rwork["authorships"]["institutions"]}
+                if rec not in entry["related_works"]:
+                    entry["related_works"].append(rec)
+                break
     collection.insert_one(entry)
 
 
@@ -134,9 +136,13 @@ class Kahi_openalex_person(KahiBase):
                 client,
                 self.config["database_name"],
                 self.empty_person(),
-                list(self.openalex_collection_works.find(
+                list(self.openalex_collection_works.aggregate(
                     # related works
-                    {"authorships.author.id": author["id"]}, {"ids": 1, "_id": 0}))
+                    [{"$project": {"ids": 1, "publication_year": 1, "authorships": 1}},
+                     {"$match": {"authorships.author.id": author["id"]}},
+                     {"$unwind": "$authorships"},
+                     {"$match": {"authorships.author.id": author["id"]}},
+                     {"$project": {"ids": 1, "publication_year": 1, "authorships.institutions": 1}}]))
             ) for author in author_cursor
         )
         client.close()
