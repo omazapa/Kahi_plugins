@@ -159,14 +159,15 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
         if not found:
             colav_reg["groups"].append(
                 {"id": rgroup["_id"], "name": rgroup["names"][0]["name"]})
+
+        # Adding group relation affiliation to the author affiliations
         if author_db and rgroup["relations"]:
             for author in colav_reg["authors"]:
-                relations = []
                 if author["id"] == author_db["_id"]:
+                    affs = [aff["id"] for aff in author["affiliations"]]
                     for relation in rgroup["relations"]:
-                        if relation not in relations:
-                            relations.append(relation)
-                    author["affiliations"].append(relations)
+                        if relation["id"] not in affs:
+                            author["affiliations"].append(relation)
                     break
 
     collection.update_one(
