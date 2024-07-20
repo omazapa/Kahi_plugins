@@ -168,6 +168,9 @@ class Kahi_scienti_works(KahiBase):
                 ) for doi_group in paper_group_doi_cursor
             )
         else:
+            #correr doi processor para TXT_DOI y TXT_WEBSITE*
+            # saco los dois malos y luego hago un find $in sobre esos COD_RH /COD_PRODUCTO y paso el cursor a parallel
+
             paper_cursor = scienti.find(
                 {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
             Parallel(

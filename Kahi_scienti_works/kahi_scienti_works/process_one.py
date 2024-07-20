@@ -1,4 +1,3 @@
-from shlex import split
 from kahi_scienti_works.parser import parse_scienti
 from kahi_impactu_utils.Utils import lang_poll, doi_processor, compare_author, split_names, split_names_fix
 import re
@@ -14,6 +13,21 @@ def get_doi(reg):
 
 
 def process_author(entry, colav_reg, db, verbose=0):
+    """
+    Function to compare the authors of a register from the scienti database with the authors of a register from the colav database.
+    If the authors match, the author from the colav register is replaced with the author from the scienti register.
+
+    Parameters
+    ----------
+    entry : dict
+        Register from the scienti database
+    colav_reg : dict
+        Register from the colav database (kahi database for impactu)
+    db : pymongo.collection.Collection
+        Database where ETL result is stored
+    verbose : int, optional
+        Verbosity level. The default is 0.
+    """
     scienti_author = entry['authors'][0]
     if scienti_author:
         author_db = None
@@ -41,6 +55,10 @@ def process_author(entry, colav_reg, db, verbose=0):
                     if author_reg is None:
                         print(
                             f"ERROR: author with id {author['id']} not found in colav database")
+                        
+                # Note: even in openalex names are bad splitted, so we need to fix them
+                # ex: 'full_name': 'Claudia Marcela-Vélez', 'first_names': ['Claudia'], 'last_names': ['Marcela', 'Vélez']  where Marcela is the first name and Vélez is the last name
+                # then we need to compare the names after fixing them.
                 author_reg_fix = split_names_fix(author_reg, author_db)
                 if author_reg_fix:
                     author_reg["full_name"] = author_reg_fix["full_name"]
@@ -49,8 +67,6 @@ def process_author(entry, colav_reg, db, verbose=0):
                     author_reg["initials"] = author_reg_fix["initials"]
 
                 name_match = compare_author(author_reg, author_db)
-                if 'Claudia Marcela-Vélez' == author_reg['full_name']:
-                    print(name_match)
 
                 doi1 = get_doi(entry)
                 doi2 = get_doi(colav_reg)
@@ -243,7 +259,9 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
             "titles": colav_reg["titles"],
             "external_ids": colav_reg["external_ids"],
             "types": colav_reg["types"],
-            "bibliographic_info": colav_reg["bibliographic_info"],
+            # this is not in the scienti register, but it is in the colav register, so it is not updated, should it be updated with scienti register?
+            # scienti provides poor quality data, so it is better to keep the data from colav
+            "bibliographic_info": colav_reg["bibliographic_info"], 
             "external_urls": colav_reg["external_urls"],
             "authors": colav_reg["authors"],
             "subjects": colav_reg["subjects"],
