@@ -1,5 +1,6 @@
+from shlex import split
 from kahi_scienti_works.parser import parse_scienti
-from kahi_impactu_utils.Utils import lang_poll, doi_processor, compare_author
+from kahi_impactu_utils.Utils import lang_poll, doi_processor, compare_author, split_names, split_names_fix
 import re
 from time import time
 from bson import ObjectId
@@ -12,198 +13,7 @@ def get_doi(reg):
     return False
 
 
-def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbose=0):
-    """
-    Method to update a register in the kahi database from scholar database if it is found.
-    This means that the register is already on the kahi database and it is being updated with new information.
-
-
-    Parameters
-    ----------
-    scienti_reg : dict
-        Register from the scienti database
-    colav_reg : dict
-        Register from the colav database (kahi database for impactu)
-    db: pymongo.collection.Collection
-        Database where ETL result is stored
-    collection : pymongo.collection.Collection
-        Collection in the database where the register is stored (Collection of works)
-    empty_work : dict
-        Empty dictionary with the structure of a register in the database
-    verbose : int, optional
-        Verbosity level. The default is 0.
-    """
-    entry = parse_scienti(
-        scienti_reg, empty_work.copy(), verbose=verbose)
-    # updated
-    for upd in colav_reg["updated"]:
-        if upd["source"] == "scienti":
-            # scienti groups
-            if "group" in scienti_reg.keys():
-                for group in scienti_reg["group"]:
-                    group_reg = db["affiliations"].find_one(
-                        {"external_ids.id": group["COD_ID_GRUPO"]})
-                    if group_reg is None:
-                        group_reg = db["affiliations"].find_one(
-                            {"external_ids.id": group["NRO_ID_GRUPO"]})
-                    if group_reg:
-                        found = False
-                        for rgroup in colav_reg["groups"]:
-                            if group_reg["_id"] == rgroup["id"]:
-                                found = True
-                                break
-                        if not found:
-                            colav_reg["groups"].append(
-                                {"id": group_reg["_id"], "name": group_reg["names"][0]["name"]})
-                    if not group_reg:
-                        print(
-                            f'WARNING: group with ids {scienti_reg["group"]["COD_ID_GRUPO"]} and {scienti_reg["group"]["NRO_ID_GRUPO"]} not found in affiliation')
-
-            # authors
-            if "openalex" in [upd["source"] for upd in colav_reg["updated"]]:
-                # añadir comparacion de autores
-                continue
-                # return None
-            author = entry["authors"][0]
-            author_db = None
-            for ext in author["external_ids"]:
-                author_db = db["person"].find_one(
-                    {"external_ids.id": ext["id"]}, {"_id": 1, "external_ids": 1, "full_name": 1})
-                if author_db:
-                    break
-            if author_db:
-                improve_author = False
-                found = False
-                for a in colav_reg["authors"]:
-                    if author_db["_id"] == a["id"]:
-                        found = True
-                        if a["affiliations"] == []:
-                            improve_author = True
-                            collection.update_one(
-                                {"_id": colav_reg["_id"]},
-                                {"$pull": {"authors": {"id": a["id"]}}, "$inc": {
-                                    "author_count": -1}}
-                            )
-                if found and not improve_author:
-                    return None
-                sources = [ext["source"]
-                           for ext in author_db["external_ids"]]
-                ids = [ext["id"]
-                       for ext in author_db["external_ids"]]
-                for ext in author["external_ids"]:
-                    if ext["id"] not in ids:
-                        author_db["external_ids"].append(ext)
-                        sources.append(ext["source"])
-                        ids.append(ext["id"])
-                author = {
-                    "id": author_db["_id"],
-                    "full_name": author_db["full_name"],
-                    "affiliations": author["affiliations"]
-                }
-            else:
-                author_db = db["person"].find_one(
-                    {"full_name": author["full_name"]})
-                if author_db:
-                    sources = [ext["source"]
-                               for ext in author_db["external_ids"]]
-                    ids = [ext["id"]
-                           for ext in author_db["external_ids"]]
-                    for ext in author["external_ids"]:
-                        if ext["id"] not in ids:
-                            author_db["external_ids"].append(ext)
-                            sources.append(ext["source"])
-                            ids.append(ext["id"])
-                    author = {
-                        "id": author_db["_id"],
-                        "full_name": author_db["full_name"],
-                        "affiliations": author["affiliations"]
-                    }
-                else:
-                    author = {
-                        "id": "",
-                        "full_name": author["full_name"],
-                        "affiliations": author["affiliations"]
-                    }
-            for j, aff in enumerate(author["affiliations"]):
-                aff_db = None
-                if "external_ids" in aff.keys():
-                    for ext in aff["external_ids"]:
-                        aff_db = db["affiliations"].find_one(
-                            {"external_ids.id": ext["id"]})
-                        if aff_db:
-                            break
-                if aff_db:
-                    name = aff_db["names"][0]["name"]
-                    for n in aff_db["names"]:
-                        if n["source"] == "ror":
-                            name = n["name"]
-                            break
-                        if n["lang"] == "en":
-                            name = n["name"]
-                        if n["lang"] == "es":
-                            name = n["name"]
-                    author["affiliations"][j] = {
-                        "id": aff_db["_id"],
-                        "name": name,
-                        "types": aff_db["types"]
-                    }
-                else:
-                    aff_db = db["affiliations"].find_one(
-                        {"names.name": aff["name"]})
-                    if aff_db:
-                        name = aff_db["names"][0]["name"]
-                        for n in aff_db["names"]:
-                            if n["source"] == "ror":
-                                name = n["name"]
-                                break
-                            if n["lang"] == "en":
-                                name = n["name"]
-                            if n["lang"] == "es":
-                                name = n["name"]
-                        author["affiliations"][j] = {
-                            "id": aff_db["_id"],
-                            "name": name,
-                            "types": aff_db["types"]
-                        }
-                    else:
-                        author["affiliations"][j] = {
-                            "id": "",
-                            "name": aff["name"],
-                            "types": []
-                        }
-            collection.update_one(
-                {"_id": colav_reg["_id"]},
-                {"$push": {"authors": author}, "$inc": {
-                    "author_count": 1}, "$set": {"groups": colav_reg["groups"]}}
-            )
-
-    colav_reg["updated"].append(
-        {"source": "scienti", "time": int(time())})
-    # titles
-    if 'scienti' not in [title['source'] for title in colav_reg["titles"]]:
-        lang = lang_poll(entry["titles"][0]["title"])
-        colav_reg["titles"].append(
-            {"title": entry["titles"][0]["title"], "lang": lang, "source": "scienti"})
-    # external_ids
-    ext_ids = [ext["id"] for ext in colav_reg["external_ids"]]
-    for ext in entry["external_ids"]:
-        if ext["id"] not in ext_ids:
-            colav_reg["external_ids"].append(ext)
-            ext_ids.append(ext["id"])
-    # types
-    for rec in entry["types"]:
-        if rec not in colav_reg["types"]:
-            colav_reg["types"].append(rec)
-
-    # external urls
-    url_sources = [url["source"]
-                   for url in colav_reg["external_urls"]]
-    for ext in entry["external_urls"]:
-        if ext["source"] not in url_sources:
-            colav_reg["external_urls"].append(ext)
-            url_sources.append(ext["source"])
-
-    # scienti author
+def process_author(entry, colav_reg, db, verbose=0):
     scienti_author = entry['authors'][0]
     if scienti_author:
         author_db = None
@@ -218,15 +28,30 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
             for i, author in enumerate(colav_reg['authors']):
                 if author['id'] == author_db['_id']:
                     continue
+                author_reg = None
                 if author['id'] == "":
                     if verbose >= 4:
                         print(
-                            f"WARNING: author with id '' found in colav register: {author}")
-                    continue
-                author_reg = db['person'].find_one(
-                    # this is required to get  first_names and last_names
-                    {'_id': author['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1, "external_ids": 1})
+                            f"WARNING: author with id '' found in colav register: {author} using split_names")
+                    author_reg = split_names(author["full_name"])
+                else:
+                    author_reg = db['person'].find_one(
+                        # this is required to get  first_names and last_names
+                        {'_id': author['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1, "external_ids": 1})
+                    if author_reg is None:
+                        print(
+                            f"ERROR: author with id {author['id']} not found in colav database")
+                author_reg_fix = split_names_fix(author_reg, author_db)
+                if author_reg_fix:
+                    author_reg["full_name"] = author_reg_fix["full_name"]
+                    author_reg["first_names"] = author_reg_fix["first_names"]
+                    author_reg["last_names"] = author_reg_fix["last_names"]
+                    author_reg["initials"] = author_reg_fix["initials"]
+
                 name_match = compare_author(author_reg, author_db)
+                if 'Claudia Marcela-Vélez' == author_reg['full_name']:
+                    print(name_match)
+
                 doi1 = get_doi(entry)
                 doi2 = get_doi(colav_reg)
                 if doi1 and doi2:
@@ -253,6 +78,111 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                         "affiliations": author["affiliations"]
                     }
                     break
+
+
+def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbose=0):
+    """
+    Method to update a register in the kahi database from scholar database if it is found.
+    This means that the register is already on the kahi database and it is being updated with new information.
+
+
+    Parameters
+    ----------
+    scienti_reg : dict
+        Register from the scienti database
+    colav_reg : dict
+        Register from the colav database (kahi database for impactu)
+    db: pymongo.collection.Collection
+        Database where ETL result is stored
+    collection : pymongo.collection.Collection
+        Collection in the database where the register is stored (Collection of works)
+    empty_work : dict
+        Empty dictionary with the structure of a register in the database
+    verbose : int, optional
+        Verbosity level. The default is 0.
+    """
+    entry = parse_scienti(
+        scienti_reg, empty_work.copy(), verbose=verbose)
+    colav_reg["updated"].append(
+        {"source": "scienti", "time": int(time())})
+
+    # updated author affiliations
+    author = entry["authors"][0]
+    for j, aff in enumerate(author["affiliations"]):
+        aff_db = None
+        if "external_ids" in aff.keys():
+            for ext in aff["external_ids"]:
+                aff_db = db["affiliations"].find_one(
+                    {"external_ids.id": ext["id"]})
+                if aff_db:
+                    break
+        if aff_db:
+            name = aff_db["names"][0]["name"]
+            for n in aff_db["names"]:
+                if n["source"] == "ror":
+                    name = n["name"]
+                    break
+                if n["lang"] == "en":
+                    name = n["name"]
+                if n["lang"] == "es":
+                    name = n["name"]
+            author["affiliations"][j] = {
+                "id": aff_db["_id"],
+                "name": name,
+                "types": aff_db["types"]
+            }
+        else:
+            aff_db = db["affiliations"].find_one(
+                {"names.name": aff["name"]})
+            if aff_db:
+                name = aff_db["names"][0]["name"]
+                for n in aff_db["names"]:
+                    if n["source"] == "ror":
+                        name = n["name"]
+                        break
+                    if n["lang"] == "en":
+                        name = n["name"]
+                    if n["lang"] == "es":
+                        name = n["name"]
+                author["affiliations"][j] = {
+                    "id": aff_db["_id"],
+                    "name": name,
+                    "types": aff_db["types"]
+                }
+            else:
+                author["affiliations"][j] = {
+                    "id": "",
+                    "name": aff["name"],
+                    "types": []
+                }
+
+    # titles
+    if 'scienti' not in [title['source'] for title in colav_reg["titles"]]:
+        lang = lang_poll(entry["titles"][0]["title"])
+        colav_reg["titles"].append(
+            {"title": entry["titles"][0]["title"], "lang": lang, "source": "scienti"})
+    # external_ids
+    ext_ids = [ext["id"] for ext in colav_reg["external_ids"]]
+    for ext in entry["external_ids"]:
+        if ext["id"] not in ext_ids:
+            colav_reg["external_ids"].append(ext)
+            ext_ids.append(ext["id"])
+    # types
+    for rec in entry["types"]:
+        if rec not in colav_reg["types"]:
+            colav_reg["types"].append(rec)
+
+    # external urls
+    url_sources = [url["source"]
+                   for url in colav_reg["external_urls"]]
+    for ext in entry["external_urls"]:
+        if ext["source"] not in url_sources:
+            colav_reg["external_urls"].append(ext)
+            url_sources.append(ext["source"])
+
+    # scienti author
+    process_author(entry, colav_reg, db, verbose)
+
     # the first author is the original one always (already inserted)
     if "author_others" in scienti_reg.keys():
         for i, author in enumerate(scienti_reg["author_others"][1:]):
