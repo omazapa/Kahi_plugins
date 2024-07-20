@@ -57,13 +57,13 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
     if "authors" in entry.keys():
         if entry["authors"]:
             minciencias_author = entry["authors"][0]
+    author_db = None
     if minciencias_author:
         author_found = False
         if "external_ids" in minciencias_author.keys() and minciencias_author["affiliations"]:
             for ext in minciencias_author["external_ids"]:
-
                 author_db = db["person"].find_one(
-                    {"external_ids.source": "scienti", "external_ids.id.COD_RH": ext["id"]})
+                    {"external_ids.source": "scienti", "external_ids.id": ext["id"]})
                 if not author_db:
                     author_db = db["person"].find_one(
                         {"external_ids.id.COD_RH": ext["id"]})
@@ -80,6 +80,7 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                         for i, author in enumerate(colav_reg["authors"]):
                             if author_db["_id"] != author["id"]:
                                 continue
+                            # Adding group to existing author in colav register
                             author_affiliations = [str(aff['id'])
                                                    for aff in author['affiliations']]
                             if str(affiliations_db["_id"]) not in author_affiliations:
@@ -126,7 +127,20 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                                         "id": affiliations_db["_id"],
                                         "name": affiliations_db["names"][0]["name"].strip(),
                                         "types": affiliations_db["types"]})
+                                    author_found = True
                                     break
+
+                        if not author_found:
+                            colav_reg["authors"].append(
+                                {"id": author_db["_id"], "full_name": author_db["full_name"], "affiliations": [
+                                    {
+                                        "id": affiliations_db["_id"],
+                                        "name": affiliations_db["names"][0]["name"],
+                                        "types": affiliations_db["types"]
+                                    }
+                                ]}
+                            )
+
                 else:
                     if verbose > 4:
                         print("No author in db with external id")
@@ -145,6 +159,20 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
         if not found:
             colav_reg["groups"].append(
                 {"id": rgroup["_id"], "name": rgroup["names"][0]["name"]})
+
+        # Adding group relation affiliation to the author affiliations
+        if author_db and rgroup["relations"]:
+            for author in colav_reg["authors"]:
+                if author["id"] == author_db["_id"]:
+                    affs = [aff["id"] for aff in author["affiliations"]]
+                    for relation in rgroup["relations"]:
+                        types = []
+                        if "types" in relation.keys() and relation["types"]:
+                            types = [rel["type"].lower() for rel in relation["types"]]
+                            if "education" in types:
+                                if relation["id"] not in affs:
+                                    author["affiliations"].append(relation)
+                    break
 
     collection.update_one(
         {"_id": colav_reg["_id"]},
