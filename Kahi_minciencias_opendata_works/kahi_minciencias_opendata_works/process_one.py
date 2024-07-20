@@ -166,8 +166,12 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                 if author["id"] == author_db["_id"]:
                     affs = [aff["id"] for aff in author["affiliations"]]
                     for relation in rgroup["relations"]:
-                        if relation["id"] not in affs:
-                            author["affiliations"].append(relation)
+                        types = []
+                        if "types" in relation.keys() and relation["types"]:
+                            types = [rel["type"].lower() for rel in relation["types"]]
+                            if "education" in types:
+                                if relation["id"] not in affs:
+                                    author["affiliations"].append(relation)
                     break
 
     collection.update_one(
