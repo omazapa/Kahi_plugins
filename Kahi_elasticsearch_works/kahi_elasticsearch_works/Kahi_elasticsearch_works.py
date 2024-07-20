@@ -25,6 +25,8 @@ class Kahi_elasticsearch_works(KahiBase):
 
         self.index = config["elasticsearch_works"]["es_index"]
 
+        self.debug = config["elasticsearch_works"]["debug"]
+
         self.es_url = config["elasticsearch_works"]["es_url"] if "es_url" in config["elasticsearch_works"].keys(
         ) else "http://localhost:9200"
 
@@ -49,10 +51,10 @@ class Kahi_elasticsearch_works(KahiBase):
 
     def bulk_insert(self):
         es_entries = []
-        count = 0
         paper_list = self.collection.find(
             {}, {"titles": 1, "source": 1, "year_published": 1, "bibliographic_info": 1, "authors.full_name": 1})
-        for reg in paper_list:
+        paper_list_count = self.collection.count_documents({})
+        for i, reg in enumerate(paper_list):
             work = {
                 "title": "",
                 "source": "",
@@ -67,7 +69,7 @@ class Kahi_elasticsearch_works(KahiBase):
             }
             if "titles" not in reg.keys():
                 continue
-            if len(reg["titles"]) < 1:
+            if not reg["titles"]:
                 continue
             work["title"] = reg["titles"][0]["title"]
             if "name" in reg["source"].keys():
@@ -98,17 +100,16 @@ class Kahi_elasticsearch_works(KahiBase):
                 "_source": work
             }
             es_entries.append(entry)
-            if len(es_entries) == self.bulk_size:
+            if len(es_entries) == self.bulk_size or paper_list_count <= self.bulk_size:
                 try:
                     self.es_client.insert_bulk(es_entries)
                 except Exception as e:
                     print(e)
                     print(es_entries)
                     raise
-                count += self.bulk_size
                 es_entries = []
                 if self.verbose > 4:
-                    print(f"""{count} entries inserted""")
+                    print(f"""{i+1} entries inserted""")
 
     def delete(self):
         self.es_client.delete_index(self.index)
@@ -124,4 +125,6 @@ class Kahi_elasticsearch_works(KahiBase):
             self.delete()
         else:
             raise Exception("Please specify a task to execute")
+        if self.debug:
+            return 1
         return 0
