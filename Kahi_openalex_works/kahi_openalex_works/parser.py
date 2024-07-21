@@ -20,8 +20,6 @@ def parse_openalex(reg, empty_work, verbose=0):
     entry = empty_work.copy()
     entry["updated"] = [{"source": "openalex", "time": int(time())}]
     if reg["title"]:
-        if "http" in reg["title"]:
-            reg["title"] = reg["title"].split("//")[-1]
         lang = lang_poll(reg["title"], verbose=verbose)
         title = parse_mathml(reg["title"])
         title = parse_html(title)
