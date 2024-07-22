@@ -100,7 +100,7 @@ class Kahi_elasticsearch_works(KahiBase):
                 "_source": work
             }
             es_entries.append(entry)
-            if len(es_entries) == self.bulk_size or paper_list_count <= self.bulk_size or i+1 == paper_list_count:
+            if len(es_entries) == self.bulk_size or paper_list_count <= self.bulk_size or i + 1 == paper_list_count:
                 try:
                     self.es_client.insert_bulk(es_entries)
                 except Exception as e:
@@ -109,7 +109,7 @@ class Kahi_elasticsearch_works(KahiBase):
                     raise
                 es_entries = []
                 if self.verbose > 4:
-                    print(f"""{i+1} entries inserted""")
+                    print(f"""{i + 1} entries inserted""")
 
     def delete(self):
         self.es_client.delete_index(self.index)
