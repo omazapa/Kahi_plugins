@@ -223,9 +223,13 @@ class Kahi_scienti_works(KahiBase):
                     verbose=self.verbose
                 ) for work in paper_cursor
             )
-            print(f"INFO: processing records without doi")
+
             paper_cursor = scienti.find(
                 {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
+            paper_cursor_count = scienti.count_documents(
+                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
+            print(f"INFO: processing {paper_cursor_count} records without doi")
+
             Parallel(
                 n_jobs=self.n_jobs,
                 verbose=self.verbose,
