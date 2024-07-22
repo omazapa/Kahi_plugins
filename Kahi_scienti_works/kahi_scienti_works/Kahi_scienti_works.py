@@ -3,6 +3,8 @@ from pymongo import MongoClient, TEXT
 from joblib import Parallel, delayed
 from kahi_scienti_works.process_one import process_one
 from mohan.Similarity import Similarity
+from kahi_impactu_utils.Utils import doi_processor
+import re
 
 
 class Kahi_scienti_works(KahiBase):
@@ -168,9 +170,60 @@ class Kahi_scienti_works(KahiBase):
                 ) for doi_group in paper_group_doi_cursor
             )
         else:
-            #correr doi processor para TXT_DOI y TXT_WEBSITE*
+            # correr doi processor para TXT_DOI y TXT_WEBSITE*
             # saco los dois malos y luego hago un find $in sobre esos COD_RH /COD_PRODUCTO y paso el cursor a parallel
 
+            pipeline = [
+                {"$match": {"TXT_DOI": {"$ne": None}}},
+                {"$match": {"TXT_NME_PROD_FILTRO": {"$ne": None}}},
+                {"$match": {"TXT_NME_PROD": {"$ne": " "}}},
+                {"$project": {"doi": {"$trim": {"input": "$TXT_DOI"}},
+                              "web_doi": {"$trim": {"input": "$TXT_WEB_PRODUCTO"}}}},
+                {"$project": {"doi": {"$toLower": "$doi"},
+                              "web_doi": {"$toLower": "$web_doi"}}},
+                {"$group": {"_id": {"doi": "$doi", "web_doi": "$web_doi"},
+                            "ids": {"$push": "$_id"}}}
+            ]
+            paper_group_doi_cursor = scienti.aggregate(
+                pipeline)  # update for doi and not doi
+
+            works_nodoi = []
+            count = 0
+            for scienti_reg in paper_group_doi_cursor:
+                count += 1
+                if scienti_reg["_id"]["doi"]:
+                    doi = doi_processor(scienti_reg["_id"]["doi"])
+                if not doi:
+                    if "web_doi" in scienti_reg["_id"].keys() and scienti_reg["_id"]["web_doi"] and "10." in scienti_reg["_id"]["web_doi"]:
+                        doi = doi_processor(scienti_reg["_id"]["web_doi"])
+                        if doi:
+                            extracted_doi = re.compile(
+                                r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
+                            if extracted_doi:
+                                doi = extracted_doi.group(0)
+                                for keyword in ['abstract', 'homepage', 'tpmd200765', 'event_abstract']:
+                                    doi = doi.split(
+                                        f'/{keyword}')[0] if keyword in doi else doi
+                if not doi:
+                    works_nodoi.extend(scienti_reg["ids"])
+            print(f"INFO: processing {len(works_nodoi)} records with bad dois")
+            paper_cursor = scienti.find(
+                {"_id": {"$in": works_nodoi}, "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(process_one)(
+                    work,
+                    db,
+                    collection,
+                    self.empty_work(),
+                    self.es_handler,
+                    similarity=True,
+                    verbose=self.verbose
+                ) for work in paper_cursor
+            )
+            print(f"INFO: processing records without doi")
             paper_cursor = scienti.find(
                 {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
             Parallel(

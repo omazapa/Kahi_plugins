@@ -55,7 +55,7 @@ def process_author(entry, colav_reg, db, verbose=0):
                     if author_reg is None:
                         print(
                             f"ERROR: author with id {author['id']} not found in colav database")
-                        
+
                 # Note: even in openalex names are bad splitted, so we need to fix them
                 # ex: 'full_name': 'Claudia Marcela-Vélez', 'first_names': ['Claudia'], 'last_names': ['Marcela', 'Vélez']  where Marcela is the first name and Vélez is the last name
                 # then we need to compare the names after fixing them.
@@ -175,8 +175,9 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
     # titles
     if 'scienti' not in [title['source'] for title in colav_reg["titles"]]:
         lang = lang_poll(entry["titles"][0]["title"])
-        colav_reg["titles"].append(
-            {"title": entry["titles"][0]["title"], "lang": lang, "source": "scienti"})
+        rec = {"title": entry["titles"][0]["title"], "lang": lang, "source": "scienti"}
+        if rec not in colav_reg["titles"]:
+            colav_reg["titles"].append(rec)
     # external_ids
     ext_ids = [ext["id"] for ext in colav_reg["external_ids"]]
     for ext in entry["external_ids"]:
@@ -261,7 +262,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
             "types": colav_reg["types"],
             # this is not in the scienti register, but it is in the colav register, so it is not updated, should it be updated with scienti register?
             # scienti provides poor quality data, so it is better to keep the data from colav
-            "bibliographic_info": colav_reg["bibliographic_info"], 
+            "bibliographic_info": colav_reg["bibliographic_info"],
             "external_urls": colav_reg["external_urls"],
             "authors": colav_reg["authors"],
             "subjects": colav_reg["subjects"],
