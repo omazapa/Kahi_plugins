@@ -38,6 +38,9 @@ class Kahi_impactu_post_cites_count(KahiBase):
 
         self.client = MongoClient(self.mongodb_url)
         self.db = self.client[self.database_name]
+        self.works_collection = self.db["works"]
+        self.person_collection = self.db["person"]
+        self.affiliations_collection = self.db["affiliations"]
 
         self.impactu_client = MongoClient(self.impactu_database_url)
         self.impactu_db = self.impactu_client[self.impactu_database_name]
@@ -47,7 +50,7 @@ class Kahi_impactu_post_cites_count(KahiBase):
         Method to calculate the cites count for each person.
         """
 
-        person_ids = self.db.person.find({}, {"_id"})
+        person_ids = self.person_collection.find({}, {"_id"})
         if self.verbose > 0:
             print("Calculating cites count for person")
         for pid in person_ids:
@@ -66,7 +69,7 @@ class Kahi_impactu_post_cites_count(KahiBase):
                     },
                 },
             ]
-            ret = list(self.db.kahi.works.aggregate(pipeline))
+            ret = list(self.works_collection.aggregate(pipeline))
             rec = {"citations_count": []}
             for cites in ret:
                 rec["citations_count"] += [{"source": cites["_id"],
@@ -78,7 +81,7 @@ class Kahi_impactu_post_cites_count(KahiBase):
         """
         Method to calculate the cites count for each institution.
         """
-        aff_ids = self.db.affiliations.find(
+        aff_ids = self.affiliations_collection.find(
             {"types.type": {"$nin": ["department", "faculty", "group"]}}, {"_id"})
         if self.verbose > 0:
             print("Calculating cites count for institutions")
@@ -98,7 +101,7 @@ class Kahi_impactu_post_cites_count(KahiBase):
                     },
                 },
             ]
-            ret = list(self.db.works.aggregate(pipeline))
+            ret = list(self.works_collection.aggregate(pipeline))
             rec = {"citations_count": []}
             for cites in ret:
                 rec["citations_count"] += [{"source": cites["_id"],
@@ -110,7 +113,7 @@ class Kahi_impactu_post_cites_count(KahiBase):
         """
         Method to calculate the cites count for each faculty, department and group.
         """
-        aff_ids = self.db.affiliations.find(
+        aff_ids = self.affiliations_collection.find(
             {"types.type": {"$in": ["department", "faculty", "group"]}}, {"_id"})
         if self.verbose > 0:
             print("Calculating cites count for faculty, department and group")
@@ -136,7 +139,7 @@ class Kahi_impactu_post_cites_count(KahiBase):
                 },
             },
             ]
-            ret = list(self.db.person.aggregate(pipeline))
+            ret = list(self.person_collection.aggregate(pipeline))
             rec = {"citations_count": []}
             for cites in ret:
                 rec["citations_count"] += [{"source": cites["_id"],
