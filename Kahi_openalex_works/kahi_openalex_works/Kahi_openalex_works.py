@@ -78,8 +78,8 @@ class Kahi_openalex_works(KahiBase):
         self.verbose = config["openalex_works"]["verbose"] if "verbose" in config["openalex_works"].keys(
         ) else 0
 
-        self.backend = "threading" if not "backend" in config[
-            "openalex_works"] else config["openalex_works"]["backend"]
+        self.backend = "threading" if "backend" not in config[
+            "openalex_works"].keys() else config["openalex_works"]["backend"]
 
     def process_openalex(self):
         # selects papers with doi according to task variable

@@ -358,7 +358,7 @@ def process_one(oa_reg, config, empty_work, client, es_handler, backend, verbose
             es_url = config["openalex_works"]["es_url"]
             if config["openalex_works"]["es_user"] and config["openalex_works"]["es_password"]:
                 es_auth = (config["openalex_works"]["es_user"],
-                        config["openalex_works"]["es_password"])
+                           config["openalex_works"]["es_password"])
             else:
                 es_auth = None
             es_handler = Similarity(
