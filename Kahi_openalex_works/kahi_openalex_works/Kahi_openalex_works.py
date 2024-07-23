@@ -67,7 +67,7 @@ class Kahi_openalex_works(KahiBase):
             else:
                 es_auth = None
             self.es_handler = Similarity(
-                es_index, es_uri=es_url, es_auth=es_auth)
+                es_index, es_uri=es_url, es_auth=es_auth, es_req_timeout=300)
         else:
             self.es_handler = None
             print("WARNING: No elasticsearch configuration provided")
@@ -78,6 +78,9 @@ class Kahi_openalex_works(KahiBase):
         self.verbose = config["openalex_works"]["verbose"] if "verbose" in config["openalex_works"].keys(
         ) else 0
 
+        self.backend = "threading" if not "backend" in config[
+            "openalex_works"] else config["openalex_works"]["backend"]
+
     def process_openalex(self):
         # selects papers with doi according to task variable
         if self.task == "doi":
@@ -85,22 +88,26 @@ class Kahi_openalex_works(KahiBase):
                 {"$and": [{"doi": {"$ne": None}}, {"title": {"$ne": None}}]})
             count = self.openalex_collection.count_documents(
                 {"$and": [{"doi": {"$ne": None}}, {"title": {"$ne": None}}]})
+            print(f"INFO: proccesing {count} works with DOI")
         else:
             paper_cursor = list(self.openalex_collection.find(
                 {"$or": [{"doi": {"$eq": None}}], "title": {"$ne": None}}))
             count = self.openalex_collection.count_documents(
                 {"$or": [{"doi": {"$eq": None}}], "title": {"$ne": None}})
-        print(f"INFO: proccesing {count} works with DOI")
+            print(f"INFO: proccesing {count} works without DOI")
 
         Parallel(
             n_jobs=self.n_jobs,
             verbose=self.verbose,
-            backend="multiprocessing",
-            batch_size=1000)(
+            backend=self.backend,
+            batch_size=10)(
             delayed(process_one)(
                 paper,
                 self.config,
                 self.empty_work(),
+                self.client if self.backend == "threading" else None,
+                self.es_handler if self.backend == "threading" else None,
+                self.backend,
                 verbose=self.verbose
             ) for paper in paper_cursor
         )

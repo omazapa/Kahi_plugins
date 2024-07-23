@@ -326,7 +326,7 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
         es_handler.insert_work(_id=str(response.inserted_id), work=work)
 
 
-def process_one(oa_reg, config, empty_work, verbose=0):
+def process_one(oa_reg, config, empty_work, client, es_handler, backend, verbose=0):
     """
     Function to process a single register from the scholar database.
     This function is used to insert or update a register in the colav(kahi works) database.
@@ -346,23 +346,26 @@ def process_one(oa_reg, config, empty_work, verbose=0):
     verbose : int, optional
         Verbosity level. The default is 0.
     """
-    client = MongoClient(config["database_url"])
+    if backend != "threading":
+        client = MongoClient(config["database_url"])
     db = client[config["database_name"]]
     collection = db["works"]
-    es_handler = None
-    if "es_index" in config["openalex_works"].keys() and "es_url" in config["openalex_works"].keys() and "es_user" in config["openalex_works"].keys() and "es_password" in config["openalex_works"].keys():
-        es_index = config["openalex_works"]["es_index"]
-        es_url = config["openalex_works"]["es_url"]
-        if config["openalex_works"]["es_user"] and config["openalex_works"]["es_password"]:
-            es_auth = (config["openalex_works"]["es_user"],
-                       config["openalex_works"]["es_password"])
-        else:
-            es_auth = None
-        es_handler = Similarity(
-            es_index, es_uri=es_url, es_auth=es_auth)
-    else:
+
+    if backend != "threading":
         es_handler = None
-        print("WARNING: No elasticsearch configuration provided")
+        if "es_index" in config["openalex_works"].keys() and "es_url" in config["openalex_works"].keys() and "es_user" in config["openalex_works"].keys() and "es_password" in config["openalex_works"].keys():
+            es_index = config["openalex_works"]["es_index"]
+            es_url = config["openalex_works"]["es_url"]
+            if config["openalex_works"]["es_user"] and config["openalex_works"]["es_password"]:
+                es_auth = (config["openalex_works"]["es_user"],
+                        config["openalex_works"]["es_password"])
+            else:
+                es_auth = None
+            es_handler = Similarity(
+                es_index, es_uri=es_url, es_auth=es_auth, es_req_timeout=300, es_max_retries=5, es_retry_on_timeout=True)
+        else:
+            es_handler = None
+            print("WARNING: No elasticsearch configuration provided")
 
     doi = oa_reg["doi"]
 
@@ -428,4 +431,6 @@ def process_one(oa_reg, config, empty_work, verbose=0):
         else:
             if verbose > 4:
                 print("No elasticsearch index provided")
-    client.close()
+    if backend != "threading":
+        client.close()
+        es_handler.close()
