@@ -76,7 +76,6 @@ class Kahi_impactu_postcalculations(KahiBase):
         db = client[self.database_name]
 
         impactu_client = MongoClient(self.impactu_database_url)
-        impactu_db = impactu_client[self.impactu_database_name]
 
         client = MongoClient(self.mongodb_url)
         db = client[self.database_name]

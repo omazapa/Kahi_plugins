@@ -398,7 +398,7 @@ def top_words_process_one(config, client, impactu_client, aff, stopwords, top_wo
                                 ["database_name"]]
     if top_words not in ["affiliations", "affiliations_others", "person"]:
         print(
-            f"ERROR: Invalid network type options are {["affiliations", "affiliations_others", "person"]}")
+            f'ERROR: Invalid network type options are {["affiliations", "affiliations_others", "person"]}')
         return
 
     if top_words == "affiliations":
