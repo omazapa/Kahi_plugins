@@ -227,7 +227,7 @@ def network_creation_affiliations(db_in, db_out, idx, author_count):
 
         record["coauthorship_network"]["edges"] = record["coauthorship_network"]["edges"][0:nedges]
 
-        record_edges["coauthorship_network"]["nodes"] = record["coauthorship_network"]["edges"][nedges:]
+        record_edges["coauthorship_network"]["edges"] = record["coauthorship_network"]["edges"][nedges:]
         db_out["affiliations"].update_one(
             {"_id": idx, }, {"$set": record}, upsert=True)
         db_out["affiliations_edges"].update_one(
