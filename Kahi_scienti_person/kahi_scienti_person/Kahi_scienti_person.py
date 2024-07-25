@@ -85,13 +85,15 @@ class Kahi_scienti_person(KahiBase):
                         if "orcid" in author["COD_ORCID"]:
                             orcid_id = get_id_from_url(author["COD_ORCID"])
                         else:
-                            orcid_id = "https://orcid.org/" + author["COD_ORCID"]
+                            orcid_id = "https://orcid.org/" + \
+                                author["COD_ORCID"]
                         if orcid_id:
                             rec = {"provenance": "scienti",
                                    "source": "orcid", "id": orcid_id}
                             if rec not in person["external_ids"]:
                                 person["external_ids"].append(rec)
-                person["first_names"] = title_case(author["TXT_NAMES_RH"]).strip().split()
+                person["first_names"] = title_case(
+                    author["TXT_NAMES_RH"]).strip().split()
                 person["last_names"] = []
                 if "TXT_PRIM_APELL" in author.keys():
                     person["last_names"].append(
@@ -196,22 +198,24 @@ class Kahi_scienti_person(KahiBase):
                             rec = {
                                 "provenance": "scienti",
                                 "source": "doi",
-                                "id": "https://doi.org/" + doi}
+                                "id": doi}
                             if rec not in person["related_works"]:
                                 person["related_works"].append(rec)
 
                     if "TXT_WEB_PRODUCTO" in prod.keys() and prod["TXT_WEB_PRODUCTO"] and "10." in prod["TXT_WEB_PRODUCTO"]:
                         doi = doi_processor(prod["TXT_WEB_PRODUCTO"])
                         if doi:
-                            extracted_doi = re.compile(r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
+                            extracted_doi = re.compile(
+                                r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
                             if extracted_doi:
                                 doi = extracted_doi.group(0)
                                 for keyword in ['abstract', 'homepage', 'tpmd200765', 'event_abstract']:
-                                    doi = doi.split(f'/{keyword}')[0] if keyword in doi else doi
+                                    doi = doi.split(
+                                        f'/{keyword}')[0] if keyword in doi else doi
                             rec = {
                                 "provenance": "scienti",
                                 "source": "doi",
-                                "id": "https://doi.org/" + doi}
+                                "id": doi}
                             if rec not in person["related_works"]:
                                 person["related_works"].append(rec)
 
@@ -219,7 +223,8 @@ class Kahi_scienti_person(KahiBase):
                     cod_rh = prod.get("COD_RH", "")
                     cod_producto = prod.get("COD_PRODUCTO", "")
                     if cod_rh and cod_producto:
-                        scienti_rec = {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}
+                        scienti_rec = {"COD_RH": cod_rh,
+                                       "COD_PRODUCTO": cod_producto}
                     if scienti_rec:
                         rec = {
                             "provenance": "scienti",
@@ -248,7 +253,8 @@ class Kahi_scienti_person(KahiBase):
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
         for rh in scienti.distinct("author.COD_RH"):
-            author_db = self.collection.find_one({"external_ids.id.COD_RH": rh})
+            author_db = self.collection.find_one(
+                {"external_ids.id.COD_RH": rh})
             if author_db:
                 continue
             author_scienti = scienti.find_one({"author.COD_RH": rh})
@@ -264,7 +270,8 @@ class Kahi_scienti_person(KahiBase):
                             if "orcid" in author["COD_ORCID"]:
                                 orcid_id = get_id_from_url(author["COD_ORCID"])
                             else:
-                                orcid_id = "https://orcid.org/" + author["COD_ORCID"]
+                                orcid_id = "https://orcid.org/" + \
+                                    author["COD_ORCID"]
                             if orcid_id:
                                 author_db = self.collection.find_one(
                                     {"external_ids.id": orcid_id})
@@ -277,7 +284,8 @@ class Kahi_scienti_person(KahiBase):
                                 scopus_id = get_id_from_url(
                                     author["AUTHOR_ID_SCP"])
                             else:
-                                scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + author["AUTHOR_ID_SCP"]
+                                scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + \
+                                    author["AUTHOR_ID_SCP"]
                             # get_id_from_url can return None (we need to double check)
                             if scopus_id:
                                 author_db = self.collection.find_one(
@@ -310,7 +318,8 @@ class Kahi_scienti_person(KahiBase):
                             if "orcid" in author["COD_ORCID"]:
                                 orcid_id = get_id_from_url(author["COD_ORCID"])
                             else:
-                                orcid_id = "https://orcid.org/" + author["COD_ORCID"]
+                                orcid_id = "https://orcid.org/" + \
+                                    author["COD_ORCID"]
                             if orcid_id:
                                 entry["external_ids"].append(
                                     {"provenance": "scienti",
@@ -322,7 +331,8 @@ class Kahi_scienti_person(KahiBase):
                                 scopus_id = get_id_from_url(
                                     author["AUTHOR_ID_SCP"])
                             else:
-                                scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + author["AUTHOR_ID_SCP"]
+                                scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + \
+                                    author["AUTHOR_ID_SCP"]
                             # get_id_from_url can return None (we need to double check)
                             if scopus_id:
                                 entry["external_ids"].append({
@@ -464,25 +474,28 @@ class Kahi_scienti_person(KahiBase):
                                 entry["related_works"].append(
                                     {"provenance": "scienti",
                                      "source": "doi",
-                                     "id": "https://doi.org/" + doi})
+                                     "id": doi})
                         if "TXT_WEB_PRODUCTO" in prod.keys() and prod["TXT_WEB_PRODUCTO"] and "10." in prod["TXT_WEB_PRODUCTO"]:
                             doi = doi_processor(prod["TXT_WEB_PRODUCTO"])
                             if doi:
-                                extracted_doi = re.compile(r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
+                                extracted_doi = re.compile(
+                                    r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
                                 if extracted_doi:
                                     doi = extracted_doi.group(0)
                                     for keyword in ['abstract', 'homepage', 'tpmd200765', 'event_abstract']:
-                                        doi = doi.split(f'/{keyword}')[0] if keyword in doi else doi
+                                        doi = doi.split(
+                                            f'/{keyword}')[0] if keyword in doi else doi
                                 entry["related_works"].append(
                                     {"provenance": "scienti",
                                      "source": "doi",
-                                     "id": "https://doi.org/" + doi})
+                                     "id": doi})
 
                         scienti_rec = ""
                         cod_rh = prod.get("COD_RH", "")
                         cod_producto = prod.get("COD_PRODUCTO", "")
                         if cod_rh and cod_producto:
-                            scienti_rec = {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}
+                            scienti_rec = {"COD_RH": cod_rh,
+                                           "COD_PRODUCTO": cod_producto}
                         if scienti_rec:
                             rec = {
                                 "provenance": "scienti",
@@ -528,7 +541,8 @@ class Kahi_scienti_person(KahiBase):
                         if "orcid" in author["COD_ORCID"]:
                             orcid_id = get_id_from_url(author["COD_ORCID"])
                         else:
-                            orcid_id = "https://orcid.org/" + author["COD_ORCID"]
+                            orcid_id = "https://orcid.org/" + \
+                                author["COD_ORCID"]
                         if orcid_id:
                             author_db = self.collection.find_one(
                                 {"external_ids.id": orcid_id})
@@ -539,7 +553,8 @@ class Kahi_scienti_person(KahiBase):
                         if "scopus" in author["AUTOR_ID_SCP"]:
                             scopus_id = get_id_from_url(author["AUTOR_ID_SCP"])
                         else:
-                            scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + author["AUTOR_ID_SCP"]
+                            scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + \
+                                author["AUTOR_ID_SCP"]
                         # get_id_from_url can return None (we need to double check)
                         if scopus_id:
                             author_db = self.collection.find_one(
@@ -590,7 +605,8 @@ class Kahi_scienti_person(KahiBase):
                         if "orcid" in author["COD_ORCID"]:
                             orcid_id = get_id_from_url(author["COD_ORCID"])
                         else:
-                            orcid_id = "https://orcid.org/" + author["COD_ORCID"]
+                            orcid_id = "https://orcid.org/" + \
+                                author["COD_ORCID"]
                         if orcid_id:
                             rec = {
                                 "provenance": "scienti",
@@ -609,7 +625,8 @@ class Kahi_scienti_person(KahiBase):
                         if "scopus" in author["AUTOR_ID_SCP"]:
                             scopus_id = get_id_from_url(author["AUTOR_ID_SCP"])
                         else:
-                            scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + author["AUTOR_ID_SCP"]
+                            scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + \
+                                author["AUTOR_ID_SCP"]
                         if scopus_id:
                             rec = {"provenance": "scienti",
                                    "source": "scopus", "id": scopus_id}
@@ -623,21 +640,23 @@ class Kahi_scienti_person(KahiBase):
                         rec = {
                             "provenance": "scienti",
                             "source": "doi",
-                            "id": "https://doi.org/" + doi}
+                            "id": doi}
                         if rec not in entry["related_works"]:
                             entry["related_works"].append(rec)
                 if "TXT_WEB_PRODUCTO" in author_others_reg.keys() and author_others_reg["TXT_WEB_PRODUCTO"] and "10." in author_others_reg["TXT_WEB_PRODUCTO"]:
                     doi = doi_processor(author_others_reg["TXT_WEB_PRODUCTO"])
                     if doi:
-                        extracted_doi = re.compile(r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
+                        extracted_doi = re.compile(
+                            r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
                         if extracted_doi:
                             doi = extracted_doi.group(0)
                             for keyword in ['abstract', 'homepage', 'tpmd200765', 'event_abstract']:
-                                doi = doi.split(f'/{keyword}')[0] if keyword in doi else doi
+                                doi = doi.split(
+                                    f'/{keyword}')[0] if keyword in doi else doi
                         rec = {
                             "provenance": "scienti",
                             "source": "doi",
-                            "id": "https://doi.org/" + doi}
+                            "id": doi}
                         if rec not in entry["related_works"]:
                             entry["related_works"].append(rec)
 
@@ -645,7 +664,8 @@ class Kahi_scienti_person(KahiBase):
                 cod_rh = author_others_reg.get("COD_RH", "")
                 cod_producto = author_others_reg.get("COD_PRODUCTO", "")
                 if cod_rh and cod_producto:
-                    scienti_rec = {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}
+                    scienti_rec = {"COD_RH": cod_rh,
+                                   "COD_PRODUCTO": cod_producto}
                 if scienti_rec:
                     rec = {
                         "provenance": "scienti",

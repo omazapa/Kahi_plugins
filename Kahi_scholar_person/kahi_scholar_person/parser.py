@@ -168,7 +168,6 @@ def parse_scholar(reg, empty_person, verbose=0):
             if reg["doi"]:
                 doi = doi_processor(reg["doi"])
                 if doi:
-                    doi = "https://doi.org/" + doi
                     entry["related_works"].append(
                         {"provenance": "scholar", "source": "doi", "id": doi})
 

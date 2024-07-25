@@ -326,7 +326,7 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
         es_handler.insert_work(_id=str(response.inserted_id), work=work)
 
 
-def process_one(oa_reg, config, empty_work, verbose=0):
+def process_one(oa_reg, config, empty_work, client, es_handler, backend, verbose=0):
     """
     Function to process a single register from the scholar database.
     This function is used to insert or update a register in the colav(kahi works) database.
@@ -346,29 +346,29 @@ def process_one(oa_reg, config, empty_work, verbose=0):
     verbose : int, optional
         Verbosity level. The default is 0.
     """
-    client = MongoClient(config["database_url"])
+    if backend != "threading":
+        client = MongoClient(config["database_url"])
     db = client[config["database_name"]]
     collection = db["works"]
-    es_handler = None
-    if "es_index" in config["openalex_works"].keys() and "es_url" in config["openalex_works"].keys() and "es_user" in config["openalex_works"].keys() and "es_password" in config["openalex_works"].keys():
-        es_index = config["openalex_works"]["es_index"]
-        es_url = config["openalex_works"]["es_url"]
-        if config["openalex_works"]["es_user"] and config["openalex_works"]["es_password"]:
-            es_auth = (config["openalex_works"]["es_user"],
-                       config["openalex_works"]["es_password"])
-        else:
-            es_auth = None
-        es_handler = Similarity(
-            es_index, es_uri=es_url, es_auth=es_auth)
-    else:
-        es_handler = None
-        print("WARNING: No elasticsearch configuration provided")
 
-    doi = None
-    # register has doi
-    if "doi" in oa_reg.keys():
-        if oa_reg["doi"]:
-            doi = oa_reg["doi"].split(".org/")[-1].lower()
+    if backend != "threading":
+        es_handler = None
+        if "es_index" in config["openalex_works"].keys() and "es_url" in config["openalex_works"].keys() and "es_user" in config["openalex_works"].keys() and "es_password" in config["openalex_works"].keys():
+            es_index = config["openalex_works"]["es_index"]
+            es_url = config["openalex_works"]["es_url"]
+            if config["openalex_works"]["es_user"] and config["openalex_works"]["es_password"]:
+                es_auth = (config["openalex_works"]["es_user"],
+                           config["openalex_works"]["es_password"])
+            else:
+                es_auth = None
+            es_handler = Similarity(
+                es_index, es_uri=es_url, es_auth=es_auth, es_req_timeout=300, es_max_retries=5, es_retry_on_timeout=True)
+        else:
+            es_handler = None
+            print("WARNING: No elasticsearch configuration provided")
+
+    doi = oa_reg["doi"]
+
     if doi:
         # is the doi in colavdb?
         colav_reg = collection.find_one({"external_ids.id": doi})
@@ -404,16 +404,25 @@ def process_one(oa_reg, config, empty_work, verbose=0):
             )
 
             if response:  # register already on db... update accordingly
-                colav_reg = collection.find_one(
-                    {"_id": ObjectId(response["_id"])})
-                if colav_reg:
-                    process_one_update(oa_reg, colav_reg, db,
-                                       collection, empty_work, verbose=verbose)
+                found = collection.count_documents(
+                    # we are assuming here, all works of apenalex are unique.
+                    # to avoid things like https://github.com/colav/impactu/issues/181
+                    {"exteral_ids.id": oa_reg["id"]})
+                if found:
+                    colav_reg = collection.find_one(
+                        {"_id": ObjectId(response["_id"])})
+                    if colav_reg:
+                        process_one_update(oa_reg, colav_reg, db,
+                                           collection, empty_work, verbose=verbose)
+                    else:
+                        if verbose > 4:
+                            print("Register with {} not found in mongodb".format(
+                                response["_id"]))
+                            print(response)
                 else:
-                    if verbose > 4:
-                        print("Register with {} not found in mongodb".format(
-                            response["_id"]))
-                        print(response)
+                    process_one_insert(oa_reg, db, collection,
+                                       empty_work, es_handler, verbose=0)
+
             else:  # insert new register
                 if verbose > 4:
                     print("INFO: found no register in elasticsearch")
@@ -422,4 +431,6 @@ def process_one(oa_reg, config, empty_work, verbose=0):
         else:
             if verbose > 4:
                 print("No elasticsearch index provided")
-    client.close()
+    if backend != "threading":
+        client.close()
+        es_handler.close()

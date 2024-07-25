@@ -1,6 +1,6 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
-from pandas import read_excel
+from pandas import read_excel, isna
 from time import time
 import re
 from kahi_impactu_utils.Utils import check_date_format, parse_sex
@@ -172,14 +172,16 @@ class Kahi_staff_person(KahiBase):
                 else:
                     entry["birthdate"] = None
                 entry["sex"] = parse_sex(reg["sexo"].lower())
-                degree = {"date": "", "degree": reg["nivelacad"], "id": "", "institutions": [
-                ], "source": "staff"}
-                if degree not in entry["degrees"]:
-                    entry["degrees"].append(degree)
-                ranking = {"date": "",
-                           "rank": reg["categoria"], "source": "staff"}
-                if ranking not in entry["ranking"]:
-                    entry["ranking"].append(ranking)
+                if not isna(reg["nivelacad"]):
+                    degree = {"date": "", "degree": reg["nivelacad"], "id": "", "institutions": [
+                    ], "source": "staff"}
+                    if degree not in entry["degrees"]:
+                        entry["degrees"].append(degree)
+                if not isna(reg["categoria"]):
+                    ranking = {"date": "",
+                               "rank": reg["categoria"], "source": "staff"}
+                    if ranking not in entry["ranking"]:
+                        entry["ranking"].append(ranking)
 
             self.collection.insert_one(entry)
 
@@ -203,7 +205,7 @@ class Kahi_staff_person(KahiBase):
 
             file_path = config["file_path"]
             self.data = read_excel(file_path, dtype={
-                "cedula": str, "codfac": str, "ccosto": str, "fecha_nac": str, "fecha_vin": str})
+                "cedula": str, "codfac": str, "ccosto": str, "fecha_nac": str, "fecha_vin": str, "nivelacad": str, "categoria": str, "sexo": str})
 
             # logs for higher verbosity
             self.facs_inserted = {}

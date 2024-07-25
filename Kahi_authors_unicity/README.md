@@ -34,13 +34,17 @@ workflow:
     max_authors_threshold: 0
     num_jobs: 20
     task:
-    - orcid
-    - doi
+      - scholar
+      - scopus
+      - researchgate
+      - orcid
+      - doi
     verbose: 1
 ```
+
 max_authors_threshold is used to filter the works to be processed with DOI according to their number of authors, use 0 to process all the works.
 
-Task corresponds to a list of unicity processes, the available options are “orcid” and “doi”. It is possible to set only one option.
+Task corresponds to a list of unicity processes, the available options by id are  ['linkedin', 'orcid', 'publons', 'researchgate', 'scholar', 'scopus', 'ssrn', 'wos'] and by work is “doi”. It is possible to set only one option.
 
 * WARNING *. The doi unicity process could take several minutes
 

@@ -1,4 +1,4 @@
-from kahi_impactu_utils.Utils import compare_author
+from kahi_impactu_utils.Utils import compare_author, split_names, split_names_fix
 from pymongo import MongoClient, TEXT
 from joblib import Parallel, delayed
 from kahi.KahiBase import KahiBase
@@ -142,6 +142,17 @@ class Kahi_authors_unicity(KahiBase):
                 # full_name
                 if len(doc["full_name"]) > len(target_doc["full_name"]):
                     target_doc["full_name"] = doc["full_name"]
+                    sname = split_names(doc["full_name"])
+                    target_doc["first_names"] = sname["first_names"]
+                    target_doc["last_names"] = sname["last_names"]
+                    target_doc["initials"] = sname["initials"]
+
+                    # check if fix is neeeded
+                    fname = split_names_fix(target_doc, doc)
+                    if fname:
+                        target_doc["first_names"] = fname["first_names"]
+                        target_doc["last_names"] = fname["last_names"]
+                        target_doc["initials"] = fname["initials"]
 
                 # first_names, last_names, initials, sex, marital_status, birthplace, birthdate
                 self.merge_fields(target_doc, doc, [
@@ -216,16 +227,16 @@ class Kahi_authors_unicity(KahiBase):
 
     # Function to process authors unicity based on ORCID
 
-    def orcid_unicity(self, reg, verbose=0):
+    def id_unicity(self, reg, _id, verbose=0):
         """
-        Checks unicity by ORCID id among a group of author documents.
+        Checks unicity by id among a group of author documents.
 
         Parameters:
         ----------
         self : object
             The object instance.
         reg : dict
-            A dictionary containing a registry of agggrupated author documents by ORCID id.
+            A dictionary containing a registry of aggregated author documents by ORCID id.
         collection : Collection
             The MongoDB collection to be used.
         """
@@ -240,10 +251,12 @@ class Kahi_authors_unicity(KahiBase):
         target_doc = self.find_target_doc(author_docs, "orcid")
         if target_doc:
             self.merge_documents(author_docs, target_doc)
+        self.collection_merged_sets.insert_one(
+            {"source": _id, _id: reg["_id"], "target_author": {"_id": target_doc["_id"], "full_name": target_doc["full_name"]}, "set": [aid["_id"] for aid in author_docs]})
 
     # Function to compare authors based on DOI
 
-    def doi_unicity(self, reg, verbose=0):
+    def doi_unicity(self, reg, jobs, verbose=0):
         """
         Checks unicity by DOI among a group of author documents.
 
@@ -252,7 +265,7 @@ class Kahi_authors_unicity(KahiBase):
         self : object
             The object instance.
         reg : dict
-            A dictionary containing a registry of agggrupated author documents by DOI.
+            A dictionary containing a registry of aggregated author documents by DOI.
         collection : Collection
             The MongoDB collection to be used.
         """
@@ -306,7 +319,7 @@ class Kahi_authors_unicity(KahiBase):
             if target_doc:
                 self.merge_documents(author_docs_, target_doc)
             self.collection_merged_sets.insert_one(
-                {"doi": reg["_id"], "target_author": {"_id": target_doc["_id"], "full_name": target_doc["full_name"]}, "set": author_found})
+                {"source": "doi", "doi": reg["_id"], "target_author": {"_id": target_doc["_id"], "full_name": target_doc["full_name"]}, "set": author_found})
 
     def process_authors(self):
         """
@@ -317,31 +330,40 @@ class Kahi_authors_unicity(KahiBase):
         self : object
             The object instance.
         """
-        # ORCID unicity
-        if isinstance(self.task, list) and "orcid" in self.task:
-            pipeline = [
-                {"$unwind": "$external_ids"},
-                {"$match": {"external_ids.source": "orcid"}},
-                {"$group": {"_id": "$external_ids.id", "document_ids": {
-                    "$addToSet": "$_id"}, "count": {"$sum": 1}}},
-                {"$match": {"count": {"$gt": 1}}}
-            ]
-            authors_cursor = list(self.collection.aggregate(
-                pipeline, allowDiskUse=True))
-            print("INFO: ORCID unicity for groups of authors is started!")
-            print(f"INFO: the number of groups are {len(authors_cursor)}")
-            Parallel(
-                n_jobs=self.n_jobs,
-                verbose=self.verbose,
-                backend="threading")(
-                delayed(self.orcid_unicity)(
-                    reg,
-                    self.verbose
-                ) for reg in authors_cursor
-            )
-            if self.verbose > 1:
-                print("INFO: ORCID unicity for {} groups of authors is done!".format(
-                    len(authors_cursor)))
+
+        #  Unicity by ids
+        if isinstance(self.task, list):
+            for task in self.task:
+                if task in ['linkedin', 'orcid', 'publons', 'researchgate',
+                            'scholar', 'scopus', 'ssrn', 'wos']:
+                    pipeline = [
+                        {"$project": {"external_ids": 1, "_id": 1}},
+                        {"$match": {"external_ids.source": task}},
+                        {"$unwind": "$external_ids"},
+                        {"$match": {"external_ids.source": task}},
+                        {"$group": {"_id": "$external_ids.id", "document_ids": {
+                            "$addToSet": "$_id"}, "count": {"$sum": 1}}},
+                        {"$match": {"count": {"$gt": 1}}}
+                    ]
+                    authors_cursor = list(self.collection.aggregate(
+                        pipeline, allowDiskUse=True))
+                    print(
+                        f"INFO: {task} unicity for groups of authors is started!")
+                    print(
+                        f"INFO: the number of groups are {len(authors_cursor)}")
+                    Parallel(
+                        n_jobs=self.n_jobs,
+                        verbose=self.verbose,
+                        backend="threading")(
+                        delayed(self.id_unicity)(
+                            reg,
+                            task,
+                            self.verbose
+                        ) for reg in authors_cursor
+                    )
+                    if self.verbose > 1:
+                        print(
+                            f"INFO: {task} unicity for {len(authors_cursor)} groups of authors is done!")
 
         # DOI unicity
         if isinstance(self.task, list) and "doi" in self.task:
@@ -350,6 +372,8 @@ class Kahi_authors_unicity(KahiBase):
             else:
                 pepeline_count = {"$gt": 1, "$lte": self.authors_threshold}
             pipeline = [
+                {"$project": {"related_works": 1, "_id": 1}},
+                {"$match": {"related_works.source": "doi"}},
                 {"$unwind": "$related_works"},
                 {"$match": {"related_works.source": "doi"}},
                 {"$group": {"_id": "$related_works.id", "authors": {
