@@ -596,7 +596,7 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
                         print(response)
             else:  # insert new register
                 process_one_insert(scienti_reg, db, collection,
-                                   empty_work, es_handler, verbose)
+                                   empty_work, es_handler, doi=None, verbose=verbose)
         else:
             if verbose > 4:
                 print("No elasticsearch index provided")
