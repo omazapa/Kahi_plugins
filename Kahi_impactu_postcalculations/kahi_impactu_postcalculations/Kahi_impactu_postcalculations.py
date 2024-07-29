@@ -2,8 +2,8 @@ from joblib import Parallel, delayed
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient
 import subprocess
-from spacy import cli
-from kahi_impactu_postcalculations.utils import network_creation, top_words, start_mongo_client, count_works_one
+from spacy import cli, load
+from kahi_impactu_postcalculations.process_one import network_creation_process_one, top_words_process_one, count_works_one, load_nlp_models
 
 
 class Kahi_impactu_postcalculations(KahiBase):
@@ -27,6 +27,7 @@ class Kahi_impactu_postcalculations(KahiBase):
 
         self.impactu_database_url = config["impactu_postcalculations"]["database_url"]
         self.impactu_database_name = config["impactu_postcalculations"]["database_name"]
+        self.backend = self.config["impactu_postcalculations"]["backend"]
         self.verbose = self.config["impactu_postcalculations"]["verbose"]
         self.n_jobs = self.config["impactu_postcalculations"]["n_jobs"]
         self.author_count = self.config["impactu_postcalculations"][
@@ -37,8 +38,16 @@ class Kahi_impactu_postcalculations(KahiBase):
         """
         Check if the spaCy models are installed and install them if needed.
         """
+        print("INFO: Checking spaCy models")
         if not self.are_spacy_models_installed():
+            print("INFO: Installing spaCy models")
             self.install_spacy_models()
+        self.en_model = load('en_core_web_sm')
+        self.es_model = load('es_core_news_sm')
+        self.stopwords = self.en_model.Defaults.stop_words.union(
+            self.es_model.Defaults.stop_words)
+        # Load the spaCy models in process one for parallel computing
+        load_nlp_models()
 
     def are_spacy_models_installed(self):
         """
@@ -62,8 +71,11 @@ class Kahi_impactu_postcalculations(KahiBase):
         """
         Execute the plugin to create co-authorship networks and extract top words.
         """
-        start_mongo_client(self.mongodb_url, self.database_name,
-                           self.impactu_database_url, self.impactu_database_name)
+
+        client = MongoClient(self.mongodb_url)
+        db = client[self.database_name]
+
+        impactu_client = MongoClient(self.impactu_database_url)
 
         client = MongoClient(self.mongodb_url)
         db = client[self.database_name]
@@ -74,66 +86,109 @@ class Kahi_impactu_postcalculations(KahiBase):
         # Getting the list of institutions ids with works
         print("INFO: Getting authors and affiliations ids")
         institutions_ids = []
-
         for aff in db["affiliations"].find({"types.type": {"$nin": ["faculty", "department", "group"]}}, {"_id": 1}):
             count = db["works"].count_documents(
                 {"authors.affiliations.id": aff["_id"]})
             if count != 0:
                 institutions_ids.append(aff["_id"])
-        authors_ids = [x["_id"] for x in db["person"].find({}, {"_id": 1})]
-        client.close()
 
-        print("INFO: Creating affiliations networks")
         # Creating the networks of coauthorship for each affiliation
+        print("INFO: Creating affiliations networks")
         if institutions_ids:
             Parallel(
                 n_jobs=self.n_jobs,
                 verbose=10,
-                backend="multiprocessing")(
-                    delayed(network_creation)(
-                        oaid,
+                backend=self.backend)(
+                    delayed(network_creation_process_one)(
+                        self.config,
+                        client if self.backend == "threading" else None,
+                        impactu_client if self.backend == "threading" else None,
+                        idx,
+                        self.author_count,
                         "affiliations",
-                        self.author_count
-                    ) for oaid in institutions_ids)
+                        self.backend
+                    ) for idx in institutions_ids)
 
         # Getting the list of authors ids with works
         print("INFO: Checking authors with works")
-        authors_ids = Parallel(n_jobs=self.n_jobs, backend="multiprocessing", verbose=10)(
-            delayed(count_works_one)(author) for author in authors_ids)
+        authors_ids = [x["_id"] for x in db["person"].find({}, {"_id": 1})]
+
+        # this could be threads, is a basic thing.
+        authors_ids = Parallel(n_jobs=self.n_jobs, backend="threading", verbose=1)(
+            delayed(count_works_one)(
+                db,
+                author
+            ) for author in authors_ids)
+
+        # remove Nones
         authors_ids = [x for x in authors_ids if x is not None]
 
+        print(f"INFO: total authors {len(authors_ids)}")
         # Creating the networks of coauthorship for each author
+        print("INFO: Creating authors networks")
         if authors_ids:
             Parallel(
                 n_jobs=self.n_jobs,
                 verbose=10,
-                backend="multiprocessing")(
-                    delayed(network_creation)(
-                        oaid,
+                backend=self.backend)(
+                    delayed(network_creation_process_one)(
+                        self.config,
+                        client if self.backend == "threading" else None,
+                        impactu_client if self.backend == "threading" else None,
+                        idx,
+                        self.author_count,
                         "person",
-                        self.author_count
-                    ) for oaid in authors_ids)
-
+                        self.backend
+                    ) for idx in authors_ids)
         # Getting the top words for each institution
         print("INFO: Creating top words for institutions")
+        affiliations_cursor = list(db["affiliations"].find({}, {"_id": 1}))
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
-            backend="multiprocessing")(
-                delayed(top_words)(
-                    "affiliations",
+            backend=self.backend)(
+                delayed(top_words_process_one)(
+                    self.config,
+                    client if self.backend == "threading" else None,
+                    impactu_client if self.backend == "threading" else None,
                     aff,
-                    "authors.affiliations.id"
-                ) for aff in institutions_ids)
+                    self.stopwords,
+                    "affiliations",
+                    self.backend
+                ) for aff in affiliations_cursor)
+
+        # Getting the top words for others organizations
+        print("INFO: Creating top words for others affiliations such as faculty, department, group")
+        affiliations_cursor = list(db["affiliations"].find(
+            {"types.type": {"$in": ["faculty", "department", "group"]}}, {"_id": 1}))
+        Parallel(
+            n_jobs=self.n_jobs,
+            verbose=10,
+            backend=self.backend)(
+                delayed(top_words_process_one)(
+                    self.config,
+                    client if self.backend == "threading" else None,
+                    impactu_client if self.backend == "threading" else None,
+                    aff,
+                    self.stopwords,
+                    "affiliations",
+                    self.backend
+                ) for aff in affiliations_cursor)
 
         # Getting the top words for each author
-        print("INFO: Creating top words for authors")
+        print("INFO: Creating top words for person")
+        authors_cursor = list(db["person"].find({}, {"_id": 1}))
+
         Parallel(
             n_jobs=self.n_jobs,
             verbose=10,
-            backend="multiprocessing")(
-                delayed(top_words)(
-                    "person",
+            backend=self.backend)(
+                delayed(top_words_process_one)(
+                    self.config,
+                    client if self.backend == "threading" else None,
+                    impactu_client if self.backend == "threading" else None,
                     author,
-                    "authors.id"
-                ) for author in authors_ids)
+                    self.stopwords,
+                    "person",
+                    self.backend
+                ) for author in authors_cursor)

@@ -37,6 +37,7 @@ workflow:
   impactu_postcalculations:
     database_url: localhost:27017
     database_name: kahi_calculations
+    backend: multiprocessing
     n_jobs: 6
     verbose: 5
     author_count: 6 #use this with warning, maybe the network is too big and it can not be saved in MongoDB
