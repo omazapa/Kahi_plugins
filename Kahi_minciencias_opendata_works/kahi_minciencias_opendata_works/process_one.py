@@ -115,6 +115,11 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
 
                                 name_match = compare_author(
                                     author_reg, author_db)
+                                # If the author matches, replace the id and full_name of the record in process so as not to break the aggregation of affiliations.
+                                if name_match:
+                                    author["id"] = author_db["_id"]
+                                    author["full_name"] = author_db["full_name"]
+
                                 if author['affiliations']:
                                     affiliations_person = [str(aff['id'])
                                                            for aff in author_db['affiliations']]
