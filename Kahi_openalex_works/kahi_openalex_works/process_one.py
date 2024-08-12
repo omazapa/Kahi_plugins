@@ -433,4 +433,5 @@ def process_one(oa_reg, config, empty_work, client, es_handler, backend, verbose
                 print("No elasticsearch index provided")
     if backend != "threading":
         client.close()
-        es_handler.close()
+        if es_handler:
+            es_handler.close()
