@@ -66,13 +66,15 @@ if __name__ == "__main__":
 
     # initialize the repository
     repo = Repo(repo_path)
-    plugins = glob(f"{glob}/Kahi_*")
+    plugins = glob("Kahi_*")
     plugins.remove("Kahi_template")
 
     # adding the remote upstream if it does not exist
     if upstream_url != repo.remotes.origin.url:
-        print(f"ERROR: The origin remote is not the same as the {upstream_url} remote")
-        print(f"Plese use the main repository {upstream_url} to run this script and try again.")
+        print(
+            f"ERROR: The origin remote is not the same as the {upstream_url} remote")
+        print(
+            f"Plese use the main repository {upstream_url} to run this script and try again.")
         sys.exit(1)
     bump_kahi_impactu(repo, repo_path, plugins)
-    bump_plugin_tags(repo,repo_path, plugins)
+    bump_plugin_tags(repo, repo_path, plugins)
