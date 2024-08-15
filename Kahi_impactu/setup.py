@@ -80,7 +80,7 @@ def main():
         # Dependent packages (distributions)
         # put you packages here
         install_requires=[
-            'kahi==0.0.5a0',
+            'kahi==0.0.10a0',
             'Kahi_doaj_sources==0.1.1-beta',
             'Kahi_elasticsearch_works==0.1.0-beta',
             'Kahi_impactu==0.1.0',
