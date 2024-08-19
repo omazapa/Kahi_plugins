@@ -140,6 +140,7 @@ class Kahi_minciencias_opendata_works(KahiBase):
                   "Generación de contenido impresa"]
 
         pipeline = [
+            {'$match':{"nme_producto_pd":{"$exists":True}}},
             {'$match': {'nme_tipologia_pd': {'$in': biblio}}},
             {'$group': {'_id': '$id_producto_pd', 'originalDoc': {'$first': '$$ROOT'}}},
             {'$replaceRoot': {'newRoot': '$originalDoc'}}
@@ -169,6 +170,7 @@ class Kahi_minciencias_opendata_works(KahiBase):
                    "Proyecto de extensión", "Proyecto de extensión y responsabilidad social en CTI"]
         exclude.extend(biblio)
         pipeline = [
+            {'$match':{"nme_producto_pd":{"$exists":True}}},
             {'$match': {'nme_tipologia_pd': {'$nin': exclude}}},
             {'$group': {'_id': '$id_producto_pd', 'originalDoc': {'$first': '$$ROOT'}}},
             {'$replaceRoot': {'newRoot': '$originalDoc'}}
