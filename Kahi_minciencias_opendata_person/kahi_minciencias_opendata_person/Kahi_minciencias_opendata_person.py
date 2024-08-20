@@ -354,10 +354,9 @@ class Kahi_minciencias_opendata_person(KahiBase):
         if self.verbose > 4:
             print("Creating the aggregate for {} products.".format(
                 self.groups_production.count_documents({})))
-        categories = ['ART-00', 'ART-ART_A1', 'ART-ART_A2',
-                      'ART-ART_B', 'ART-ART_C', 'ART-ART_D', 'ART-GC_ART']
         pipeline = [
-            {'$match': {'id_tipo_pd_med': {'$in': categories}}},
+            # 0000000000 is a placeholder for missing id_persona_pd, there is not record for it, then we can omit it
+            {'$match': {'id_persona_pd': {'$ne': '0000000000'}}},
             {"$sort": {"ano_convo": -1}},
             {'$group': {'_id': '$id_producto_pd', 'originalDoc': {'$first': '$$ROOT'}}},
             {'$replaceRoot': {'newRoot': '$originalDoc'}},

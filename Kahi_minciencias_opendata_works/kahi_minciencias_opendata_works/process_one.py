@@ -173,7 +173,8 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                     for relation in rgroup["relations"]:
                         types = []
                         if "types" in relation.keys() and relation["types"]:
-                            types = [rel["type"].lower() for rel in relation["types"]]
+                            types = [rel["type"].lower()
+                                     for rel in relation["types"]]
                             if "education" in types:
                                 if relation["id"] not in affs:
                                     author["affiliations"].append(relation)
@@ -502,5 +503,7 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
                 process_one_insert(
                     openadata_reg, db, collection, empty_work, es_handler, verbose)
     else:
+        process_one_insert(
+            openadata_reg, db, collection, empty_work, es_handler, verbose)
         if verbose > 4:
             print("No elasticsearch index provided")

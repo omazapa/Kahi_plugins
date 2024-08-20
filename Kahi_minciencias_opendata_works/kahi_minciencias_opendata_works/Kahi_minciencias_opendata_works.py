@@ -93,7 +93,8 @@ class Kahi_minciencias_opendata_works(KahiBase):
 
                 # Check if collection exists
                 if collection_name not in db.list_collection_names():
-                    raise ValueError(f"Collection {collection_name} in database {db_name} not found")
+                    raise ValueError(
+                        f"Collection {collection_name} in database {db_name} not found")
 
         except ConnectionFailure:
             raise ConnectionFailure("Failed to connect to MongoDB server.")
@@ -108,36 +109,91 @@ class Kahi_minciencias_opendata_works(KahiBase):
         db = client[self.config["minciencias_opendata_works"]["database_name"]]
         opendata = db[self.config["minciencias_opendata_works"]
                       ["collection_name"]]
+        print("INFO: Creating indices")
+        opendata.create_index("id_producto_pd")
+        opendata.create_index("nme_tipologia_pd")
+        if self.task == "doi":
+            raise RuntimeError(
+                f'''{self.config["minciencias_opendata_works"]["task"]} is not a valid task for the minciencias_opendata database''')
 
-        categories = ['ART-00', 'ART-ART_A1', 'ART-ART_A2',
-                      'ART-ART_B', 'ART-ART_C', 'ART-ART_D', 'ART-GC_ART']
+        # bibliography production requires a search in elasticsearch,
+        # there will be a cut in openalex for those products.
+        biblio = ["Publicaciones editoriales no especializadas",
+                  "Notas científica",
+                  "Informe Final de Investigación",
+                  "Capítulos de libro de investigación",
+                  "Libros de investigación",
+                  "Artículos de investigación",
+                  "Libros de Formación",
+                  "Libros",
+                  "Tesis de doctorado",
+                  "Capítulos de libro",
+                  "Documento de trabajo",
+                  "Tesis de pregrado",
+                  "Informe técnico final",
+                  "Artículos",
+                  "Edicion",
+                  "Manuales y Guías Especializadas",
+                  "Boletín divulgativo de resultado de investigación",
+                  "Libros de Divulgación de investigación y/o Compilación de Divulgación",
+                  "Tesis de maestria",
+                  "Generación de contenido impresa"]
 
         pipeline = [
-            {'$match': {'id_tipo_pd_med': {'$in': categories}}},
+            {'$match': {"nme_producto_pd": {"$exists": True}}},
+            {'$match': {'nme_tipologia_pd': {'$in': biblio}}},
+            {'$group': {'_id': '$id_producto_pd', 'originalDoc': {'$first': '$$ROOT'}}},
+            {'$replaceRoot': {'newRoot': '$originalDoc'}}
+        ]
+        paper_list = list(opendata.aggregate(pipeline, allowDiskUse=True))
+        print(
+            f"INFO: Processing bibliographic production {len(paper_list)} catgories {biblio}")
+        Parallel(
+            n_jobs=self.n_jobs,
+            verbose=self.verbose,
+            backend="threading")(
+            delayed(process_one)(
+                work,
+                self.db,
+                self.collection,
+                self.empty_work(),
+                self.es_handler,
+                insert_all=self.insert_all,
+                thresholds=self.thresholds,
+                verbose=self.verbose
+            ) for work in paper_list
+        )
+
+        exclude = ["Evento científico", "Eventos artísticos, de arquitectura o de diseño con componentes de apropiación", "Eventos artísticos",
+                   "Patente de invención", "Patente modelo de utilidad",
+                   "Proyecto ID+I con Formación", "Proyecto de Investigacion y Desarrollo", "Proyecto de Investigación y Creación",
+                   "Proyecto de extensión", "Proyecto de extensión y responsabilidad social en CTI"]
+        exclude.extend(biblio)
+        pipeline = [
+            {'$match': {"nme_producto_pd": {"$exists": True}}},
+            {'$match': {'nme_tipologia_pd': {'$nin': exclude}}},
             {'$group': {'_id': '$id_producto_pd', 'originalDoc': {'$first': '$$ROOT'}}},
             {'$replaceRoot': {'newRoot': '$originalDoc'}}
         ]
 
-        if self.task == "doi":
-            raise RuntimeError(
-                f'''{self.config["minciencias_opendata_works"]["task"]} is not a valid task for the minciencias_opendata database''')
-        else:
-            paper_list = list(opendata.aggregate(pipeline, allowDiskUse=True))
-            Parallel(
-                n_jobs=self.n_jobs,
-                verbose=self.verbose,
-                backend="threading")(
-                delayed(process_one)(
-                    work,
-                    self.db,
-                    self.collection,
-                    self.empty_work(),
-                    self.es_handler,
-                    insert_all=self.insert_all,
-                    thresholds=self.thresholds,
-                    verbose=self.verbose
-                ) for work in paper_list
-            )
+        paper_list = list(opendata.aggregate(pipeline, allowDiskUse=True))
+        print(
+            f"INFO: Processing non-bibliographic production {len(paper_list)} excluding {exclude}")
+        Parallel(
+            n_jobs=self.n_jobs,
+            verbose=self.verbose,
+            backend="threading")(
+            delayed(process_one)(
+                work,
+                self.db,
+                self.collection,
+                self.empty_work(),
+                None,
+                insert_all=self.insert_all,
+                thresholds=self.thresholds,
+                verbose=self.verbose
+            ) for work in paper_list
+        )
         client.close()
 
     def run(self):
