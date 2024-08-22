@@ -67,7 +67,7 @@ def main():
         include_package_data=True,
 
         # Details
-        url="https://github.com/colav/Kahi_xyz",
+        url="https://github.com/colav/Kahi_plugins",
         #
         license="BSD",
 
