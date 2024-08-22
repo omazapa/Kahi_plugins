@@ -277,7 +277,7 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
             {"id": rgroup["_id"], "name": rgroup["names"][0]["name"]})
 
     # insert in mongo
-    response = collection.insert_one(entry)
+    collection.insert_one(entry)
 
 
 def str_normilize(word):
