@@ -3,8 +3,7 @@ from kahi_impactu_utils.Utils import compare_author
 from thefuzz import process, fuzz
 from unidecode import unidecode
 from time import time
-from bson import ObjectId
-from re import search, sub
+from re import search
 
 
 def process_one_update(openadata_reg, colav_reg, db, collection, empty_event, verbose=0):
