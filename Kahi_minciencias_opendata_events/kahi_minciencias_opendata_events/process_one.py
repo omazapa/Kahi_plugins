@@ -338,16 +338,16 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
     if "id_producto_pd" in openadata_reg.keys():
         if openadata_reg["id_producto_pd"]:
             COD_RH = ""
-            COD_PROD = ""
+            COD_EVENTO = ""
             product_id = openadata_reg["id_producto_pd"]
             match = search(r'(\d{9,11})-(\d{1,7})$', product_id)
             if match:
                 COD_RH = match.group(1)
-                COD_PROD = match.group(2)
+                COD_EVENTO = match.group(2)
 
-                if COD_RH and COD_PROD:
+                if COD_RH and COD_EVENTO:
                     colav_reg = collection.find_one(
-                        {"external_ids.id": {"COD_RH": COD_RH, "COD_PRODUCTO": COD_PROD}})
+                        {"external_ids.id": {"COD_RH": COD_RH, "COD_EVENTO": COD_EVENTO}})
                     if colav_reg:
                         process_one_update(
                             openadata_reg, colav_reg, db, collection, empty_work, verbose)
