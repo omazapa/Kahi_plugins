@@ -338,7 +338,7 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
     if "id_producto_pd" in openadata_reg.keys():
         if openadata_reg["id_producto_pd"]:
             COD_RH = ""
-            COD_PROD = ""
+            COD_PROY = ""
             product_id = openadata_reg["id_producto_pd"]
             match = search(r'(\d{9,11})-(\d{1,7})$', product_id)
             if match:
