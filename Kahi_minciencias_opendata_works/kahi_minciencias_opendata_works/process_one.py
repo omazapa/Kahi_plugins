@@ -261,33 +261,9 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
                                     print("group added to author: {}".format(
                                         affiliations_db["names"][0]["name"] if affiliations_db else None))
                                 break
-                else:
-                    # author not found in db, search only for group
-                    try:
-                        group_id = entry['authors'][0]['affiliations'][0]['external_ids'][0]['id']
-                        affiliations_db = db["affiliations"].find_one(
-                            {"external_ids.id": group_id})
-                        if affiliations_db:
-                            entry['authors'][0]['affiliations'].append(
-                                {
-                                    "id": affiliations_db["_id"] if affiliations_db else None,
-                                    "name": affiliations_db["names"][0]["name"].strip() if affiliations_db else None,
-                                    "types": affiliations_db["types"] if affiliations_db else None
-                                }
-                            )
-                            if len(entry['authors'][0]['affiliations']) > 1:
-                                entry['authors'][0]['affiliations'].pop(0)
-                            if "external_ids" in entry['authors'][0]:
-                                entry['authors'][0].pop("external_ids")
-                        else:
-                            return
-                    except Exception as e:
-                        print(e)
-                        return
         else:
             if verbose > 4:
                 print("No author data")
-                return
     # group
     group_id = openadata_reg["cod_grupo_gr"]
     rgroup = db["affiliations"].find_one({"external_ids.id": group_id})
@@ -480,7 +456,7 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
                         {"_id": ObjectId(es_work["_id"])})
                     if colav_reg:
                         titles = [titles.get('title')
-                                for titles in colav_reg["titles"]]
+                                  for titles in colav_reg["titles"]]
                         display_name, score = process.extractOne(
                             title_work, titles)
                         if score > thresholds["paper_thd_high"]:
