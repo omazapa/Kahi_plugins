@@ -474,30 +474,24 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
                 es_thold=0,
                 hits=20
             )
-            if not es_results:
-                # No ES results
-                if insert_all:
-                    process_one_insert(
-                        openadata_reg, db, collection, empty_work, es_handler, verbose)
-                    return
-
-            for es_work in es_results:
-                colav_reg = collection.find_one(
-                    {"_id": ObjectId(es_work["_id"])})
-                if colav_reg:
-                    titles = [titles.get('title')
-                              for titles in colav_reg["titles"]]
-                    display_name, score = process.extractOne(
-                        title_work, titles)
-                    if score > thresholds["paper_thd_high"]:
-                        process_one_update(
-                            openadata_reg, colav_reg, db, collection, empty_work, verbose)
+            if es_results:
+                for es_work in es_results:
+                    colav_reg = collection.find_one(
+                        {"_id": ObjectId(es_work["_id"])})
+                    if colav_reg:
+                        titles = [titles.get('title')
+                                for titles in colav_reg["titles"]]
+                        display_name, score = process.extractOne(
+                            title_work, titles)
+                        if score > thresholds["paper_thd_high"]:
+                            process_one_update(
+                                openadata_reg, colav_reg, db, collection, empty_work, verbose)
+                            return
+                    else:
+                        if verbose > 4:
+                            print("Register with {} not found in mongodb".format(
+                                response["_id"]))
                         return
-                else:
-                    if verbose > 4:
-                        print("Register with {} not found in mongodb".format(
-                            response["_id"]))
-                    return
 
             if insert_all:
                 process_one_insert(
