@@ -373,16 +373,17 @@ class Kahi_minciencias_opendata_person(KahiBase):
             {"$group": {"_id": "$id_persona_pr", "doc": {"$first": "$$ROOT"}}},
             {"$replaceRoot": {"newRoot": "$doc"}}
         ]
-        authors_cursor = self.researchers_collection.aggregate(
-            pipeline, allowDiskUse=True)
+        cvlac_authors_list = list(self.researchers_collection.aggregate(
+            pipeline, allowDiskUse=True))
 
         # Authors with private profile
-        authors_private_cursor = self.private_profiles.distinct("id_persona_pr")
+        authors_private_profile_list = list(self.private_profiles.distinct("id_persona_pr"))
 
-        # Group production aggregate
         if self.verbose > 4:
             print("Creating the aggregate for {} products.".format(
                 self.groups_production.count_documents({})))
+
+        # Group production aggregate
         pipeline = [
             # 0000000000 is a placeholder for missing id_persona_pd, there is not record for it, then we can omit it
             {'$match': {'id_persona_pd': {'$ne': '0000000000'}}},
@@ -400,7 +401,11 @@ class Kahi_minciencias_opendata_person(KahiBase):
             db = client[self.config["database_name"]]
             person_collection = db["person"]
 
-            for author_cursor in [authors_cursor, authors_private_cursor]:
+            authors_collection = [
+                {"collection": self.cvlac_stage, "list": cvlac_authors_list},
+                {"collection": self.private_profiles, "list": authors_private_profile_list}
+            ]
+            for authors_list in authors_collection:
                 Parallel(
                     n_jobs=self.n_jobs,
                     verbose=10,
@@ -410,15 +415,17 @@ class Kahi_minciencias_opendata_person(KahiBase):
                         db,
                         person_collection,
                         self.empty_person(),
-                        self.cvlac_stage.find_one(
+                        authors_list["collection"].find_one(
                             {"id_persona_pr": author["id_persona_pr"] if isinstance(author, dict) else author}),
                         groups_production_list,
                         self.verbose
-                    ) for author in author_cursor
+                    ) for author in authors_list["list"]
                 )
 
             # authors not in the cvlac collection
             cvlac_data_ids = list(self.researchers_collection.distinct("id_persona_pr"))
+            if self.verbose > 4:
+                print("Processing {} authors not in cvlac.".format(len(cvlac_data_ids)))
             pipeline = [
                 # 0000000000 is a placeholder for missing id_persona_pd, there is not record for it, then we can omit it
                 {'$match': {'id_persona_pd': {'$ne': '0000000000', '$nin': cvlac_data_ids}}},
@@ -449,7 +456,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
                             {"id_persona_pr": author}),
                         groups_production_not_cvlac_list,
                         self.verbose
-                    ) for author in authors_not_cvlac_ids
+                    ) for author in list(authors_not_cvlac_ids)
                 )
 
             # authors with private profile
