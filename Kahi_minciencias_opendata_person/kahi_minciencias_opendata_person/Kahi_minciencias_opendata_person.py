@@ -78,20 +78,28 @@ def process_info_from_works(db, author, entry, groups_production_list):
                                 entry["affiliations"].append(aff)
 
     for reg in papers:
-        if reg["id_producto_pd"]:
-            cod_rh, cod_producto = reg["id_producto_pd"].split(
-                "-")[-2], reg["id_producto_pd"].split("-")[-1]
+        id_parts = reg.get("id_producto_pd", "").split("-")
+
+        if len(id_parts) == 4:
+            cod_rh, cod_producto, cod_subcategoria = id_parts[1], id_parts[2], id_parts[3]
+            rec = {"provenance": "minciencias", "source": "scienti",
+                   "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto, "COD_SUBCATEGORIA": cod_subcategoria}}
+        elif len(id_parts) == 3:
+            cod_rh, cod_producto = id_parts[1], id_parts[2]
             rec = {"provenance": "minciencias", "source": "scienti",
                    "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}}
-            if rec not in entry["related_works"]:
-                rw = {"provenance": "minciencias", "source": "scienti", "id": {
-                    "COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}}
-                entry["related_works"].append(rw)
+        else:
+            continue  # If the id is not well formed, we skip the record
+
+        if rec not in entry["related_works"]:
+            entry["related_works"].append(rec)
 
 
 def process_one(author, db, collection, empty_person, cvlac_profile, groups_production_list, verbose):
-    if not author:
+
+    if not author or not cvlac_profile:
         return
+
     # Define the author as a dictionary if it is not to permit the use of the same function for the cvlac_profile and the private_profiles.
     author = author if isinstance(author, dict) else {"id_persona_pr": author}
 
@@ -223,6 +231,12 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
             if "0000896519" in author["id_persona_pr"]:
                 cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
 
+        entry["external_ids"].append({
+            "provenance": "minciencias",
+            "source": "scienti",
+            "id": {"COD_RH": cvlac_profile["id_persona_pr"]}
+        })
+
         if "datos_generales" in cvlac_profile.keys() and cvlac_profile["datos_generales"]:
             full_name = split_names(cvlac_profile["datos_generales"]["Nombre"])
             entry["full_name"] = full_name["full_name"]
@@ -233,12 +247,6 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
         if "sexo" in cvlac_profile["datos_generales"].keys():
             entry["sex"] = parse_sex(cvlac_profile["datos_generales"]["Sexo"].lower(
             )) if "Sexo" in cvlac_profile["datos_generales"].keys() else ""
-
-        entry["external_ids"].append({
-            "provenance": "minciencias",
-            "source": "scienti",
-            "id": {"COD_RH": cvlac_profile["id_persona_pr"]}
-        })
 
         # all the ids are mixed, so we need to check each one in the next columns
         ids = set()
@@ -301,6 +309,7 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
             "date": check_date_format(author["ano_convo"])
         }
         entry["ranking"].append(entry_rank)
+    print("Inserting author {}".format(entry["full_name"]))
     collection.insert_one(entry)
 
 
@@ -392,54 +401,63 @@ class Kahi_minciencias_opendata_person(KahiBase):
         if production_cursor:
             groups_production_list = list(production_cursor)
 
+        # authors not in the cvlac collection
+        cvlac_data_ids = list(self.researchers_collection.distinct("id_persona_pr"))
+        if self.verbose > 4:
+            print("Processing {} authors not in cvlac.".format(len(cvlac_data_ids)))
+        pipeline = [
+            # 0000000000 is a placeholder for missing id_persona_pd, there is not record for it, then we can omit it
+            {'$match': {'id_persona_pd': {'$ne': '0000000000', '$nin': cvlac_data_ids}}},
+            {"$sort": {"ano_convo": -1}},
+            {'$group': {'_id': '$id_producto_pd', 'originalDoc': {'$first': '$$ROOT'}}},
+            {'$replaceRoot': {'newRoot': '$originalDoc'}},
+            {'$group': {'_id': '$id_persona_pd', 'products': {'$push': '$$ROOT'}}}
+        ]
+        production_not_cvlac_cursor = self.groups_production.aggregate(
+            pipeline, allowDiskUse=True)
+
         with MongoClient(self.mongodb_url) as client:
             db = client[self.config["database_name"]]
             person_collection = db["person"]
-
-            # Define a list of dictionaries with the collection and the list of authors to process.
-            authors_collection = [
-                {"collection": self.cvlac_stage, "list": cvlac_authors_list},
-                {"collection": self.private_profiles, "list": authors_private_profile_list}
-            ]
-            # Iterate over each item in the authors_collection list to process the authors.
-            for authors_list in authors_collection:
-                Parallel(
-                    n_jobs=self.n_jobs,
-                    verbose=10,
-                    backend="threading")(
-                    delayed(process_one)(
-                        author,
-                        db,
-                        person_collection,
-                        self.empty_person(),
-                        # Find the document in the especific collection using the id_persona_pr field.
-                        authors_list["collection"].find_one(
-                            {"id_persona_pr": author["id_persona_pr"] if isinstance(author, dict) else author}),
-                        groups_production_list,
-                        self.verbose
-                    ) for author in authors_list["list"]  # Iterate over the especific list of authors.
-                )
-
-            # authors not in the cvlac collection
-            cvlac_data_ids = list(self.researchers_collection.distinct("id_persona_pr"))
-            if self.verbose > 4:
-                print("Processing {} authors not in cvlac.".format(len(cvlac_data_ids)))
-            pipeline = [
-                # 0000000000 is a placeholder for missing id_persona_pd, there is not record for it, then we can omit it
-                {'$match': {'id_persona_pd': {'$ne': '0000000000', '$nin': cvlac_data_ids}}},
-                {"$sort": {"ano_convo": -1}},
-                {'$group': {'_id': '$id_producto_pd', 'originalDoc': {'$first': '$$ROOT'}}},
-                {'$replaceRoot': {'newRoot': '$originalDoc'}},
-                {'$group': {'_id': '$id_persona_pd', 'products': {'$push': '$$ROOT'}}}
-            ]
-            production_not_cvlac_cursor = self.groups_production.aggregate(
-                pipeline, allowDiskUse=True)
+            # Process the authors with cvlac profile
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=10,
+                backend="threading")(
+                delayed(process_one)(
+                    author,
+                    db,
+                    person_collection,
+                    self.empty_person(),
+                    # Find the document in the cvlac_stage collection using the id_persona_pr field.
+                    self.cvlac_stage.find_one(
+                        {"id_persona_pr": author["id_persona_pr"]}),
+                    groups_production_list,
+                    self.verbose
+                ) for author in cvlac_authors_list  # Iterate over the cvlac_authors_list
+            )
+            # Process the authors with private profiles
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=10,
+                backend="threading")(
+                delayed(process_one)(
+                    author,
+                    db,
+                    person_collection,
+                    self.empty_person(),
+                    # Find the document in the private_profiles collection using the id_persona_pr field.
+                    self.private_profiles.find_one(
+                        {"id_persona_pr": author}),
+                    groups_production_list,
+                    self.verbose
+                ) for author in authors_private_profile_list  # Iterate over the authors_private_profile_list
+            )
             if production_not_cvlac_cursor:
                 groups_production_not_cvlac_list = list(production_not_cvlac_cursor)
                 if self.verbose > 4:
                     print("Processing {} authors not in cvlac.".format(
                         len(groups_production_not_cvlac_list)))
-
                 # Extract the id_persona_pr id from the groups_production_not_cvlac_list
                 authors_not_cvlac_ids = set([author["_id"] for author in groups_production_not_cvlac_list])
                 Parallel(
