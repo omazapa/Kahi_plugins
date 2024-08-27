@@ -75,7 +75,7 @@ def parse_minciencias_opendata(reg, empty_work, verbose=0):
                         {"provenance": "minciencias", "source": "scienti", "id": ids})
             elif reg["nme_tipologia_pd"] in ['Secreto empresarial']:
                 ids = parse_ids(reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})-(\d{1,7})', [
-                                "COD_RH", "COD_PRODUCTO", "SEQ_PRODUCTO"])
+                                "COD_RH", "COD_PRODUCTO", "COD_SECRETO_INDUSTRIAL"])
                 if ids:
                     entry["external_ids"].append(
                         {"provenance": "minciencias", "source": "scienti", "id": ids})
