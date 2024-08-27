@@ -103,9 +103,11 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
         if "minciencias" in sources:
             return
         # Updated
-        reg_db["updated"].append({
-            "source": "minciencias",
-            "time": int(time())})
+        sources = [x["source"] for x in reg_db["updated"]]
+        if "minciencias" not in sources:
+            reg_db["updated"].append({
+                "source": "minciencias",
+                "time": int(time())})
 
         if cvlac_profile:
             # Identifiers
@@ -221,14 +223,7 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
             if "0000896519" in author["id_persona_pr"]:
                 cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
 
-        if "Nombre en citaciones" in cvlac_profile["datos_generales"].keys() and cvlac_profile["datos_generales"]["Nombre en citaciones"]:
-            full_name = cvlac_profile["datos_generales"]["Nombre en citaciones"]
-            entry["last_names"] = full_name.split(",")[0].title().strip()
-            entry["first_names"] = full_name.split(",")[1].title().strip()
-            entry["full_name"] = entry["first_names"] + " " + entry["last_names"]
-            entry["initials"] = "".join([x[0].upper()
-                                        for x in entry["first_names"].split()])
-        else:
+        if "datos_generales" in cvlac_profile.keys() and cvlac_profile["datos_generales"]:
             full_name = split_names(cvlac_profile["datos_generales"]["Nombre"])
             entry["full_name"] = full_name["full_name"]
             entry["first_names"] = full_name["first_names"]
@@ -269,7 +264,6 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
                         }
                         if rec not in entry["external_ids"]:
                             entry["external_ids"].append(rec)
-
     # degrees
 
     # subjects
