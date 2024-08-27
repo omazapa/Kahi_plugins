@@ -222,7 +222,6 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
     # parse
     entry = parse_minciencias_opendata(openadata_reg, empty_work.copy())
     # search authors and affiliations in db
-    entry["author_count"] = len(entry["authors"])
     # authors
     minciencias_author = ""
     if "authors" in entry.keys():
@@ -269,6 +268,11 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
             if verbose > 4:
                 print("No author data")
                 return
+    if entry["authors"][0]["full_name"] == "":
+        del entry["authors"][0]  # this is an empty author, so it is removed
+
+    entry["author_count"] = len(entry["authors"])
+
     # group
     group_id = openadata_reg["cod_grupo_gr"]
     rgroup = db["affiliations"].find_one({"external_ids.id": group_id})
