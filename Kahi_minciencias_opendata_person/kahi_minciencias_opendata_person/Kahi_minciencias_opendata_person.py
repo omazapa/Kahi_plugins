@@ -92,7 +92,7 @@ def process_info_from_works(db, author, entry, groups_production_list):
 def process_one(author, db, collection, empty_person, cvlac_profile, groups_production_list, verbose):
     if not author:
         return
-
+    # Define the author as a dictionary if it is not to permit the use of the same function for the cvlac_profile and the private_profiles.
     author = author if isinstance(author, dict) else {"id_persona_pr": author}
 
     auid = author["id_persona_pr"]
@@ -265,6 +265,7 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
                         if rec not in entry["external_ids"]:
                             entry["external_ids"].append(rec)
     # degrees
+    # Pending to add the degrees
 
     # subjects
     if "nme_gran_area_pr" and "nme_area_pr" in author.keys():
@@ -395,10 +396,12 @@ class Kahi_minciencias_opendata_person(KahiBase):
             db = client[self.config["database_name"]]
             person_collection = db["person"]
 
+            # Define a list of dictionaries with the collection and the list of authors to process.
             authors_collection = [
                 {"collection": self.cvlac_stage, "list": cvlac_authors_list},
                 {"collection": self.private_profiles, "list": authors_private_profile_list}
             ]
+            # Iterate over each item in the authors_collection list to process the authors.
             for authors_list in authors_collection:
                 Parallel(
                     n_jobs=self.n_jobs,
@@ -409,11 +412,12 @@ class Kahi_minciencias_opendata_person(KahiBase):
                         db,
                         person_collection,
                         self.empty_person(),
+                        # Find the document in the especific collection using the id_persona_pr field.
                         authors_list["collection"].find_one(
                             {"id_persona_pr": author["id_persona_pr"] if isinstance(author, dict) else author}),
                         groups_production_list,
                         self.verbose
-                    ) for author in authors_list["list"]
+                    ) for author in authors_list["list"] # Iterate over the especific list of authors.
                 )
 
             # authors not in the cvlac collection
@@ -436,6 +440,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
                     print("Processing {} authors not in cvlac.".format(
                         len(groups_production_not_cvlac_list)))
 
+                # Extract the id_persona_pr id from the groups_production_not_cvlac_list
                 authors_not_cvlac_ids = set([author["_id"] for author in groups_production_not_cvlac_list])
                 Parallel(
                     n_jobs=self.n_jobs,
@@ -446,15 +451,13 @@ class Kahi_minciencias_opendata_person(KahiBase):
                         db,
                         person_collection,
                         self.empty_person(),
+                        # Find the document in the cvlac_stage collection using the id_persona_pr field.
                         self.cvlac_stage.find_one(
                             {"id_persona_pr": author}),
                         groups_production_not_cvlac_list,
                         self.verbose
-                    ) for author in list(authors_not_cvlac_ids)
+                    ) for author in list(authors_not_cvlac_ids) # Iterate over the ids of the authors not in cvlac.
                 )
-
-            # authors with private profile
-
             client.close()
 
     def run(self):
