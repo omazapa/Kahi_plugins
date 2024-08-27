@@ -417,7 +417,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
                             {"id_persona_pr": author["id_persona_pr"] if isinstance(author, dict) else author}),
                         groups_production_list,
                         self.verbose
-                    ) for author in authors_list["list"] # Iterate over the especific list of authors.
+                    ) for author in authors_list["list"]  # Iterate over the especific list of authors.
                 )
 
             # authors not in the cvlac collection
@@ -456,7 +456,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
                             {"id_persona_pr": author}),
                         groups_production_not_cvlac_list,
                         self.verbose
-                    ) for author in list(authors_not_cvlac_ids) # Iterate over the ids of the authors not in cvlac.
+                    ) for author in list(authors_not_cvlac_ids)  # Iterate over the ids of the authors not in cvlac.
                 )
             client.close()
 
