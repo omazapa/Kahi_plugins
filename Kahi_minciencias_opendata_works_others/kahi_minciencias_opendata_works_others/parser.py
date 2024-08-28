@@ -21,7 +21,7 @@ def parse_ids(product_id, regex, values):
     ids = {}
     if match:
         for i, value in enumerate(values):
-            ids[value] = match.group(i)
+            ids[value] = match.group(i + 1)
     return ids
 
 
