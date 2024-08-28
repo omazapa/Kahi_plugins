@@ -1,8 +1,31 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from time import time
+from re import search
 from joblib import Parallel, delayed
 from kahi_impactu_utils.Utils import get_id_from_url, get_id_type_from_url, parse_sex, check_date_format, split_names
+
+
+def parse_ids(product_id, regex, values):
+    """
+    depending of the product type, the id is parsed in different ways. This function is used to parse the id of the product
+    to extract the different ids that are used in the scienti database.
+
+    Parameters
+    ----------
+    product_id : str
+        The id of the product.
+    regex : str
+        The regex to be used to parse the id.
+    values : list
+        The values to be extracted from the id.
+    """
+    match = search(regex, product_id)
+    ids = {}
+    if match:
+        for i, value in enumerate(values):
+            ids[value] = match.group(i + 1)
+    return ids
 
 
 def process_info_from_works(db, author, entry, groups_production_list):
@@ -77,22 +100,52 @@ def process_info_from_works(db, author, entry, groups_production_list):
                             if not found:
                                 entry["affiliations"].append(aff)
 
+    patents = ["Patente de invención", "Patente modelo de utilidad"]
+    events = ["Evento científico",
+              "Eventos artísticos, de arquitectura o de diseño con componentes de apropiación", "Eventos artísticos"]
+
     for reg in papers:
-        id_parts = reg.get("id_producto_pd", "").split("-")
+        if reg["nme_tipologia_pd"] in ['Obras o productos de arte, arquitectura y diseño']:
+            ids = parse_ids(reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})-(\d{1,7})', [
+                "COD_RH", "COD_PRODUCTO", "SEQ_PRODUCTO"])
+            if ids:
+                entry["related_works"].append(
+                    {"provenance": "minciencias", "source": "scienti", "id": ids})
 
-        if len(id_parts) == 4:
-            cod_rh, cod_producto, cod_subcategoria = id_parts[1], id_parts[2], id_parts[3]
-            rec = {"provenance": "minciencias", "source": "scienti",
-                   "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto, "COD_SUBCATEGORIA": cod_subcategoria}}
-        elif len(id_parts) == 3:
-            cod_rh, cod_producto = id_parts[1], id_parts[2]
-            rec = {"provenance": "minciencias", "source": "scienti",
-                   "id": {"COD_RH": cod_rh, "COD_PRODUCTO": cod_producto}}
+        elif reg["nme_tipologia_pd"] in ['Registro general', 'Registros de acuerdos de licencia para la explotación de obras']:
+            ids = parse_ids(reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})-(\d{1,7})', [
+                            "COD_RH", "COD_PRODUCTO", "COD_REGISTRO"])
+            if ids:
+                entry["related_works"].append(
+                    {"provenance": "minciencias", "source": "scienti", "id": ids})
+
+        elif reg["nme_tipologia_pd"] in ['Secreto empresarial']:
+            ids = parse_ids(reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})-(\d{1,7})', [
+                "COD_RH", "COD_PRODUCTO", "COD_SECRETO_INDUSTRIAL"])
+            if ids:
+                entry["related_works"].append(
+                    {"provenance": "minciencias", "source": "scienti", "id": ids})
+
+        elif reg["nme_tipologia_pd"] in patents:
+            ids = parse_ids(reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})-(\d{1,7})$', [
+                "COD_RH", "COD_PRODUCTO", " COD_PATENTE"])
+            if ids:
+                entry["related_works"].append(
+                    {"provenance": "minciencias", "source": "scienti", "id": ids})
+
+        elif reg["nme_tipologia_pd"] in events:
+            ids = parse_ids(reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})$', [
+                "COD_RH", "COD_EVENTO"])
+            if ids:
+                entry["related_works"].append(
+                    {"provenance": "minciencias", "source": "scienti", "id": ids})
+
         else:
-            continue  # If the id is not well formed, we skip the record
-
-        if rec not in entry["related_works"]:
-            entry["related_works"].append(rec)
+            ids = parse_ids(
+                reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})$', ["COD_RH", "COD_PRODUCTO"])
+            if ids:
+                entry["related_works"].append(
+                    {"provenance": "minciencias", "source": "scienti", "id": ids})
 
 
 def process_one(author, db, collection, empty_person, cvlac_profile, groups_production_list, verbose):
@@ -309,7 +362,7 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
             "date": check_date_format(author["ano_convo"])
         }
         entry["ranking"].append(entry_rank)
-    print("Inserting author {}".format(entry["full_name"]))
+
     collection.insert_one(entry)
 
 
@@ -358,7 +411,8 @@ class Kahi_minciencias_opendata_person(KahiBase):
         if config["minciencias_opendata_person"]["private_profiles"] not in self.openadata_db.list_collection_names():
             raise Exception("Collection {} not found in {}".format(
                 config["minciencias_opendata_person"]['private_profiles'], config["minciencias_opendata_person"]["database_url"]))
-        self.private_profiles = self.openadata_db[config["minciencias_opendata_person"]["private_profiles"]]
+        self.private_profiles = self.openadata_db[config["minciencias_opendata_person"]
+                                                  ["private_profiles"]]
 
         self.n_jobs = config["minciencias_opendata_person"]["num_jobs"] if "num_jobs" in config["minciencias_opendata_person"].keys(
         ) else 1
@@ -381,7 +435,8 @@ class Kahi_minciencias_opendata_person(KahiBase):
             pipeline, allowDiskUse=True))
 
         # Authors with private profile
-        authors_private_profile_list = list(self.private_profiles.distinct("id_persona_pr"))
+        authors_private_profile_list = list(
+            self.private_profiles.distinct("id_persona_pr"))
 
         if self.verbose > 4:
             print("Creating the aggregate for {} products.".format(
@@ -402,7 +457,8 @@ class Kahi_minciencias_opendata_person(KahiBase):
             groups_production_list = list(production_cursor)
 
         # authors not in the cvlac collection
-        cvlac_data_ids = list(self.researchers_collection.distinct("id_persona_pr"))
+        cvlac_data_ids = list(
+            self.researchers_collection.distinct("id_persona_pr"))
         if self.verbose > 4:
             print("Processing {} authors not in cvlac.".format(len(cvlac_data_ids)))
         pipeline = [
@@ -454,12 +510,14 @@ class Kahi_minciencias_opendata_person(KahiBase):
                 ) for author in authors_private_profile_list  # Iterate over the authors_private_profile_list
             )
             if production_not_cvlac_cursor:
-                groups_production_not_cvlac_list = list(production_not_cvlac_cursor)
+                groups_production_not_cvlac_list = list(
+                    production_not_cvlac_cursor)
                 if self.verbose > 4:
                     print("Processing {} authors not in cvlac.".format(
                         len(groups_production_not_cvlac_list)))
                 # Extract the id_persona_pr id from the groups_production_not_cvlac_list
-                authors_not_cvlac_ids = set([author["_id"] for author in groups_production_not_cvlac_list])
+                authors_not_cvlac_ids = set(
+                    [author["_id"] for author in groups_production_not_cvlac_list])
                 Parallel(
                     n_jobs=self.n_jobs,
                     verbose=10,
