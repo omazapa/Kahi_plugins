@@ -459,8 +459,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
         # authors not in the cvlac collection
         cvlac_data_ids = list(
             self.researchers_collection.distinct("id_persona_pr"))
-        if self.verbose > 4:
-            print("Processing {} authors not in cvlac.".format(len(cvlac_data_ids)))
+
         pipeline = [
             # 0000000000 is a placeholder for missing id_persona_pd, there is not record for it, then we can omit it
             {'$match': {'id_persona_pd': {'$ne': '0000000000', '$nin': cvlac_data_ids}}},
@@ -476,6 +475,9 @@ class Kahi_minciencias_opendata_person(KahiBase):
             db = client[self.config["database_name"]]
             person_collection = db["person"]
             # Process the authors with cvlac profile
+            if self.verbose > 4:
+                print("Processing {} authors in cvlac.".format(
+                    len(cvlac_authors_list)))
             Parallel(
                 n_jobs=self.n_jobs,
                 verbose=10,
@@ -493,6 +495,9 @@ class Kahi_minciencias_opendata_person(KahiBase):
                 ) for author in cvlac_authors_list  # Iterate over the cvlac_authors_list
             )
             # Process the authors with private profiles
+            if self.verbose > 4:
+                print("Processing {} authors with private profiles.".format(
+                    len(authors_private_profile_list)))
             Parallel(
                 n_jobs=self.n_jobs,
                 verbose=10,
@@ -512,12 +517,12 @@ class Kahi_minciencias_opendata_person(KahiBase):
             if production_not_cvlac_cursor:
                 groups_production_not_cvlac_list = list(
                     production_not_cvlac_cursor)
-                if self.verbose > 4:
-                    print("Processing {} authors not in cvlac.".format(
-                        len(groups_production_not_cvlac_list)))
                 # Extract the id_persona_pr id from the groups_production_not_cvlac_list
                 authors_not_cvlac_ids = set(
                     [author["_id"] for author in groups_production_not_cvlac_list])
+                if self.verbose > 4:
+                    print("Processing {} authors not in cvlac.".format(
+                        len(groups_production_not_cvlac_list)))
                 Parallel(
                     n_jobs=self.n_jobs,
                     verbose=10,
