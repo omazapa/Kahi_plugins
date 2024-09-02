@@ -1,10 +1,7 @@
-from kahi_minciencias_opendata_works.parser import parse_minciencias_opendata
+from kahi_minciencias_opendata_works_others.parser import parse_minciencias_opendata
 from kahi_impactu_utils.Utils import compare_author
-from thefuzz import process, fuzz
-from unidecode import unidecode
 from time import time
-from bson import ObjectId
-from re import search, sub
+from re import search
 
 
 def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, verbose=0):
@@ -22,7 +19,7 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
     db : pymongo.database.Database
         Database where the colav collections are stored, used to search for authors and affiliations.
     collection : pymongo.collection.Collection
-        Collection in the database where the register is stored (Collection of works)
+        Collection in the database where the register is stored (Collection of works_others)
     empty_work : dict
         Empty dictionary with the structure of a register in the database
     verbose : int, optional
@@ -63,10 +60,7 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
         if "external_ids" in minciencias_author.keys() and minciencias_author["affiliations"]:
             for ext in minciencias_author["external_ids"]:
                 author_db = db["person"].find_one(
-                    {"external_ids.source": "scienti", "external_ids.id": ext["id"]})
-                if not author_db:
-                    author_db = db["person"].find_one(
-                        {"external_ids.id.COD_RH": ext["id"]})
+                    {"external_ids.id.COD_RH": ext["id"]})
                 if author_db:
                     group_id = minciencias_author["affiliations"][0]['external_ids'][0]['id']
 
@@ -195,7 +189,7 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
 
 def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, verbose=0):
     """
-    Function to insert a new register in the database if it is not found in the colav(kahi works) database.
+    Function to insert a new register in the database if it is not found in the colav(kahi works_others) database.
     This means that the register is not on the database and it is being inserted.
 
     For similarity purposes, the register is also inserted in the elasticsearch index,
@@ -211,7 +205,7 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
     db : pymongo.database.Database
         Database where the colav collections are stored, used to search for authors and affiliations.
     collection : pymongo.collection.Collection
-        Collection in the database where the register is stored (Collection of works)
+        Collection in the database where the register is stored (Collection of works_others)
     empty_work : dict
         Empty dictionary with the structure of a register in the database
     es_handler : Similarity
@@ -274,67 +268,13 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
             {"id": rgroup["_id"], "name": rgroup["names"][0]["name"]})
 
     # insert in mongo
-    response = collection.insert_one(entry)
-    # insert in elasticsearch
-    authors = []
-    if es_handler:
-        work = {}
-        work["title"] = entry["titles"][0]["title"]
-        work["source"] = ""
-        work["year"] = "0"
-        work["volume"] = ""
-        work["issue"] = ""
-        work["first_page"] = ""
-        work["last_page"] = ""
-        for author in entry['authors']:
-            if "full_name" in author.keys():
-                if author["full_name"]:
-                    authors.append(author["full_name"])
-        work["authors"] = authors
-        if work["title"]:
-            es_handler.insert_work(_id=str(response.inserted_id), work=work)
-        else:
-            if verbose > 4:
-                print("Not enough data for insert in elasticsearch index")
-    else:
-        if verbose > 4:
-            print("No elasticsearch index provided")
-
-
-def str_normilize(word):
-    return unidecode(word).lower().strip().replace(".", "")
-
-
-def check_work(title_work, authors, response, thresholds):
-    author_found = False
-    if authors:
-        if authors[0] != "":
-            _authors = []
-            for author in response["_source"]["authors"]:
-                _authors.append(str_normilize(author))
-            scores = process.extract(str_normilize(
-                authors[0]), _authors, scorer=fuzz.partial_ratio)
-            for score in scores:
-                if score[1] >= thresholds["author_thd"]:
-                    author_found = True
-                    break
-    es_title = response["_source"]["title"]
-    if es_title:
-        score = fuzz.ratio(str_normilize(title_work),
-                           str_normilize(es_title))
-        if author_found:
-            if score >= thresholds["paper_thd_low"]:
-                return True
-        else:
-            if score >= thresholds["paper_thd_high"]:
-                return True
-    return False
+    collection.insert_one(entry)
 
 
 def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_all, thresholds, verbose=0):
     """
     Function to process a single register from the minciencias opendata database.
-    This function is used to insert or update a register in the colav(kahi works) database.
+    This function is used to insert or update a register in the colav(kahi works_others) database.
 
     Parameters
     ----------
@@ -343,7 +283,7 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
     db : pymongo.database.Database
         Database where the colav collections are stored, used to search for authors and affiliations.
     collection : pymongo.collection.Collection
-        Collection in the database where the register is stored (Collection of works)
+        Collection in the database where the register is stored (Collection of works_others)
     empty_work : dict
         Empty dictionary with the structure of a register in the database
     es_handler : Similarity
@@ -374,108 +314,5 @@ def process_one(openadata_reg, db, collection, empty_work, es_handler, insert_al
                             openadata_reg, colav_reg, db, collection, empty_work, verbose)
                         return
 
-    # elasticsearch section
-    if es_handler:
-        # Search in elasticsearch
-        if thresholds and len(thresholds) == 3:
-            thresholds = {"author_thd": thresholds[0],
-                          "paper_thd_low": thresholds[1], "paper_thd_high": thresholds[2]}
-        else:
-            if verbose > 4:
-                print("Invalid thresholds values provided, using default values")
-            thresholds = {"author_thd": 65,
-                          "paper_thd_low": 90, "paper_thd_high": 95}
-
-        authors = []
-        title_work = ""
-        if 'nme_producto_pd' in openadata_reg.keys():
-            if openadata_reg["nme_producto_pd"]:
-                title_work = openadata_reg["nme_producto_pd"]
-
-        if 'id_persona_pd' in openadata_reg.keys():
-            if openadata_reg["id_persona_pd"]:
-                author_db = db["person"].find_one(
-                    {"external_ids.source": "scienti", "external_ids.id.COD_RH": openadata_reg["id_persona_pd"]}, {"_id": 1, "full_name": 1})
-                if not author_db:
-                    author_db = db["person"].find_one(
-                        {"external_ids.id.COD_RH": openadata_reg["id_persona_pd"]}, {"_id": 1, "full_name": 1})
-                if author_db:
-                    authors.append(author_db["full_name"])
-
-        if authors and title_work != "":
-            responses = es_handler.search_work(
-                title=title_work,
-                source="",
-                year="0",
-                authors=authors,
-                volume="",
-                issue="",
-                page_start="",
-                page_end="",
-                use_es_thold=True,
-                es_thold=0,
-                hits=20
-            )
-            if responses:
-                for response in responses:
-                    out = check_work(title_work, authors, response, thresholds)
-                    if out:
-                        colav_reg = collection.find_one(
-                            {"_id": ObjectId(response["_id"])})
-                        if colav_reg:
-                            process_one_update(
-                                openadata_reg, colav_reg, db, collection, empty_work, verbose)
-                            return
-                        else:
-                            if verbose > 4:
-                                print("Register with {} not found in mongodb".format(
-                                    response["_id"]))
-                            return
-                # Work not found
-                if insert_all:
-                    process_one_insert(
-                        openadata_reg, db, collection, empty_work, es_handler, verbose)
-
-        elif title_work:
-            # No authors
-            title = sub('[_|,\\\\]', '', title_work).lower()
-            es_results = es_handler.search_work(
-                title=title,
-                source="",
-                year="0",
-                authors=[],
-                volume="",
-                issue="",
-                page_start="",
-                page_end="",
-                use_es_thold=True,
-                es_thold=0,
-                hits=20
-            )
-            if es_results:
-                for es_work in es_results:
-                    colav_reg = collection.find_one(
-                        {"_id": ObjectId(es_work["_id"])})
-                    if colav_reg:
-                        titles = [titles.get('title')
-                                  for titles in colav_reg["titles"]]
-                        display_name, score = process.extractOne(
-                            title_work, titles)
-                        if score > thresholds["paper_thd_high"]:
-                            process_one_update(
-                                openadata_reg, colav_reg, db, collection, empty_work, verbose)
-                            return
-                    else:
-                        if verbose > 4:
-                            print("Register with {} not found in mongodb".format(
-                                response["_id"]))
-                        return
-
-            if insert_all:
-                process_one_insert(
-                    openadata_reg, db, collection, empty_work, es_handler, verbose)
-    else:
-        process_one_insert(
-            openadata_reg, db, collection, empty_work, es_handler, verbose)
-        if verbose > 4:
-            print("No elasticsearch index provided")
+    process_one_insert(
+        openadata_reg, db, collection, empty_work, es_handler, verbose)

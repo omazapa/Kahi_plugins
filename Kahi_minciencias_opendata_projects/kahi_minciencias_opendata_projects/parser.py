@@ -28,15 +28,15 @@ def parse_minciencias_opendata(reg, empty_work, verbose=0):
             entry["external_ids"].append(
                 {"provenance": "minciencias", "source": "minciencias", "id": reg["id_producto_pd"]})
             COD_RH = ""
-            COD_PRODUCTO = ""
+            COD_PROY = ""
             product_id = reg["id_producto_pd"]
             match = search(r'(\d{9,11})-(\d{1,7})$', product_id)
             if match:
                 COD_RH = match.group(1)
-                COD_PRODUCTO = match.group(2)
-                if COD_RH and COD_PRODUCTO:
+                COD_PROY = match.group(2)
+                if COD_RH and COD_PROY:
                     entry["external_ids"].append(
-                        {"provenance": "minciencias", "source": "scienti", "id": {"COD_RH": COD_RH, "COD_PRODUCTO": COD_PRODUCTO}})
+                        {"provenance": "minciencias", "source": "scienti", "id": {"COD_RH": COD_RH, "COD_PROYECTO": COD_PROY}})
     date = ""
     if "ano_convo" in reg.keys():
         if reg["ano_convo"]:

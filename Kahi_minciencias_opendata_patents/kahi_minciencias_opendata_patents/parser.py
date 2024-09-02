@@ -29,44 +29,32 @@ def parse_minciencias_opendata(reg, empty_work, verbose=0):
                 {"provenance": "minciencias", "source": "minciencias", "id": reg["id_producto_pd"]})
             COD_RH = ""
             COD_PRODUCTO = ""
+            COD_PATENTE = ""
             product_id = reg["id_producto_pd"]
-            match = search(r'(\d{9,11})-(\d{1,7})$', product_id)
+            match = search(r'(\d{9,11})-(\d{1,7})-(\d{1,7})$', product_id)
             if match:
                 COD_RH = match.group(1)
                 COD_PRODUCTO = match.group(2)
-                if COD_RH and COD_PRODUCTO:
+                COD_PATENTE = match.group(3)
+                if COD_RH and COD_PATENTE and COD_PRODUCTO:
                     entry["external_ids"].append(
-                        {"provenance": "minciencias", "source": "scienti", "id": {"COD_RH": COD_RH, "COD_PRODUCTO": COD_PRODUCTO}})
-    date = ""
-    if "ano_convo" in reg.keys():
-        if reg["ano_convo"]:
-            date = check_date_format(reg["ano_convo"])
-
+                        {"provenance": "minciencias", "source": "scienti", "id": {"COD_RH": COD_RH, "COD_PRODUCTO": COD_PRODUCTO, "COD_PATENTE": int(COD_PATENTE)}})
     if "id_tipo_pd_med" in reg.keys():
+        date = ""
+        if "ano_convo" in reg.keys():
+            if reg["ano_convo"]:
+                date = check_date_format(reg["ano_convo"])
         if reg["id_tipo_pd_med"]:
             entry["ranking"].append(
                 {"provenance": "minciencias", "date": date, "rank": reg["id_tipo_pd_med"], "source": "minciencias"})
-    if "nme_tipo_medicion_pd" in reg.keys():
-        if reg["nme_tipo_medicion_pd"]:
-            entry["ranking"].append(
-                {"provenance": "minciencias", "date": date, "rank": reg["nme_tipo_medicion_pd"], "level": 0, "source": "minciencias"})
-    if "nme_categoria_pd" in reg.keys():
-        if reg["nme_categoria_pd"]:
-            entry["ranking"].append(
-                {"provenance": "minciencias", "date": date, "rank": reg["nme_categoria_pd"], "level": 1, "source": "minciencias"})
-
     if "nme_tipologia_pd" in reg.keys():
         if reg["nme_tipologia_pd"]:
-            typ = reg["nme_tipologia_pd"]
             entry["types"].append(
-                {"provenance": "minciencias", "source": "minciencias", "type": typ, "level": 1})
+                {"provenance": "minciencias", "source": "minciencias", "type": reg["nme_tipologia_pd"], "level": 1})
     if "nme_clase_pd" in reg.keys():
         if reg["nme_clase_pd"]:
-            typ = reg["nme_clase_pd"]
             entry["types"].append(
-                {"provenance": "minciencias", "source": "minciencias", "type": typ, "level": 0
-                 })
-
+                {"provenance": "minciencias", "source": "minciencias", "type": reg["nme_clase_pd"], "level": 0})
     if 'id_persona_pd' in reg.keys():
         if reg["id_persona_pd"]:
             minciencias_id = reg["id_persona_pd"]
