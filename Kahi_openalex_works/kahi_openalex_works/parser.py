@@ -77,6 +77,10 @@ def parse_openalex(reg, empty_work, verbose=0):
         if "oa_status" in reg["open_access"].keys():
             entry["open_access"]["open_access_status"] = reg["open_access"]["oa_status"]
         if "oa_url" in reg["open_access"].keys():
+            entry["open_access"]["url"] = reg["open_access"]["oa_url"]
+        if "any_repository_has_fulltext" in reg["open_access"].keys():
+            entry["open_access"]["has_repository_fulltext"] = reg["open_access"]["any_repository_has_fulltext"]
+        if "oa_url" in reg["open_access"].keys():
             if reg["open_access"]["oa_url"]:
                 entry["external_urls"].append(
                     {"provenance": "openalex", "source": "open_access", "url": reg["open_access"]["oa_url"]})
