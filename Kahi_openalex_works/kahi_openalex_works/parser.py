@@ -29,6 +29,7 @@ def parse_openalex(reg, empty_work, verbose=0):
     for source, idx in reg["ids"].items():
         entry["external_ids"].append(
             {"provenance": "openalex", "source": source, "id": idx})
+    entry["doi"] = reg["doi"]
     entry["year_published"] = reg["publication_year"]
     entry["date_published"] = int(dt.strptime(
         reg["publication_date"], "%Y-%m-%d").timestamp())
