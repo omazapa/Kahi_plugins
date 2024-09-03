@@ -69,13 +69,13 @@ def parse_openalex(reg, empty_work, verbose=0):
             entry["bibliographic_info"]["end_page"] = reg["biblio"]["last_page"]
     if "open_access" in reg.keys():
         if "is_oa" in reg["open_access"].keys():
-            entry["bibliographic_info"]["is_open_access"] = reg["open_access"]["is_oa"]
+            entry["open_access"]["is_open_access"] = reg["open_access"]["is_oa"]
         if "oa_status" in reg["open_access"].keys():
-            entry["bibliographic_info"]["open_access_status"] = reg["open_access"]["oa_status"]
+            entry["open_access"]["open_access_status"] = reg["open_access"]["oa_status"]
         if "oa_url" in reg["open_access"].keys():
             if reg["open_access"]["oa_url"]:
                 entry["external_urls"].append(
-                    {"source": "oa", "url": reg["open_access"]["oa_url"]})
+                    {"provenance": "openalex", "source": "open_access", "url": reg["open_access"]["oa_url"]})
 
     # authors section
     for author in reg["authorships"]:
