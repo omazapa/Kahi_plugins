@@ -2,6 +2,7 @@ from kahi_impactu_utils.Utils import lang_poll
 from kahi_impactu_utils.String import parse_mathml, parse_html
 from time import time
 from datetime import datetime as dt
+from kahi_impactu_utils.String import inverted_index_to_text, text_to_inverted_index
 
 
 def parse_openalex(reg, empty_work, verbose=0):
@@ -84,6 +85,12 @@ def parse_openalex(reg, empty_work, verbose=0):
             if reg["open_access"]["oa_url"]:
                 entry["external_urls"].append(
                     {"provenance": "openalex", "source": "open_access", "url": reg["open_access"]["oa_url"]})
+    if "abstract_inverted_index" in reg.keys():
+        if reg["abstract_inverted_index"]:
+            abstract = inverted_index_to_text(reg["abstract_inverted_index"])
+            abstract_lang = lang_poll(abstract, verbose=verbose)
+            entry["abstracts"].append(
+                {"abstract": text_to_inverted_index(abstract), "lang": abstract_lang, "source": "openalex", 'provenance': 'openalex'})
 
     # authors section
     for author in reg["authorships"]:
