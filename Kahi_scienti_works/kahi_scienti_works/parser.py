@@ -32,6 +32,7 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
     entry["external_ids"].append(
         {"provenance": "scienti", "source": "scienti", "id": {"COD_RH": reg["COD_RH"], "COD_PRODUCTO": reg["COD_PRODUCTO"]}})
     if doi:
+        entry["doi"] = doi
         entry["external_ids"].append(
             {"provenance": "scienti", "source": "doi", "id": doi})
     else:
@@ -39,6 +40,7 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
             if reg["TXT_DOI"]:
                 doi = doi_processor(reg["TXT_DOI"])
                 if doi:
+                    entry["doi"] = doi
                     entry["external_ids"].append(
                         {"provenance": "scienti", "source": "doi", "id": doi})
             else:
@@ -53,6 +55,7 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
                                 doi = doi.split(
                                     f'/{keyword}')[0] if keyword in doi else doi
                 if doi:
+                    entry["doi"] = doi
                     entry["external_ids"].append(
                         {"provenance": "scienti", "source": "doi", "id": doi})
     if "TXT_WEB_PRODUCTO" in reg.keys():
