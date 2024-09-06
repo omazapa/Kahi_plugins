@@ -1,6 +1,7 @@
 from kahi_impactu_utils.Utils import lang_poll, doi_processor, check_date_format
 from time import time
 import re
+from kahi_impactu_utils.String import text_to_inverted_index
 
 
 def parse_scienti(reg, empty_work, doi=None, verbose=0):
@@ -22,6 +23,12 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
     lang = lang_poll(title, verbose=verbose)
     entry["titles"].append(
         {"title": title, "lang": lang, "source": "scienti"})
+
+    if reg["TXT_RESUMEN_PROD"]:
+        abstract = reg["TXT_RESUMEN_PROD"]
+        lang = lang_poll(abstract, verbose=verbose)
+        entry["abstracts"].append(
+            {"abstract": text_to_inverted_index(abstract), "lang": lang, "source": "scienti", 'provenance': 'scienti'})
     entry["external_ids"].append(
         {"provenance": "scienti", "source": "scienti", "id": {"COD_RH": reg["COD_RH"], "COD_PRODUCTO": reg["COD_PRODUCTO"]}})
     if doi:
