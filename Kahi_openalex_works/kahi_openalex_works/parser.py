@@ -85,6 +85,10 @@ def parse_openalex(reg, empty_work, verbose=0):
             if reg["open_access"]["oa_url"]:
                 entry["external_urls"].append(
                     {"provenance": "openalex", "source": "open_access", "url": reg["open_access"]["oa_url"]})
+    if "apc_paid" in reg.keys():
+        if reg["apc_paid"]:
+            entry["apc"]["paid"] = {"value": reg["apc_paid"]["value"], "currency": reg["apc_paid"]["currency"],
+                                    "value_usd": reg["apc_paid"]["value_usd"], "provenance": "openalex", "source": reg["apc_paid"]["provenance"]}
     if "abstract_inverted_index" in reg.keys():
         if reg["abstract_inverted_index"]:
             abstract = inverted_index_to_text(reg["abstract_inverted_index"])
