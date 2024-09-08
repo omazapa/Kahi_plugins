@@ -2,6 +2,7 @@ from kahi_impactu_utils.Utils import lang_poll
 from kahi_impactu_utils.String import parse_mathml, parse_html
 from time import time
 from datetime import datetime as dt
+from kahi_impactu_utils.String import inverted_index_to_text, text_to_inverted_index
 
 
 def parse_openalex(reg, empty_work, verbose=0):
@@ -29,11 +30,15 @@ def parse_openalex(reg, empty_work, verbose=0):
     for source, idx in reg["ids"].items():
         entry["external_ids"].append(
             {"provenance": "openalex", "source": source, "id": idx})
+    entry["doi"] = reg["doi"]
     entry["year_published"] = reg["publication_year"]
     entry["date_published"] = int(dt.strptime(
         reg["publication_date"], "%Y-%m-%d").timestamp())
     entry["types"].append(
         {"provenance": "openalex", "source": "openalex", "type": reg["type"], "level": None})
+    entry["types"].append(
+        {"provenance": "openalex", "source": "crossref", "type": reg["type_crossref"], "level": None})
+
     entry["citations_by_year"] = reg["counts_by_year"]
 
     if reg["primary_location"] and reg["primary_location"]['source']:
@@ -69,13 +74,27 @@ def parse_openalex(reg, empty_work, verbose=0):
             entry["bibliographic_info"]["end_page"] = reg["biblio"]["last_page"]
     if "open_access" in reg.keys():
         if "is_oa" in reg["open_access"].keys():
-            entry["bibliographic_info"]["is_open_access"] = reg["open_access"]["is_oa"]
+            entry["open_access"]["is_open_access"] = reg["open_access"]["is_oa"]
         if "oa_status" in reg["open_access"].keys():
-            entry["bibliographic_info"]["open_access_status"] = reg["open_access"]["oa_status"]
+            entry["open_access"]["open_access_status"] = reg["open_access"]["oa_status"]
+        if "oa_url" in reg["open_access"].keys():
+            entry["open_access"]["url"] = reg["open_access"]["oa_url"]
+        if "any_repository_has_fulltext" in reg["open_access"].keys():
+            entry["open_access"]["has_repository_fulltext"] = reg["open_access"]["any_repository_has_fulltext"]
         if "oa_url" in reg["open_access"].keys():
             if reg["open_access"]["oa_url"]:
                 entry["external_urls"].append(
-                    {"source": "oa", "url": reg["open_access"]["oa_url"]})
+                    {"provenance": "openalex", "source": "open_access", "url": reg["open_access"]["oa_url"]})
+    if "apc_paid" in reg.keys():
+        if reg["apc_paid"]:
+            entry["apc"]["paid"] = {"value": reg["apc_paid"]["value"], "currency": reg["apc_paid"]["currency"],
+                                    "value_usd": reg["apc_paid"]["value_usd"], "provenance": "openalex", "source": reg["apc_paid"]["provenance"]}
+    if "abstract_inverted_index" in reg.keys():
+        if reg["abstract_inverted_index"]:
+            abstract = inverted_index_to_text(reg["abstract_inverted_index"])
+            abstract_lang = lang_poll(abstract, verbose=verbose)
+            entry["abstracts"].append(
+                {"abstract": text_to_inverted_index(abstract), "lang": abstract_lang, "source": "openalex", 'provenance': 'openalex'})
 
     # authors section
     for author in reg["authorships"]:

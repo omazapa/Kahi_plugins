@@ -1,6 +1,7 @@
 from thefuzz import fuzz
 from kahi_impactu_utils.Utils import lang_poll, doi_processor
 from time import time
+from kahi_impactu_utils.String import text_to_inverted_index
 
 
 def parse_scholar(reg, empty_work, verbose=0):
@@ -36,13 +37,19 @@ def parse_scholar(reg, empty_work, verbose=0):
         if reg["doi"]:
             doi = doi_processor(reg["doi"])
             if doi:
+                entry["doi"] = doi
                 entry["external_ids"].append({"provenance": "scholar",
                                               "source": "doi", "id": doi})
     if "cid" in reg.keys():
         entry["external_ids"] = [{"provenance": "scholar",
                                   "source": "scholar", "id": reg["cid"]}]
     if "abstract" in reg.keys():
-        entry["abstract"] = reg["abstract"]
+        if reg["abstract"] != "":
+            abstract = reg["abstract"]
+            lang = lang_poll(abstract)
+            entry["abstracts"].append(
+                {"abstract": text_to_inverted_index(abstract), "lang": lang, "source": "scholar", 'provenance': 'scholar'})
+
     if "volume" in reg.keys():
         if reg["volume"]:
             if reg["volume"][-1] == "\n":

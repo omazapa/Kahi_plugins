@@ -44,25 +44,20 @@ def process_one_update(oa_reg, colav_reg, db, collection, empty_work, verbose=0)
             ext_ids.append(ext["id"])
     # types
     colav_reg["types"].extend(entry["types"])
-    # open access
-    if "is_open_acess" not in colav_reg["bibliographic_info"].keys():
-        if "is_open_access" in entry["bibliographic_info"].keys():
-            colav_reg["bibliographic_info"]["is_open_acess"] = entry["bibliographic_info"]["is_open_access"]
-    if "open_access_status" not in colav_reg["bibliographic_info"].keys():
-        if "open_access_status" in entry["bibliographic_info"].keys():
-            colav_reg["bibliographic_info"]["open_access_status"] = entry["bibliographic_info"]["open_access_status"]
+    # open access info
+    colav_reg["open_acess"] = entry["open_acess"]
     # external urls
     urls_sources = [url["source"]
                     for url in colav_reg["external_urls"]]
-    if "oa" not in urls_sources:
+    if "open_access" not in urls_sources:
         oa_url = None
         for ext in entry["external_urls"]:
-            if ext["source"] == "oa":
+            if ext["source"] == "open_access":
                 oa_url = ext["url"]
                 break
         if oa_url:
             colav_reg["external_urls"].append(
-                {"source": "oa", "url": entry["external_urls"][0]["url"]})
+                {"provenance": "openalex", "source": "open_access", "url": entry["external_urls"][0]["url"]})
     # citations by year
     if "counts_by_year" in entry.keys():
         colav_reg["citations_by_year"] = entry["counts_by_year"]
