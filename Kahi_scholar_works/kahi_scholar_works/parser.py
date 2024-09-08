@@ -37,6 +37,7 @@ def parse_scholar(reg, empty_work, verbose=0):
         if reg["doi"]:
             doi = doi_processor(reg["doi"])
             if doi:
+                entry["doi"] = doi
                 entry["external_ids"].append({"provenance": "scholar",
                                               "source": "doi", "id": doi})
     if "cid" in reg.keys():
