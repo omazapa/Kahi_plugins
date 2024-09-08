@@ -30,6 +30,7 @@ def parse_ranking_udea(reg, affiliation, empty_work):
         if not isna(reg["DOI"]):
             doi = doi_processor(reg["DOI"])
             if doi:
+                entry["doi"] = doi
                 entry["external_ids"].append(
                     {"provenance": "ranking", "source": "doi", "id": doi})
     if reg["issn"]:
