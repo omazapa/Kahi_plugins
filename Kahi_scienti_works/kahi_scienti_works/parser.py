@@ -25,7 +25,7 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
         {"title": title, "lang": lang, "source": "scienti"})
 
     if reg["TXT_RESUMEN_PROD"]:
-        abstract = reg["TXT_RESUMEN_PROD"]
+        abstract = reg["TXT_RESUMEN_PROD"].replace("\x00", "")
         lang = lang_poll(abstract, verbose=verbose)
         entry["abstracts"].append(
             {"abstract": text_to_inverted_index(abstract), "lang": lang, "source": "scienti", 'provenance': 'scienti'})
