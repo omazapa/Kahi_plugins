@@ -142,15 +142,15 @@ class Kahi_scienti_works(KahiBase):
         """
         client = MongoClient(config["database_url"])
         scienti = client[config["database_name"]][config["collection_name"]]
-        types_level0 = ['111',  '112',  '113',  '114',  # articulos
-                        '121',  '122',  # Trabajos en eventos
-                        '131', '132', '133',  '134',  '135',  '136',  '137',  '138', '139', '140',  # libros
-                        '141',  '142',  '143',  '144',  '145',  # Otro artículo publicado
+        types_level0 = ['111', '112', '113', '114',  # articulos
+                        '121', '122',  # Trabajos en eventos
+                        '131', '132', '133', '134', '135', '136', '137', '138', '139', '140',  # libros
+                        '141', '142', '143', '144', '145',  # Otro artículo publicado
                         '1A1', '1A2', '1A9',  # 1A: Traducciones
-                        '1B1',  '1B2',  '1B3',  '1B9',  # 1B: Partituras musicales
+                        '1B1', '1B2', '1B3', '1B9',  # 1B: Partituras musicales
                         '1D',  # 1D: Documento de trabajo (Working Paper)
                         '1K',  # 1K: Nota científica
-                        '1Z2', '1Z3',  '1Z4',  '1Z9',  # 1Z: Otra producción bibliográfica
+                        '1Z2', '1Z3', '1Z4', '1Z9',  # 1Z: Otra producción bibliográfica
                         '61', '62', '63', '64', '65', '66'  # Trabajos dirigidos/Tutorías
                         ]
 
