@@ -35,6 +35,7 @@ workflow:
     researchers: cvlac_data
     cvlac: cvlac_stage
     groups_production: gruplac_production_data
+    private_profiles: cvlac_stage_private
     num_jobs: 12
     verbose: 5
 ```
