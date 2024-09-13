@@ -26,8 +26,6 @@ config:
   log_collection: log
 workflow:
   impactu_post_cites_count:
-    database_url: localhost:27017
-    database_name: kahi_calculations
     verbose: 5
 ```
 # License

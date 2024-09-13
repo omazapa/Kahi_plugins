@@ -1,5 +1,7 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient
+import time
+from joblib import Parallel, delayed
 
 
 class Kahi_impactu_post_cites_count(KahiBase):
@@ -32,8 +34,6 @@ class Kahi_impactu_post_cites_count(KahiBase):
         self.mongodb_url = config["database_url"]
         self.database_name = config["database_name"]
 
-        self.impactu_database_url = config["impactu_post_cites_count"]["database_url"]
-        self.impactu_database_name = config["impactu_post_cites_count"]["database_name"]
         self.verbose = self.config["impactu_post_cites_count"]["verbose"]
 
         self.client = MongoClient(self.mongodb_url)
@@ -41,9 +41,6 @@ class Kahi_impactu_post_cites_count(KahiBase):
         self.works_collection = self.db["works"]
         self.person_collection = self.db["person"]
         self.affiliations_collection = self.db["affiliations"]
-
-        self.impactu_client = MongoClient(self.impactu_database_url)
-        self.impactu_db = self.impactu_client[self.impactu_database_name]
 
     def count_cites_person(self):
         """
@@ -74,10 +71,10 @@ class Kahi_impactu_post_cites_count(KahiBase):
             for cites in ret:
                 rec["citations_count"] += [{"source": cites["_id"],
                                             "count": cites["count"]}]
-            self.impactu_db.person.update_one(
+            self.person_collection.update_one(
                 {"_id": pid["_id"]}, {"$set": rec}, upsert=True)
 
-    def count_cites_institutions(self,):
+    def count_cites_institutions(self):
         """
         Method to calculate the cites count for each institution.
         """
@@ -106,7 +103,7 @@ class Kahi_impactu_post_cites_count(KahiBase):
             for cites in ret:
                 rec["citations_count"] += [{"source": cites["_id"],
                                             "count": cites["count"]}]
-            self.impactu_db.affiliations.update_one(
+            self.affiliations_collection.update_one(
                 {"_id": pid["_id"]}, {"$set": rec}, upsert=True)
 
     def count_cites_faculty_department_group(self):
@@ -144,10 +141,46 @@ class Kahi_impactu_post_cites_count(KahiBase):
             for cites in ret:
                 rec["citations_count"] += [{"source": cites["_id"],
                                             "count": cites["count"]}]
-            self.impactu_db.affiliations.update_one(
+            self.affiliations_collection.update_one(
                 {"_id": pid["_id"]}, {"$set": rec}, upsert=True)
 
+    def run_cites_count(self):
+        """
+        Method to run the cites count calculation for each person, institution, faculty, department and group.
+        """
+        person_ids = self.person_collection.find({}, {"_id"})
+        with MongoClient(self.mongodb_url) as client:
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(self.count_cites_person)(
+                    reg,
+                    self.verbose
+                ) for reg in person_ids
+            )
+            client.close()
+    
     def run(self):
+        start_time = time.time()
+        
         self.count_cites_person()
+        end_time = time.time()
+        duration = end_time - start_time
+        if self.verbose > 0:
+            print(f"Cites count calculation completed in {duration:.2f} seconds.")
+
+        start_time = time.time()
         self.count_cites_institutions()
+        end_time = time.time()
+        duration = end_time - start_time
+        if self.verbose > 0:
+            print(f"Cites count calculation completed in {duration:.2f} seconds.")
+
+        start_time = time.time()
         self.count_cites_faculty_department_group()
+        end_time = time.time()
+        duration = end_time - start_time
+        if self.verbose > 0:
+            print(f"Cites count calculation completed in {duration:.2f} seconds.")
+        
