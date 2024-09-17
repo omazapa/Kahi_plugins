@@ -24,8 +24,7 @@ class Kahi_impactu_post_cites_count(KahiBase):
             log_collection: log
         workflow:
             impactu_post_cites_count:
-                database_url: localhost:27017
-                database_name: kahi_calculations
+                num_jobs: 20
                 verbose: 5
         ```
         """
