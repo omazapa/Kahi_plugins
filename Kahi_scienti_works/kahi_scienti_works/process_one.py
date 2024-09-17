@@ -175,7 +175,8 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
     # titles
     if 'scienti' not in [title['source'] for title in colav_reg["titles"]]:
         lang = lang_poll(entry["titles"][0]["title"])
-        rec = {"title": entry["titles"][0]["title"], "lang": lang, "source": "scienti"}
+        rec = {"title": entry["titles"][0]["title"],
+               "lang": lang, "source": "scienti"}
         if rec not in colav_reg["titles"]:
             colav_reg["titles"].append(rec)
     # external_ids
@@ -325,28 +326,28 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
                 if verbose > 4:
                     if "title" in entry["source"].keys():
                         print(
-                            f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with name: {entry["source"]["title"]}')
+                            f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with name: {entry["source"]["title"]}')
                     else:
                         print(
-                            f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
+                            f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
             else:
                 if verbose > 4:
                     print(
-                        f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with {entry["source"]["external_ids"][0]["source"]}: {entry["source"]["external_ids"][0]["id"]}')  # noqa: E501
+                        f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with {entry["source"]["external_ids"][0]["source"]}: {entry["source"]["external_ids"][0]["id"]}')  # noqa: E501
         else:
             if "title" in entry["source"].keys():
                 if entry["source"]["title"] == "":
                     if verbose > 4:
                         print(
-                            f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
+                            f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
                 else:
                     if verbose > 4:
                         print(
-                            f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with name: {entry["source"]["title"]}')
+                            f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with name: {entry["source"]["title"]}')
             else:
                 if verbose > 4:
                     print(
-                        f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source (no ids and no name)')
+                        f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source (no ids and no name)')
 
         entry["source"] = {
             "id": "",
@@ -483,7 +484,7 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
         work = {}
         work["title"] = entry["titles"][0]["title"]
         work["source"] = entry["source"]["name"]
-        work["year"] = entry["year_published"]
+        work["year"] = entry["year_published"] if entry["year_published"] else ""
         work["volume"] = entry["bibliographic_info"]["volume"] if "volume" in entry["bibliographic_info"].keys() else ""
         work["issue"] = entry["bibliographic_info"]["issue"] if "issue" in entry["bibliographic_info"].keys() else ""
         work["first_page"] = entry["bibliographic_info"]["first_page"] if "first_page" in entry["bibliographic_info"].keys() else ""
@@ -559,7 +560,7 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
             work["title"] = entry["titles"][0]["title"]
             work["source"] = entry["source"]["name"] if "name" in entry["source"].keys(
             ) else ""
-            work["year"] = entry["year_published"]
+            work["year"] = entry["year_published"] if entry["year_published"] else "0"
             work["volume"] = entry["bibliographic_info"]["volume"] if "volume" in entry["bibliographic_info"].keys() else ""
             work["issue"] = entry["bibliographic_info"]["issue"] if "issue" in entry["bibliographic_info"].keys() else ""
             work["first_page"] = entry["bibliographic_info"]["first_page"] if "first_page" in entry["bibliographic_info"].keys() else ""
@@ -575,7 +576,7 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
             response = es_handler.search_work(
                 title=work["title"],
                 source=work["source"],
-                year=work["year"],
+                year=str(work["year"]),
                 authors=authors,
                 volume=work["volume"],
                 issue=work["issue"],
