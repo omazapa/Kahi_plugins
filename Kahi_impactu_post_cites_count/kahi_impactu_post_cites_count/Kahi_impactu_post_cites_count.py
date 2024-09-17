@@ -1,6 +1,5 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient
-import time
 from joblib import Parallel, delayed
 
 
@@ -34,6 +33,7 @@ class Kahi_impactu_post_cites_count(KahiBase):
         self.mongodb_url = config["database_url"]
         self.database_name = config["database_name"]
 
+        self.n_jobs = self.config["impactu_post_cites_count"]["num_jobs"]
         self.verbose = self.config["impactu_post_cites_count"]["verbose"]
 
         self.client = MongoClient(self.mongodb_url)
@@ -42,145 +42,169 @@ class Kahi_impactu_post_cites_count(KahiBase):
         self.person_collection = self.db["person"]
         self.affiliations_collection = self.db["affiliations"]
 
-    def count_cites_person(self):
+    def count_cites_products_person(self, pid):
         """
-        Method to calculate the cites count for each person.
+        Method to calculate the citation and product count for each author.
         """
-
-        person_ids = self.person_collection.find({}, {"_id"})
-        if self.verbose > 0:
-            print("Calculating cites count for person")
-        for pid in person_ids:
-            pipeline = [
-                {
-                    "$match": {
-                        "authors.id": pid["_id"],
-                    },
+        # Count cites for each author
+        pipeline = [
+            {
+                "$match": {
+                    "authors.id": pid["_id"],
                 },
-                {"$project": {"citations_count": 1}},
-                {"$unwind": "$citations_count"},
-                {
-                    "$group": {
-                        "_id": "$citations_count.source",
-                        "count": {"$sum": "$citations_count.count"},
-                    },
-                },
-            ]
-            ret = list(self.works_collection.aggregate(pipeline))
-            rec = {"citations_count": []}
-            for cites in ret:
-                rec["citations_count"] += [{"source": cites["_id"],
-                                            "count": cites["count"]}]
-            self.person_collection.update_one(
-                {"_id": pid["_id"]}, {"$set": rec}, upsert=True)
-
-    def count_cites_institutions(self):
-        """
-        Method to calculate the cites count for each institution.
-        """
-        aff_ids = self.affiliations_collection.find(
-            {"types.type": {"$nin": ["department", "faculty", "group"]}}, {"_id"})
-        if self.verbose > 0:
-            print("Calculating cites count for institutions")
-        for pid in aff_ids:
-            pipeline = [
-                {
-                    "$match": {
-                        "authors.affiliations.id": pid["_id"],
-                    },
-                },
-                {"$project": {"citations_count": 1}},
-                {"$unwind": "$citations_count"},
-                {
-                    "$group": {
-                        "_id": "$citations_count.source",
-                        "count": {"$sum": "$citations_count.count"},
-                    },
-                },
-            ]
-            ret = list(self.works_collection.aggregate(pipeline))
-            rec = {"citations_count": []}
-            for cites in ret:
-                rec["citations_count"] += [{"source": cites["_id"],
-                                            "count": cites["count"]}]
-            self.affiliations_collection.update_one(
-                {"_id": pid["_id"]}, {"$set": rec}, upsert=True)
-
-    def count_cites_faculty_department_group(self):
-        """
-        Method to calculate the cites count for each faculty, department and group.
-        """
-        aff_ids = self.affiliations_collection.find(
-            {"types.type": {"$in": ["department", "faculty", "group"]}}, {"_id"})
-        if self.verbose > 0:
-            print("Calculating cites count for faculty, department and group")
-        for pid in aff_ids:
-            pipeline = [{"$match": {"affiliations.id": pid["_id"]}},
-                        {"$project": {"_id": 1}},
-                        {
-                "$lookup": {
-                    "from": "works",
-                            "localField": "_id",
-                            "foreignField": "authors.id",
-                            "as": "works",
-                }
             },
-                {"$unwind": "$works"},
-                {"$group": {"_id": "$works._id", "works": {"$first": "$works"}}},
-                {"$project": {"works.citations_count": 1}},
-                {"$unwind": "$works.citations_count"},
-                {
+            {"$project": {"citations_count": 1}},
+            {"$unwind": "$citations_count"},
+            {
                 "$group": {
-                    "_id": "$works.citations_count.source",
-                    "count": {"$sum": "$works.citations_count.count"},
+                    "_id": "$citations_count.source",
+                    "count": {"$sum": "$citations_count.count"},
                 },
             },
-            ]
-            ret = list(self.person_collection.aggregate(pipeline))
-            rec = {"citations_count": []}
-            for cites in ret:
-                rec["citations_count"] += [{"source": cites["_id"],
-                                            "count": cites["count"]}]
-            self.affiliations_collection.update_one(
-                {"_id": pid["_id"]}, {"$set": rec}, upsert=True)
+        ]
+        ret = list(self.works_collection.aggregate(pipeline))
+        rec = {"citations_count": []}
+        for cites in ret:
+            rec["citations_count"] += [{"source": cites["_id"],
+                                        "count": cites["count"]}]
+
+        # Count products for each author
+        count = self.works_collection.count_documents({"authors.id": pid["_id"]})
+        rec["products_count"] = count
+
+        # Update the person collection
+        self.person_collection.update_one(
+            {"_id": pid["_id"]}, {"$set": rec}, upsert=True)
+
+    def count_cites_products_institutions(self, pid):
+        """
+        Method to calculate the citation and product count for each institution.
+        """
+        # Count cites for each institution
+        pipeline = [
+            {
+                "$match": {
+                    "authors.affiliations.id": pid["_id"],
+                },
+            },
+            {"$project": {"citations_count": 1}},
+            {"$unwind": "$citations_count"},
+            {
+                "$group": {
+                    "_id": "$citations_count.source",
+                    "count": {"$sum": "$citations_count.count"},
+                },
+            },
+        ]
+        ret = list(self.works_collection.aggregate(pipeline))
+        rec = {"citations_count": []}
+        for cites in ret:
+            rec["citations_count"] += [{"source": cites["_id"],
+                                        "count": cites["count"]}]
+        # Count products for each institution
+        count = self.works_collection.count_documents(
+            {"authors.affiliations.id": pid["_id"]})
+        rec["products_count"] = count
+
+        # Update the institution collection
+        self.affiliations_collection.update_one(
+            {"_id": pid["_id"]}, {"$set": rec}, upsert=True)
+
+    def count_cites_products_faculty_department_group(self, pid):
+        """
+        Method to calculate the citation and product count for each faculty, department and group.
+        """
+        # Count cites for each faculty, department and group
+        pipeline = [{"$match": {"affiliations.id": pid["_id"]}},
+                    {"$project": {"_id": 1}},
+                    {
+            "$lookup": {
+                "from": "works",
+                        "localField": "_id",
+                        "foreignField": "authors.id",
+                        "as": "works",
+            }
+        },
+            {"$unwind": "$works"},
+            {"$group": {"_id": "$works._id", "works": {"$first": "$works"}}},
+            {"$project": {"works.citations_count": 1}},
+            {"$unwind": "$works.citations_count"},
+            {
+            "$group": {
+                "_id": "$works.citations_count.source",
+                "count": {"$sum": "$works.citations_count.count"},
+            },
+        },
+        ]
+        ret = list(self.person_collection.aggregate(pipeline))
+        rec = {"citations_count": []}
+        for cites in ret:
+            rec["citations_count"] += [{"source": cites["_id"],
+                                        "count": cites["count"]}]
+        # Count products for each faculty, department and group
+        count = self.works_collection.count_documents(
+            {"affiliations.id": pid["_id"]})
+        rec["products_count"] = count
+
+        # Update the faculty, department and group collection
+        self.affiliations_collection.update_one(
+            {"_id": pid["_id"]}, {"$set": rec}, upsert=True)
 
     def run_cites_count(self):
         """
-        Method to run the cites count calculation for each person, institution, faculty, department and group.
+        Method to run the cites and products count calculation for each person, institution, faculty, department and group.
         """
-        person_ids = self.person_collection.find({}, {"_id"})
+
+        # Count cites for each author
+        person_ids = list(self.person_collection.find({}, {"_id"}))
+        if self.verbose > 0:
+            print("Calculating cites and products count for {} authors".format(
+                len(person_ids)))
         with MongoClient(self.mongodb_url) as client:
             Parallel(
                 n_jobs=self.n_jobs,
                 verbose=self.verbose,
                 backend="threading")(
-                delayed(self.count_cites_person)(
+                delayed(self.count_cites_products_person)(
                     reg,
-                    self.verbose
                 ) for reg in person_ids
             )
             client.close()
-    
+
+        # Count cites for each institution
+        aff_ids = list(self.affiliations_collection.find(
+            {"types.type": {"$nin": ["department", "faculty", "group"]}}, {"_id"}))
+        if self.verbose > 0:
+            print("Calculating cites count and products for {} institutions".format(
+                len(aff_ids)))
+        with MongoClient(self.mongodb_url) as client:
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(self.count_cites_products_institutions)(
+                    reg,
+                ) for reg in aff_ids
+            )
+            client.close()
+
+        # Count cites for each faculty, department and group
+        aff_ids = list(self.affiliations_collection.find(
+            {"types.type": {"$in": ["department", "faculty", "group"]}}, {"_id"}))
+        if self.verbose > 0:
+            print("Calculating cites and products count for {} faculties, departments and groups".format(
+                len(aff_ids)))
+        with MongoClient(self.mongodb_url) as client:
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(self.count_cites_products_faculty_department_group)(
+                    reg,
+                ) for reg in aff_ids
+            )
+            client.close()
+
     def run(self):
-        start_time = time.time()
-        
-        self.count_cites_person()
-        end_time = time.time()
-        duration = end_time - start_time
-        if self.verbose > 0:
-            print(f"Cites count calculation completed in {duration:.2f} seconds.")
-
-        start_time = time.time()
-        self.count_cites_institutions()
-        end_time = time.time()
-        duration = end_time - start_time
-        if self.verbose > 0:
-            print(f"Cites count calculation completed in {duration:.2f} seconds.")
-
-        start_time = time.time()
-        self.count_cites_faculty_department_group()
-        end_time = time.time()
-        duration = end_time - start_time
-        if self.verbose > 0:
-            print(f"Cites count calculation completed in {duration:.2f} seconds.")
-        
+        self.run_cites_count()
+        self.client.close()

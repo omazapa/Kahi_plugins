@@ -26,6 +26,7 @@ config:
   log_collection: log
 workflow:
   impactu_post_cites_count:
+    num_jobs: 12
     verbose: 5
 ```
 # License
