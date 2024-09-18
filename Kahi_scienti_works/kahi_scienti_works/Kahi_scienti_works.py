@@ -221,7 +221,7 @@ class Kahi_scienti_works(KahiBase):
                     works_nodoi.extend(scienti_reg["ids"])
             print(f"INFO: processing {len(works_nodoi)} records with bad dois")
             paper_cursor = scienti.find(
-                {"_id": {"$in": works_nodoi}, "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
+                {"_id": {"$in": works_nodoi}, "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}, "product_type.COD_TIPO_PRODUCTO": {"$in": types_level0}})
             Parallel(
                 n_jobs=self.n_jobs,
                 verbose=self.verbose,
@@ -238,9 +238,9 @@ class Kahi_scienti_works(KahiBase):
             )
 
             paper_cursor = scienti.find(
-                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
+                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}, "product_type.COD_TIPO_PRODUCTO": {"$in": types_level0}})
             paper_cursor_count = scienti.count_documents(
-                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
+                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}, "product_type.COD_TIPO_PRODUCTO": {"$in": types_level0}})
             print(f"INFO: processing {paper_cursor_count} records without doi")
 
             Parallel(
