@@ -132,7 +132,6 @@ class Kahi_minciencias_opendata_works(KahiBase):
                   "Tesis de pregrado",
                   "Informe técnico final",
                   "Artículos",
-                  "Edicion",
                   "Manuales y Guías Especializadas",
                   "Boletín divulgativo de resultado de investigación",
                   "Libros de Divulgación de investigación y/o Compilación de Divulgación",
