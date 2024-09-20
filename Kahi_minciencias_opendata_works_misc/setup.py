@@ -51,10 +51,10 @@ if os.name in ('nt', 'dos'):
 def main():
     setup(
         # Application name:
-        name="Kahi_minciencias_opendata_works_others",
+        name="Kahi_minciencias_opendata_works_misc",
 
         # Version number (initial):
-        version=get_version('kahi_minciencias_opendata_works_others/_version.py'),
+        version=get_version('kahi_minciencias_opendata_works_misc/_version.py'),
 
         # Application author details:
         author="Colav",
@@ -71,7 +71,7 @@ def main():
         #
         license="BSD",
 
-        description="Kahi plugin to insert and update works others from minciencias opendata",
+        description="Kahi plugin to insert and update works misc from minciencias opendata",
 
         long_description=open("README.md").read(),
 

@@ -2,17 +2,17 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from pymongo.errors import ConnectionFailure
 from joblib import Parallel, delayed
-from kahi_minciencias_opendata_works_others.process_one import process_one
+from kahi_minciencias_opendata_works_misc.process_one import process_one
 from mohan.Similarity import Similarity
 
 
-class Kahi_minciencias_opendata_works_others(KahiBase):
+class Kahi_minciencias_opendata_works_misc(KahiBase):
 
     config = {}
 
     def __init__(self, config):
         """
-        Constructor for the Kahi_minciencias_opendata_works_others class.
+        Constructor for the Kahi_minciencias_opendata_works_misc class.
 
         Several indices are created in the MongoDB collection to speed up the queries.
         We also handle the error to check db and collection existence.
@@ -21,7 +21,7 @@ class Kahi_minciencias_opendata_works_others(KahiBase):
         ----------
         config : dict
             The configuration dictionary. It should contain the following keys:
-            - minciencias_opendata_works_others: a dictionary with the following keys:
+            - minciencias_opendata_works_misc: a dictionary with the following keys:
                 - task: the task to be performed. It can be "doi" or "all"
                 - num_jobs: the number of jobs to be used in parallel processing
                 - verbose: the verbosity level
@@ -40,19 +40,19 @@ class Kahi_minciencias_opendata_works_others(KahiBase):
         self.client = MongoClient(self.mongodb_url)
 
         self.db = self.client[config["database_name"]]
-        self.collection = self.db["works_others"]
+        self.collection = self.db["works_misc"]
 
         self.collection.create_index("authors.affiliations.id")
         self.collection.create_index("authors.id")
         self.collection.create_index([("titles.title", TEXT)])
         self.collection.create_index("external_ids.id")
 
-        if "es_index" in config["minciencias_opendata_works_others"].keys() and "es_url" in config["minciencias_opendata_works_others"].keys() and "es_user" in config["minciencias_opendata_works_others"].keys() and "es_password" in config["minciencias_opendata_works_others"].keys():  # noqa: E501
-            es_index = config["minciencias_opendata_works_others"]["es_index"]
-            es_url = config["minciencias_opendata_works_others"]["es_url"]
-            if config["minciencias_opendata_works_others"]["es_user"] and config["minciencias_opendata_works_others"]["es_password"]:
-                es_auth = (config["minciencias_opendata_works_others"]["es_user"],
-                           config["minciencias_opendata_works_others"]["es_password"])
+        if "es_index" in config["minciencias_opendata_works_misc"].keys() and "es_url" in config["minciencias_opendata_works_misc"].keys() and "es_user" in config["minciencias_opendata_works_misc"].keys() and "es_password" in config["minciencias_opendata_works_misc"].keys():  # noqa: E501
+            es_index = config["minciencias_opendata_works_misc"]["es_index"]
+            es_url = config["minciencias_opendata_works_misc"]["es_url"]
+            if config["minciencias_opendata_works_misc"]["es_user"] and config["minciencias_opendata_works_misc"]["es_password"]:
+                es_auth = (config["minciencias_opendata_works_misc"]["es_user"],
+                           config["minciencias_opendata_works_misc"]["es_password"])
             else:
                 es_auth = None
             self.es_handler = Similarity(
@@ -62,15 +62,15 @@ class Kahi_minciencias_opendata_works_others(KahiBase):
             self.es_handler = None
             print("WARNING: No elasticsearch configuration provided")
 
-        self.task = config["minciencias_opendata_works_others"]["task"] if "task" in config["minciencias_opendata_works_others"].keys(
+        self.task = config["minciencias_opendata_works_misc"]["task"] if "task" in config["minciencias_opendata_works_misc"].keys(
         ) else None
-        self.insert_all = config["minciencias_opendata_works_others"]["insert_all"] if "insert_all" in config["minciencias_opendata_works_others"].keys(
+        self.insert_all = config["minciencias_opendata_works_misc"]["insert_all"] if "insert_all" in config["minciencias_opendata_works_misc"].keys(
         ) else False
-        self.thresholds = config["minciencias_opendata_works_others"]["thresholds"] if "thresholds" in config["minciencias_opendata_works_others"].keys(
+        self.thresholds = config["minciencias_opendata_works_misc"]["thresholds"] if "thresholds" in config["minciencias_opendata_works_misc"].keys(
         ) else None
-        self.n_jobs = config["minciencias_opendata_works_others"]["num_jobs"] if "num_jobs" in config["minciencias_opendata_works_others"].keys(
+        self.n_jobs = config["minciencias_opendata_works_misc"]["num_jobs"] if "num_jobs" in config["minciencias_opendata_works_misc"].keys(
         ) else 1
-        self.verbose = config["minciencias_opendata_works_others"]["verbose"] if "verbose" in config["minciencias_opendata_works_others"].keys(
+        self.verbose = config["minciencias_opendata_works_misc"]["verbose"] if "verbose" in config["minciencias_opendata_works_misc"].keys(
         ) else 0
 
         # checking if the databases and collections are available
@@ -81,9 +81,9 @@ class Kahi_minciencias_opendata_works_others(KahiBase):
         Method to check if the databases and collections are available.
         """
         try:
-            with MongoClient(self.config["minciencias_opendata_works_others"]["database_url"]) as client:
-                db_name = self.config["minciencias_opendata_works_others"]["database_name"]
-                collection_name = self.config["minciencias_opendata_works_others"]["collection_name"]
+            with MongoClient(self.config["minciencias_opendata_works_misc"]["database_url"]) as client:
+                db_name = self.config["minciencias_opendata_works_misc"]["database_name"]
+                collection_name = self.config["minciencias_opendata_works_misc"]["collection_name"]
 
                 # Check if database exists
                 if db_name not in client.list_database_names():
@@ -105,17 +105,17 @@ class Kahi_minciencias_opendata_works_others(KahiBase):
         Checks if the task is "doi" or "all" and processes the records accordingly.
         """
         client = MongoClient(
-            self.config["minciencias_opendata_works_others"]["database_url"])
-        db = client[self.config["minciencias_opendata_works_others"]
+            self.config["minciencias_opendata_works_misc"]["database_url"])
+        db = client[self.config["minciencias_opendata_works_misc"]
                     ["database_name"]]
-        opendata = db[self.config["minciencias_opendata_works_others"]
+        opendata = db[self.config["minciencias_opendata_works_misc"]
                       ["collection_name"]]
         print("INFO: Creating indices")
         opendata.create_index("id_producto_pd")
         opendata.create_index("nme_tipologia_pd")
         if self.task == "doi":
             raise RuntimeError(
-                f'''{self.config["minciencias_opendata_works_others"]["task"]} is not a valid task for the minciencias_opendata database''')
+                f'''{self.config["minciencias_opendata_works_misc"]["task"]} is not a valid task for the minciencias_opendata database''')
 
         # bibliography production requires a search in elasticsearch,
         # there will be a cut in openalex for those products.
@@ -133,7 +133,6 @@ class Kahi_minciencias_opendata_works_others(KahiBase):
                   "Tesis de pregrado",
                   "Informe técnico final",
                   "Artículos",
-                  "Edicion",
                   "Manuales y Guías Especializadas",
                   "Boletín divulgativo de resultado de investigación",
                   "Libros de Divulgación de investigación y/o Compilación de Divulgación",
@@ -154,10 +153,10 @@ class Kahi_minciencias_opendata_works_others(KahiBase):
         ]
 
         paper_list = list(opendata.aggregate(pipeline, allowDiskUse=True))
-        others_types = set(all_types) - set(exclude)
+        misc_types = set(all_types) - set(exclude)
 
         print(
-            f"INFO: Processing works others production {len(paper_list)} types {others_types}")
+            f"INFO: Processing works misc production {len(paper_list)} types {misc_types}")
         Parallel(
             n_jobs=self.n_jobs,
             verbose=self.verbose,
