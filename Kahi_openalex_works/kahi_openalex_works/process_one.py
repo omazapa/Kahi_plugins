@@ -31,7 +31,11 @@ def get_units_affiations(db, author_db, affiliations):
         if "external_ids" in aff.keys():
             for ext in aff["external_ids"]:
                 aff_db = db["affiliations"].find_one(
-                    {"external_ids.id": ext["id"]}, {"_id": 1})
+                    {"external_ids.id": ext["id"]}, {"_id": 1, "types": 1})
+                types = [i["type"] for i in aff_db["types"]]
+                if "group" in types or "department" in types or "faculty" in types:
+                    aff_db = None
+                    continue
                 if aff_db:
                     break
         if aff_db:
@@ -47,7 +51,9 @@ def get_units_affiations(db, author_db, affiliations):
         count = db["affiliations"].count_documents(
             {"_id": aff["id"], "relations.id": institution_id})
         if count > 0:
-            units.append(aff)
+            types = [i["type"] for i in aff["types"]]
+            if "department" in types or "faculty" in types:
+                units.append(aff)
     return units
 
 
