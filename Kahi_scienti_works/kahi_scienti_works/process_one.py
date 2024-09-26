@@ -6,10 +6,74 @@ from bson import ObjectId
 
 
 def get_doi(reg):
+    """
+    Method to get the doi of a register.
+
+    Parameters:
+    ----------
+    reg : dict
+        Register from the scienti database
+
+    Returns:
+    -------
+    str
+        doi of the register, False if not found.
+    """
     for i in reg["external_ids"]:
         if i["source"] == 'doi':
             return i["id"]
     return False
+
+
+def get_units_affiations(db, author_db, affiliations):
+    """
+    Method to get the units of an author in a register. ex: faculty, department and group.
+
+    Parameters:
+    ----------
+    db : pymongo.database.Database
+        Database connection to colav database.
+    author_db : dict
+        record from person
+    affiliations : list
+        list of affiliations from the parse_openalex method
+
+    Returns:
+    -------
+    list
+        list of units of an author (entries from using affiliations)
+    """
+    institution_id = None
+    # verifiying univeristy
+    for j, aff in enumerate(affiliations):
+        aff_db = None
+        if "external_ids" in aff.keys():
+            for ext in aff["external_ids"]:
+                aff_db = db["affiliations"].find_one(
+                    {"external_ids.id": ext["id"]}, {"_id": 1, "types": 1})
+                types = [i["type"] for i in aff_db["types"]]
+                if "group" in types or "department" in types or "faculty" in types:
+                    aff_db = None
+                    continue
+                if aff_db:
+                    break
+        if aff_db:
+            count = db["person"].count_documents(
+                {"_id": author_db["_id"], "affiliations.id": aff_db["_id"]})
+            if count > 0:
+                institution_id = aff_db["_id"]
+                break
+    units = []
+    for aff in author_db["affiliations"]:
+        if aff["id"] == institution_id:
+            continue
+        count = db["affiliations"].count_documents(
+            {"_id": aff["id"], "relations.id": institution_id})
+        if count > 0:
+            types = [i["type"] for i in aff["types"]]
+            if "department" in types or "faculty" in types:
+                units.append(aff)
+    return units
 
 
 def process_author(entry, colav_reg, db, verbose=0):
@@ -376,6 +440,11 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
             "full_name": author_db["full_name"],
             "affiliations": author["affiliations"]
         }
+        aff_units = get_units_affiations(db, author_db, author["affiliations"])
+        for aff_unit in aff_units:
+            if aff_unit not in author["affiliations"]:
+                author["affiliations"].append(aff_unit)
+
     else:
         author_db = db["person"].find_one(
             {"full_name": author["full_name"]})
@@ -393,6 +462,12 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
                 "full_name": author_db["full_name"],
                 "affiliations": author["affiliations"]
             }
+            aff_units = get_units_affiations(
+                db, author_db, author["affiliations"])
+            for aff_unit in aff_units:
+                if aff_unit not in author["affiliations"]:
+                    author["affiliations"].append(aff_unit)
+
         else:
             author = {
                 "id": "",
