@@ -152,6 +152,12 @@ def process_author(entry, colav_reg, db, verbose=0):
                         reg.pop('start_date')
                         reg.pop('end_date')
 
+                    aff_units = get_units_affiations(
+                        db, author_db, author["affiliations"])
+                    for aff_unit in aff_units:
+                        if aff_unit not in author["affiliations"]:
+                            author["affiliations"].append(aff_unit)
+
                     colav_reg["authors"][i] = {
                         "id": author_db["_id"],
                         "full_name": author_db["full_name"],
@@ -290,6 +296,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                                 found = True
                                 author_rec["id"] = author_db["_id"]
                                 author_rec["full_name"] = author_db['full_name']
+
                     if not found:
                         rec = {"id": author_db["_id"],
                                "full_name": author_db["full_name"],

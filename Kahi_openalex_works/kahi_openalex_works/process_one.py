@@ -252,6 +252,7 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
                         "level": sub_db["level"]
                     }
                     break
+
     # search authors and affiliations in db
     for i, author in enumerate(entry["authors"]):
         author_db = None
@@ -328,14 +329,10 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
                 }
         for j, aff in enumerate(author["affiliations"]):
             aff_db = None
-            is_group = False
-            if "types" in aff.keys():
-                for a in aff["types"]:
-                    if "group" == a["type"]:
-                        is_group = True
-                        continue
-            if is_group:
-                continue
+            if "types" in aff.keys():  # if not types it not group, department or faculty
+                types = [i["type"] for i in aff["types"]]
+                if "group" in types or "department" in types or "faculty" in types:
+                    continue
             if "external_ids" in aff.keys():
                 for ext in aff["external_ids"]:
                     aff_db = db["affiliations"].find_one(
