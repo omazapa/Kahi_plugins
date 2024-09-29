@@ -51,12 +51,13 @@ def get_units_affiations(db, author_db, affiliations):
             for ext in aff["external_ids"]:
                 aff_db = db["affiliations"].find_one(
                     {"external_ids.id": ext["id"]}, {"_id": 1, "types": 1})
-                types = [i["type"] for i in aff_db["types"]]
-                if "group" in types or "department" in types or "faculty" in types:
-                    aff_db = None
-                    continue
                 if aff_db:
-                    break
+                    types = [i["type"] for i in aff_db["types"]]
+                    if "group" in types or "department" in types or "faculty" in types:
+                        aff_db = None
+                        continue
+                    else:
+                        break
         if aff_db:
             count = db["person"].count_documents(
                 {"_id": author_db["_id"], "affiliations.id": aff_db["_id"]})
@@ -105,6 +106,21 @@ def process_author(entry, colav_reg, db, verbose=0):
             affiliation_match = None
             for i, author in enumerate(colav_reg['authors']):
                 if author['id'] == author_db['_id']:
+                    # adding the group for the author
+                    groups = []
+                    for aff in scienti_author["affiliations"]:
+                        if aff["types"]:
+                            for t in aff["types"]:
+                                if t["type"] == "group":
+                                    groups.append(aff)
+                    for group in groups:
+                        if group not in author["affiliations"]:
+                            author["affiliations"].append(group)
+                    colav_reg["authors"][i] = {
+                        "id": author_db["_id"],
+                        "full_name": author_db["full_name"],
+                        "affiliations": author["affiliations"]
+                    }
                     continue
                 author_reg = None
                 if author['id'] == "":
@@ -151,6 +167,16 @@ def process_author(entry, colav_reg, db, verbose=0):
                     for reg in author_db["affiliations"]:
                         reg.pop('start_date')
                         reg.pop('end_date')
+                    # adding the group for the author
+                    groups = []
+                    for aff in scienti_author["affiliations"]:
+                        if aff["types"]:
+                            for t in aff["types"]:
+                                if t["type"] == "group":
+                                    groups.append(aff)
+                    for group in groups:
+                        if group not in author["affiliations"]:
+                            author["affiliations"].append(group)
 
                     aff_units = get_units_affiations(
                         db, author_db, author["affiliations"])
@@ -483,6 +509,10 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
             }
     for j, aff in enumerate(author["affiliations"]):
         aff_db = None
+        if "types" in aff.keys():  # if not types it not group, department or faculty
+            types = [i["type"] for i in aff["types"]]
+            if "group" in types or "department" in types or "faculty" in types:
+                continue
         if "external_ids" in aff.keys():
             for ext in aff["external_ids"]:
                 aff_db = db["affiliations"].find_one(
