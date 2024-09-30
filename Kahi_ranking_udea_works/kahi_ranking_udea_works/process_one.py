@@ -5,6 +5,43 @@ from bson import ObjectId
 from pandas import isna
 
 
+def get_units_affiations(db, author_db, affiliation):
+    """
+    Method to get the units of an author in a register. ex: faculty, department and group.
+
+    Parameters:
+    ----------
+    db : pymongo.database.Database
+        Database connection to colav database.
+    author_db : dict
+        record from person
+    affiliation : dict
+        affiliation of the author
+
+    Returns:
+    -------
+    list
+        list of units of an author (entries from using affiliations)
+    """
+    institution_id = None
+    # verifiying univeristy
+    count = db["person"].count_documents(
+        {"_id": author_db["_id"], "affiliations.id": affiliation["_id"]})
+    if count > 0:
+        institution_id = affiliation["_id"]
+    units = []
+    for aff in author_db["affiliations"]:
+        if aff["id"] == institution_id:
+            continue
+        count = db["affiliations"].count_documents(
+            {"_id": aff["id"], "relations.id": institution_id})
+        if count > 0:
+            types = [i["type"] for i in aff["types"]]
+            if "department" in types or "faculty" in types:
+                units.append(aff)
+    return units
+
+
 def process_one_update(ranking_udea_reg, colav_reg, collection, affiliation, empty_work):
     """
     Method to update a register in the kahi database from ranking database if it is found.
@@ -135,6 +172,11 @@ def process_one_insert(ranking_udea_reg, db, collection, affiliation, empty_work
                     author_db["external_ids"].append(ext)
                     sources.append(ext["source"])
                     ids.append(ext["id"])
+            aff_units = get_units_affiations(
+                db, author_db, affiliation)
+            for aff_unit in aff_units:
+                if aff_unit not in author["affiliations"]:
+                    author["affiliations"].append(aff_unit)
             entry["authors"][i] = {
                 "id": author_db["_id"],
                 "full_name": author_db["full_name"],
@@ -154,6 +196,12 @@ def process_one_insert(ranking_udea_reg, db, collection, affiliation, empty_work
                         author_db["external_ids"].append(ext)
                         sources.append(ext["source"])
                         ids.append(ext["id"])
+                aff_units = get_units_affiations(
+                    db, author_db, affiliation)
+                for aff_unit in aff_units:
+                    if aff_unit not in author["affiliations"]:
+                        author["affiliations"].append(aff_unit)
+
                 entry["authors"][i] = {
                     "id": author_db["_id"],
                     "full_name": author_db["full_name"],
@@ -167,6 +215,10 @@ def process_one_insert(ranking_udea_reg, db, collection, affiliation, empty_work
                 }
         for j, aff in enumerate(author["affiliations"]):
             aff_db = None
+            if "types" in aff.keys():  # if not types it not group, department or faculty
+                types = [i["type"] for i in aff["types"]]
+                if "group" in types or "department" in types or "faculty" in types:
+                    continue
             if "external_ids" in aff.keys():
                 for ext in aff["external_ids"]:
                     aff_db = db["affiliations"].find_one(
