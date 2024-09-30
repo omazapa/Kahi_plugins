@@ -1,4 +1,4 @@
-from kahi_minciencias_opendata_works_others.parser import parse_minciencias_opendata
+from kahi_minciencias_opendata_works_misc.parser import parse_minciencias_opendata
 from kahi_impactu_utils.Utils import compare_author
 from time import time
 from re import search
