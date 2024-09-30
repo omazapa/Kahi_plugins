@@ -142,7 +142,7 @@ class Kahi_impactu_post_cites_count(KahiBase):
                                         "count": cites["count"]}]
         # Count products for each faculty, department and group
         count = self.works_collection.count_documents(
-            {"affiliations.id": pid["_id"]})
+            {"authors.affiliations.id": pid["_id"]})
         rec["products_count"] = count
 
         # Update the faculty, department and group collection
