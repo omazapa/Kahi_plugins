@@ -269,9 +269,29 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
     group_id = openadata_reg["cod_grupo_gr"]
     rgroup = db["affiliations"].find_one({"external_ids.id": group_id})
     if rgroup:
-        entry["groups"].append(
-            {"id": rgroup["_id"], "name": rgroup["names"][0]["name"]})
+        found = False
+        for group in entry["groups"]:
+            if group["id"] == rgroup["_id"]:
+                found = True
+                break
+        if not found:
+            entry["groups"].append(
+                {"id": rgroup["_id"], "name": rgroup["names"][0]["name"]})
 
+        # Adding group relation affiliation to the author affiliations
+        if author_db and rgroup["relations"]:
+            for author in entry["authors"]:
+                if author["id"] == author_db["_id"]:
+                    affs = [aff["id"] for aff in author["affiliations"]]
+                    for relation in rgroup["relations"]:
+                        types = []
+                        if "types" in relation.keys() and relation["types"]:
+                            types = [rel["type"].lower()
+                                     for rel in relation["types"]]
+                            if "education" in types:
+                                if relation["id"] not in affs:
+                                    author["affiliations"].append(relation)
+                    break
     # insert in mongo
     response = collection.insert_one(entry)
     # insert in elasticsearch
