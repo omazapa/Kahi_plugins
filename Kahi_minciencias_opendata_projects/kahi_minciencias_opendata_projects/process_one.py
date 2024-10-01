@@ -270,7 +270,7 @@ def process_one_insert(openadata_reg, db, collection, empty_project, es_handler,
         Verbosity level. The default is 0.
     """
     # parse
-    entry = parse_minciencias_opendata(openadata_reg, empty_work.copy())
+    entry = parse_minciencias_opendata(openadata_reg, empty_project.copy())
     # search authors and affiliations in db
     # authors
     minciencias_author = ""
