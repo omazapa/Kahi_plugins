@@ -18,7 +18,7 @@ def get_units_affiations(db, author_db, affiliations):
     author_db : dict
         record from person
     affiliations : list
-        list of affiliations from the parse_openalex method
+        list of affiliations from the parse_minciencias_opendata method
 
     Returns:
     -------
