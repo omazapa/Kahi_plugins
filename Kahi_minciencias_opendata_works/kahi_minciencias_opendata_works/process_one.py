@@ -222,6 +222,12 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                             if "education" in types:
                                 if relation["id"] not in affs:
                                     author["affiliations"].append(relation)
+                    aff_units = get_units_affiations(
+                        db, author_db, author["affiliations"])
+                    for aff_unit in aff_units:
+                        if aff_unit not in author["affiliations"]:
+                            author["affiliations"].append(aff_unit)
+
                     break
 
     collection.update_one(
