@@ -6,7 +6,54 @@ from time import time
 from re import search
 
 
-def process_one_update(openadata_reg, colav_reg, db, collection, empty_event, verbose=0):
+def get_units_affiations(db, author_db, affiliations):
+    """
+    Method to get the units of an author in a register. ex: faculty, department and group.
+
+    Parameters:
+    ----------
+    db : pymongo.database.Database
+        Database connection to colav database.
+    author_db : dict
+        record from person
+    affiliations : list
+        list of affiliations from the parse_minciencias_opendata method
+
+    Returns:
+    -------
+    list
+        list of units of an author (entries from using affiliations)
+    """
+    institution_id = None
+    # verifiying univeristy
+    for j, aff in enumerate(affiliations):
+        aff_db = db["affiliations"].find_one(
+            {"_id": aff["id"]}, {"_id": 1, "types": 1})
+        if aff_db:
+            types = [i["type"] for i in aff_db["types"]]
+            if "group" in types or "department" in types or "faculty" in types:
+                aff_db = None
+                continue
+        if aff_db:
+            count = db["person"].count_documents(
+                {"_id": author_db["_id"], "affiliations.id": aff_db["_id"]})
+            if count > 0:
+                institution_id = aff_db["_id"]
+                break
+    units = []
+    for aff in author_db["affiliations"]:
+        if aff["id"] == institution_id:
+            continue
+        count = db["affiliations"].count_documents(
+            {"_id": aff["id"], "relations.id": institution_id})
+        if count > 0:
+            types = [i["type"] for i in aff["types"]]
+            if "department" in types or "faculty" in types:
+                units.append(aff)
+    return units
+
+
+def process_one_update(openadata_reg, colav_reg, db, collection, empty_project, verbose=0):
     """
     Method to update a register in the kahi database from minciencias opendata database if it is found.
     This means that the register is already on the kahi database and it is being updated with new information.
@@ -22,13 +69,13 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_event, ve
         Database where the colav collections are stored, used to search for authors and affiliations.
     collection : pymongo.collection.Collection
         Collection in the database where the register is stored (Collection of projects)
-    empty_work : dict
+    empty_project : dict
         Empty dictionary with the structure of a register in the database
     verbose : int, optional
         Verbosity level. The default is 0.
     """
     entry = parse_minciencias_opendata(
-        openadata_reg, empty_event.copy(), verbose=verbose)
+        openadata_reg, empty_project.copy(), verbose=verbose)
     # updated
     for upd in colav_reg["updated"]:
         if upd["source"] == "minciencias":
@@ -175,6 +222,12 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_event, ve
                             if "education" in types:
                                 if relation["id"] not in affs:
                                     author["affiliations"].append(relation)
+                    aff_units = get_units_affiations(
+                        db, author_db, author["affiliations"])
+                    for aff_unit in aff_units:
+                        if aff_unit not in author["affiliations"]:
+                            author["affiliations"].append(aff_unit)
+
                     break
 
     collection.update_one(
@@ -190,7 +243,7 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_event, ve
     )
 
 
-def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, verbose=0):
+def process_one_insert(openadata_reg, db, collection, empty_project, es_handler, verbose=0):
     """
     Function to insert a new register in the database if it is not found in the colav(kahi projects) database.
     This means that the register is not on the database and it is being inserted.
@@ -209,7 +262,7 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
         Database where the colav collections are stored, used to search for authors and affiliations.
     collection : pymongo.collection.Collection
         Collection in the database where the register is stored (Collection of projects)
-    empty_work : dict
+    empty_project : dict
         Empty dictionary with the structure of a register in the database
     es_handler : Similarity
         Elasticsearch handler to insert the register in the elasticsearch index, Mohan's Similarity class.
@@ -288,6 +341,12 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
                             if "education" in types:
                                 if relation["id"] not in affs:
                                     author["affiliations"].append(relation)
+                    aff_units = get_units_affiations(
+                        db, author_db, author["affiliations"])
+                    for aff_unit in aff_units:
+                        if aff_unit not in author["affiliations"]:
+                            author["affiliations"].append(aff_unit)
+
                     break
 
     # insert in mongo
