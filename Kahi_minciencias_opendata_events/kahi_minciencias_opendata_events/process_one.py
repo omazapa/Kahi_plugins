@@ -6,6 +6,53 @@ from time import time
 from re import search
 
 
+def get_units_affiations(db, author_db, affiliations):
+    """
+    Method to get the units of an author in a register. ex: faculty, department and group.
+
+    Parameters:
+    ----------
+    db : pymongo.database.Database
+        Database connection to colav database.
+    author_db : dict
+        record from person
+    affiliations : list
+        list of affiliations from the parse_minciencias_opendata method
+
+    Returns:
+    -------
+    list
+        list of units of an author (entries from using affiliations)
+    """
+    institution_id = None
+    # verifiying univeristy
+    for j, aff in enumerate(affiliations):
+        aff_db = db["affiliations"].find_one(
+            {"_id": aff["id"]}, {"_id": 1, "types": 1})
+        if aff_db:
+            types = [i["type"] for i in aff_db["types"]]
+            if "group" in types or "department" in types or "faculty" in types:
+                aff_db = None
+                continue
+        if aff_db:
+            count = db["person"].count_documents(
+                {"_id": author_db["_id"], "affiliations.id": aff_db["_id"]})
+            if count > 0:
+                institution_id = aff_db["_id"]
+                break
+    units = []
+    for aff in author_db["affiliations"]:
+        if aff["id"] == institution_id:
+            continue
+        count = db["affiliations"].count_documents(
+            {"_id": aff["id"], "relations.id": institution_id})
+        if count > 0:
+            types = [i["type"] for i in aff["types"]]
+            if "department" in types or "faculty" in types:
+                units.append(aff)
+    return units
+
+
 def process_one_update(openadata_reg, colav_reg, db, collection, empty_event, verbose=0):
     """
     Method to update a register in the kahi database from minciencias opendata database if it is found.
@@ -175,6 +222,12 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_event, ve
                             if "education" in types:
                                 if relation["id"] not in affs:
                                     author["affiliations"].append(relation)
+                    aff_units = get_units_affiations(
+                        db, author_db, author["affiliations"])
+                    for aff_unit in aff_units:
+                        if aff_unit not in author["affiliations"]:
+                            author["affiliations"].append(aff_unit)
+
                     break
 
     collection.update_one(
@@ -288,6 +341,12 @@ def process_one_insert(openadata_reg, db, collection, empty_work, es_handler, ve
                             if "education" in types:
                                 if relation["id"] not in affs:
                                     author["affiliations"].append(relation)
+                    aff_units = get_units_affiations(
+                        db, author_db, author["affiliations"])
+                    for aff_unit in aff_units:
+                        if aff_unit not in author["affiliations"]:
+                            author["affiliations"].append(aff_unit)
+
                     break
 
     # insert in mongo
