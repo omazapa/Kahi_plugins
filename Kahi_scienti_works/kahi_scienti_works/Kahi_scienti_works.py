@@ -142,9 +142,21 @@ class Kahi_scienti_works(KahiBase):
         """
         client = MongoClient(config["database_url"])
         scienti = client[config["database_name"]][config["collection_name"]]
+        types_level0 = ['111', '112', '113', '114',  # articulos
+                        '121', '122',  # Trabajos en eventos
+                        '131', '132', '133', '134', '135', '136', '137', '138', '139', '140',  # libros
+                        '141', '142', '143', '144', '145',  # Otro artículo publicado
+                        '1A1', '1A2', '1A9',  # 1A: Traducciones
+                        '1B1', '1B2', '1B3', '1B9',  # 1B: Partituras musicales
+                        '1D',  # 1D: Documento de trabajo (Working Paper)
+                        '1K',  # 1K: Nota científica
+                        '1Z2', '1Z3', '1Z4', '1Z9',  # 1Z: Otra producción bibliográfica
+                        '61', '62', '63', '64', '65', '66'  # Trabajos dirigidos/Tutorías
+                        ]
 
         if self.task == "doi":
             pipeline = [
+                {"$match": {"product_type.COD_TIPO_PRODUCTO": {"$in": types_level0}}},
                 {"$match": {"TXT_DOI": {"$ne": None}}},
                 {"$match": {"TXT_NME_PROD_FILTRO": {"$ne": None}}},
                 {"$match": {"TXT_NME_PROD": {"$ne": " "}}},
@@ -174,6 +186,7 @@ class Kahi_scienti_works(KahiBase):
             # saco los dois malos y luego hago un find $in sobre esos COD_RH /COD_PRODUCTO y paso el cursor a parallel
 
             pipeline = [
+                {"$match": {"product_type.COD_TIPO_PRODUCTO": {"$in": types_level0}}},
                 {"$match": {"TXT_DOI": {"$ne": None}}},
                 {"$match": {"TXT_NME_PROD_FILTRO": {"$ne": None}}},
                 {"$match": {"TXT_NME_PROD": {"$ne": " "}}},
@@ -208,7 +221,7 @@ class Kahi_scienti_works(KahiBase):
                     works_nodoi.extend(scienti_reg["ids"])
             print(f"INFO: processing {len(works_nodoi)} records with bad dois")
             paper_cursor = scienti.find(
-                {"_id": {"$in": works_nodoi}, "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
+                {"_id": {"$in": works_nodoi}, "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}, "product_type.COD_TIPO_PRODUCTO": {"$in": types_level0}})
             Parallel(
                 n_jobs=self.n_jobs,
                 verbose=self.verbose,
@@ -225,9 +238,9 @@ class Kahi_scienti_works(KahiBase):
             )
 
             paper_cursor = scienti.find(
-                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
+                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}, "product_type.COD_TIPO_PRODUCTO": {"$in": types_level0}})
             paper_cursor_count = scienti.count_documents(
-                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}})
+                {"$or": [{"doi": {"$eq": ""}}, {"doi": {"$eq": None}}], "TXT_NME_PROD_FILTRO": {"$ne": None}, "TXT_NME_PROD": {"$ne": ' '}, "product_type.COD_TIPO_PRODUCTO": {"$in": types_level0}})
             print(f"INFO: processing {paper_cursor_count} records without doi")
 
             Parallel(

@@ -6,10 +6,75 @@ from bson import ObjectId
 
 
 def get_doi(reg):
+    """
+    Method to get the doi of a register.
+
+    Parameters:
+    ----------
+    reg : dict
+        Register from the scienti database
+
+    Returns:
+    -------
+    str
+        doi of the register, False if not found.
+    """
     for i in reg["external_ids"]:
         if i["source"] == 'doi':
             return i["id"]
     return False
+
+
+def get_units_affiations(db, author_db, affiliations):
+    """
+    Method to get the units of an author in a register. ex: faculty, department and group.
+
+    Parameters:
+    ----------
+    db : pymongo.database.Database
+        Database connection to colav database.
+    author_db : dict
+        record from person
+    affiliations : list
+        list of affiliations from the parse_openalex method
+
+    Returns:
+    -------
+    list
+        list of units of an author (entries from using affiliations)
+    """
+    institution_id = None
+    # verifiying univeristy
+    for j, aff in enumerate(affiliations):
+        aff_db = None
+        if "external_ids" in aff.keys():
+            for ext in aff["external_ids"]:
+                aff_db = db["affiliations"].find_one(
+                    {"external_ids.id": ext["id"]}, {"_id": 1, "types": 1})
+                if aff_db:
+                    types = [i["type"] for i in aff_db["types"]]
+                    if "group" in types or "department" in types or "faculty" in types:
+                        aff_db = None
+                        continue
+                    else:
+                        break
+        if aff_db:
+            count = db["person"].count_documents(
+                {"_id": author_db["_id"], "affiliations.id": aff_db["_id"]})
+            if count > 0:
+                institution_id = aff_db["_id"]
+                break
+    units = []
+    for aff in author_db["affiliations"]:
+        if aff["id"] == institution_id:
+            continue
+        count = db["affiliations"].count_documents(
+            {"_id": aff["id"], "relations.id": institution_id})
+        if count > 0:
+            types = [i["type"] for i in aff["types"]]
+            if "department" in types or "faculty" in types:
+                units.append(aff)
+    return units
 
 
 def process_author(entry, colav_reg, db, verbose=0):
@@ -41,6 +106,21 @@ def process_author(entry, colav_reg, db, verbose=0):
             affiliation_match = None
             for i, author in enumerate(colav_reg['authors']):
                 if author['id'] == author_db['_id']:
+                    # adding the group for the author
+                    groups = []
+                    for aff in scienti_author["affiliations"]:
+                        if aff["types"]:
+                            for t in aff["types"]:
+                                if t["type"] == "group":
+                                    groups.append(aff)
+                    for group in groups:
+                        if group not in author["affiliations"]:
+                            author["affiliations"].append(group)
+                    colav_reg["authors"][i] = {
+                        "id": author_db["_id"],
+                        "full_name": author_db["full_name"],
+                        "affiliations": author["affiliations"]
+                    }
                     continue
                 author_reg = None
                 if author['id'] == "":
@@ -87,6 +167,22 @@ def process_author(entry, colav_reg, db, verbose=0):
                     for reg in author_db["affiliations"]:
                         reg.pop('start_date')
                         reg.pop('end_date')
+                    # adding the group for the author
+                    groups = []
+                    for aff in scienti_author["affiliations"]:
+                        if aff["types"]:
+                            for t in aff["types"]:
+                                if t["type"] == "group":
+                                    groups.append(aff)
+                    for group in groups:
+                        if group not in author["affiliations"]:
+                            author["affiliations"].append(group)
+
+                    aff_units = get_units_affiations(
+                        db, author_db, author["affiliations"])
+                    for aff_unit in aff_units:
+                        if aff_unit not in author["affiliations"]:
+                            author["affiliations"].append(aff_unit)
 
                     colav_reg["authors"][i] = {
                         "id": author_db["_id"],
@@ -175,7 +271,8 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
     # titles
     if 'scienti' not in [title['source'] for title in colav_reg["titles"]]:
         lang = lang_poll(entry["titles"][0]["title"])
-        rec = {"title": entry["titles"][0]["title"], "lang": lang, "source": "scienti"}
+        rec = {"title": entry["titles"][0]["title"],
+               "lang": lang, "source": "scienti"}
         if rec not in colav_reg["titles"]:
             colav_reg["titles"].append(rec)
     # external_ids
@@ -225,6 +322,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                                 found = True
                                 author_rec["id"] = author_db["_id"]
                                 author_rec["full_name"] = author_db['full_name']
+
                     if not found:
                         rec = {"id": author_db["_id"],
                                "full_name": author_db["full_name"],
@@ -325,28 +423,28 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
                 if verbose > 4:
                     if "title" in entry["source"].keys():
                         print(
-                            f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with name: {entry["source"]["title"]}')
+                            f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with name: {entry["source"]["title"]}')
                     else:
                         print(
-                            f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
+                            f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
             else:
                 if verbose > 4:
                     print(
-                        f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with {entry["source"]["external_ids"][0]["source"]}: {entry["source"]["external_ids"][0]["id"]}')  # noqa: E501
+                        f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with {entry["source"]["external_ids"][0]["source"]}: {entry["source"]["external_ids"][0]["id"]}')  # noqa: E501
         else:
             if "title" in entry["source"].keys():
                 if entry["source"]["title"] == "":
                     if verbose > 4:
                         print(
-                            f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
+                            f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} does not provide a source')
                 else:
                     if verbose > 4:
                         print(
-                            f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with name: {entry["source"]["title"]}')
+                            f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source with name: {entry["source"]["title"]}')
             else:
                 if verbose > 4:
                     print(
-                        f'Register with RH: {scienti_reg["COD_RH"]} and COD_PROD: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source (no ids and no name)')
+                        f'Register with COD_RH: {scienti_reg["COD_RH"]} and COD_PRODUCTO: {scienti_reg["COD_PRODUCTO"]} could not be linked to a source (no ids and no name)')
 
         entry["source"] = {
             "id": "",
@@ -375,6 +473,11 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
             "full_name": author_db["full_name"],
             "affiliations": author["affiliations"]
         }
+        aff_units = get_units_affiations(db, author_db, author["affiliations"])
+        for aff_unit in aff_units:
+            if aff_unit not in author["affiliations"]:
+                author["affiliations"].append(aff_unit)
+
     else:
         author_db = db["person"].find_one(
             {"full_name": author["full_name"]})
@@ -392,6 +495,12 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
                 "full_name": author_db["full_name"],
                 "affiliations": author["affiliations"]
             }
+            aff_units = get_units_affiations(
+                db, author_db, author["affiliations"])
+            for aff_unit in aff_units:
+                if aff_unit not in author["affiliations"]:
+                    author["affiliations"].append(aff_unit)
+
         else:
             author = {
                 "id": "",
@@ -400,6 +509,10 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
             }
     for j, aff in enumerate(author["affiliations"]):
         aff_db = None
+        if "types" in aff.keys():  # if not types it not group, department or faculty
+            types = [i["type"] for i in aff["types"]]
+            if "group" in types or "department" in types or "faculty" in types:
+                continue
         if "external_ids" in aff.keys():
             for ext in aff["external_ids"]:
                 aff_db = db["affiliations"].find_one(
@@ -483,7 +596,7 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
         work = {}
         work["title"] = entry["titles"][0]["title"]
         work["source"] = entry["source"]["name"]
-        work["year"] = entry["year_published"]
+        work["year"] = entry["year_published"] if entry["year_published"] else ""
         work["volume"] = entry["bibliographic_info"]["volume"] if "volume" in entry["bibliographic_info"].keys() else ""
         work["issue"] = entry["bibliographic_info"]["issue"] if "issue" in entry["bibliographic_info"].keys() else ""
         work["first_page"] = entry["bibliographic_info"]["first_page"] if "first_page" in entry["bibliographic_info"].keys() else ""
@@ -559,7 +672,7 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
             work["title"] = entry["titles"][0]["title"]
             work["source"] = entry["source"]["name"] if "name" in entry["source"].keys(
             ) else ""
-            work["year"] = entry["year_published"]
+            work["year"] = entry["year_published"] if entry["year_published"] else "0"
             work["volume"] = entry["bibliographic_info"]["volume"] if "volume" in entry["bibliographic_info"].keys() else ""
             work["issue"] = entry["bibliographic_info"]["issue"] if "issue" in entry["bibliographic_info"].keys() else ""
             work["first_page"] = entry["bibliographic_info"]["first_page"] if "first_page" in entry["bibliographic_info"].keys() else ""
@@ -575,7 +688,7 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
             response = es_handler.search_work(
                 title=work["title"],
                 source=work["source"],
-                year=work["year"],
+                year=str(work["year"]),
                 authors=authors,
                 volume=work["volume"],
                 issue=work["issue"],

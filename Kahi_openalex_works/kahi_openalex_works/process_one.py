@@ -6,6 +6,58 @@ from pymongo import MongoClient
 from mohan.Similarity import Similarity
 
 
+def get_units_affiations(db, author_db, affiliations):
+    """
+    Method to get the units of an author in a register. ex: faculty, department and group.
+
+    Parameters:
+    ----------
+    db : pymongo.database.Database
+        Database connection to colav database.
+    author_db : dict
+        record from person
+    affiliations : list
+        list of affiliations from the parse_openalex method
+
+    Returns:
+    -------
+    list
+        list of units of an author (entries from using affiliations)
+    """
+    institution_id = None
+    # verifiying univeristy
+    for j, aff in enumerate(affiliations):
+        aff_db = None
+        if "external_ids" in aff.keys():
+            for ext in aff["external_ids"]:
+                aff_db = db["affiliations"].find_one(
+                    {"external_ids.id": ext["id"]}, {"_id": 1, "types": 1})
+                if aff_db:
+                    types = [i["type"] for i in aff_db["types"]]
+                    if "group" in types or "department" in types or "faculty" in types:
+                        aff_db = None
+                        continue
+                    else:
+                        break
+        if aff_db:
+            count = db["person"].count_documents(
+                {"_id": author_db["_id"], "affiliations.id": aff_db["_id"]})
+            if count > 0:
+                institution_id = aff_db["_id"]
+                break
+    units = []
+    for aff in author_db["affiliations"]:
+        if aff["id"] == institution_id:
+            continue
+        count = db["affiliations"].count_documents(
+            {"_id": aff["id"], "relations.id": institution_id})
+        if count > 0:
+            types = [i["type"] for i in aff["types"]]
+            if "department" in types or "faculty" in types:
+                units.append(aff)
+    return units
+
+
 def process_one_update(oa_reg, colav_reg, db, collection, empty_work, verbose=0):
     """
     Method to update a register in the database if it is found in the openalex database.
@@ -88,6 +140,20 @@ def process_one_update(oa_reg, colav_reg, db, collection, empty_work, verbose=0)
     colav_reg["subjects"].append(
         {"source": "openalex", "subjects": subject_list})
 
+    # authors
+    for i, author in enumerate(entry["authors"]):
+        author_db = None
+        for ext in author["external_ids"]:
+            author_db = db["person"].find_one(
+                {"external_ids.id": ext["id"]})
+            if author_db:
+                break
+        if author_db:
+            aff_units = get_units_affiations(
+                db, author_db, author["affiliations"])
+            for aff_unit in aff_units:
+                if aff_unit not in author["affiliations"]:
+                    colav_reg["authors"][i]["affiliations"].append(aff_unit)
     collection.update_one(
         {"_id": colav_reg["_id"]},
         {"$set": {
@@ -99,7 +165,8 @@ def process_one_update(oa_reg, colav_reg, db, collection, empty_work, verbose=0)
             "external_urls": colav_reg["external_urls"],
             "subjects": colav_reg["subjects"],
             "citations_count": colav_reg["citations_count"],
-            "citations_by_year": colav_reg["citations_by_year"]
+            "citations_by_year": colav_reg["citations_by_year"],
+            "authors": colav_reg["authors"]
         }}
     )
 
@@ -186,6 +253,7 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
                         "level": sub_db["level"]
                     }
                     break
+
     # search authors and affiliations in db
     for i, author in enumerate(entry["authors"]):
         author_db = None
@@ -220,6 +288,12 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
                 "full_name": author_db["full_name"],
                 "affiliations": author["affiliations"]
             }
+            aff_units = get_units_affiations(
+                db, author_db, author["affiliations"])
+            for aff_unit in aff_units:
+                if aff_unit not in author["affiliations"]:
+                    author["affiliations"].append(aff_unit)
+
             if "external_ids" in author.keys():
                 del (author["external_ids"])
         else:
@@ -242,6 +316,12 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
                     "full_name": author_db["full_name"],
                     "affiliations": author["affiliations"]
                 }
+                aff_units = get_units_affiations(
+                    db, author_db, author["affiliations"])
+                for aff_unit in aff_units:
+                    if aff_unit not in author["affiliations"]:
+                        author["affiliations"].append(aff_unit)
+
             else:
                 entry["authors"][i] = {
                     "id": "",
@@ -250,6 +330,10 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
                 }
         for j, aff in enumerate(author["affiliations"]):
             aff_db = None
+            if "types" in aff.keys():  # if not types it not group, department or faculty
+                types = [i["type"] for i in aff["types"]]
+                if "group" in types or "department" in types or "faculty" in types:
+                    continue
             if "external_ids" in aff.keys():
                 for ext in aff["external_ids"]:
                     aff_db = db["affiliations"].find_one(

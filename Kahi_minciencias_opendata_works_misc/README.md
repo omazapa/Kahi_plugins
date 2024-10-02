@@ -13,10 +13,10 @@ pip3 install .
 ```
 From the package you can install by running
 ```shell
-pip3 install kahi_minciencias_opendata_works_others
+pip3 install kahi_minciencias_opendata_works_misc
 ```
 # Similarity support
-This plugin only process works_others without doi. Then a elastic search server must be running. The plugin will use the server to find the most similar works_others in the database. To deply it please read https://github.com/colav/Chia/tree/main/elasticsaerch and follow the instructions.
+This plugin only process works_misc without doi. Then a elastic search server must be running. The plugin will use the server to find the most similar works_misc in the database. To deply it please read https://github.com/colav/Chia/tree/main/elasticsaerch and follow the instructions.
 
 Docker and docker-compose are required to deploy the server.
 
@@ -30,7 +30,7 @@ config:
   log_database: kahi
   log_collection: log
 workflow:
-  minciencias_opendata_works_others:
+  minciencias_opendata_works_misc:
     es_password: colav
     database_url: localhost:27017
     database_name: yuku
