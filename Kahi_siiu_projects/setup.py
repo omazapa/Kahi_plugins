@@ -67,11 +67,11 @@ def main():
         include_package_data=True,
 
         # Details
-        url="https://github.com/colav/Kahi_xyz",
+        url="https://github.com/colav/Kahi_plugins",
         #
         license="BSD",
 
-        description="Kahi plugin siiu_projects",
+        description="Kahi plugin to extract UdeA SIIU projects",
 
         long_description=open("README.md").read(),
 
