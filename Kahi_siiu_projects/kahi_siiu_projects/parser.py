@@ -1,4 +1,4 @@
-from kahi_impactu_utils.Utils import lang_poll, check_date_format
+from kahi_impactu_utils.Utils import lang_poll
 from time import time
 
 

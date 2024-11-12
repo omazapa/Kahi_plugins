@@ -1,7 +1,4 @@
 from kahi_siiu_projects.parser import parse_siiu
-from kahi_impactu_utils.Utils import compare_author
-from thefuzz import process, fuzz
-from unidecode import unidecode
 
 
 def get_units_affiations(db, author_db, affiliations):
