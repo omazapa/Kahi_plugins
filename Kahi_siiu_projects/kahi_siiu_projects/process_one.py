@@ -112,15 +112,29 @@ def process_one_insert(siiu_reg, db, collection, empty_project, es_handler, verb
                 for aff_unit in aff_units:
                     if aff_unit not in author["affiliations"]:
                         author["affiliations"].append(aff_unit)
+
         del author["external_ids"]
 
+        if author['full_name'] == '':
+            del entry["authors"][i]
     entry["author_count"] = len(entry["authors"])
 
     for author in entry["authors"]:
         for aff in author["affiliations"]:
-            for t in aff["types"]:
-                if t["type"] == "group":
-                    if aff not in entry["groups"]:
-                        entry["groups"].append(aff)
+            # if "types" not in aff:
+            #     print(author)
+            #     import sys
+            #     sys.exit(1)
+            if "types" in aff:
+                for t in aff["types"]:
+                    if t["type"] == "group":
+                        if aff not in entry["groups"]:
+                            entry["groups"].append(aff)
     # insert in mongo
     collection.insert_one(entry)
+
+
+def process_one(siiu_reg, db, collection, empty_project, es_handler, verbose=0):
+    # just inserting at the moment
+    process_one_insert(siiu_reg, db, collection,
+                       empty_project, es_handler, verbose)

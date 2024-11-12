@@ -23,56 +23,56 @@ def parse_siiu(reg, empty_project, verbose=0):
         {"title": reg["NOMBRE_COMPLETO"], "lang": lang, "source": "siiu"})
     entry["external_ids"].append(
         {"provenance": "siiu", "source": "codigo", "id": reg["CODIGO"]})
+    if "project_participant" in reg:
+        for author in reg["project_participant"]:
+            # solo investigador principar de momento
+            if author["project_participant_role"][0]["IDENTIFICADOR"] == 307:
 
-    for author in reg["project_participant"]:
-        # solo investigador principar de momento
-        if author["project_participant_role"][0]["IDENTIFICADOR"] == 307:
-            break
+                affiliations = []
+                if "group" in author:
+                    for group in author["group"]:
+                        grec = {
+                            "external_ids": [{"provenance": "siiu", "source": "scienti", "id": group["CODIGO_COLCIENCIAS"]}],
+                            "name": group["NOMBRE_COMPLETO"]
+                        }
 
-    affiliations = []
-    for group in author["group"]:
-        grec = {
-            "external_ids": [{"provenance": "siiu", "source": "scienti", "id": group["CODIGO_COLCIENCIAS"]}],
-            "name": group["NOMBRE_COMPLETO"]
-        }
+                        affiliations.append(grec)
+                        # hay que hacer un siiu affiliations y crozar los grupos apra ver si obtenemos mas NRO_ID_GRUPO
+                        # affiliations.append(
+                        #     {
+                        #         "external_ids": [{"provenance": "siiu", "source": "scienti", "id": group["NRO_ID_GRUPO"]}],
+                        #         "name": group["NOMBRE_COMPLETO"]
+                        #     }
+                        # )
+                affiliations.append({
+                    "external_ids": [{"provenance": "siiu", "source": "nit", "id": author["INSTITUCION"]}]
+                })
+                # type
+                if "project_subtype" in reg:
 
-        affiliations.append(grec)
-        # hay que hacer un siiu affiliations y crozar los grupos apra ver si obtenemos mas NRO_ID_GRUPO
-        # affiliations.append(
-        #     {
-        #         "external_ids": [{"provenance": "siiu", "source": "scienti", "id": group["NRO_ID_GRUPO"]}],
-        #         "name": group["NOMBRE_COMPLETO"]
-        #     }
-        # )
-    affiliations.append({
-        "external_ids": [{"provenance": "siiu", "source": "nit", "id": author["INSTITUCION"]}]
-    })
-    # type
-    if "project_subtype" in reg:
+                    entry["types"].append(
+                        {
+                            "provenance": 'siiu',
+                            "source": 'siiu',
+                            "type": reg["project_subtype"][0]["project_type"][0]["NOMBRE"],
+                            "level": 0,
+                            "code": str(reg["project_subtype"][0]["project_type"][0]["IDENTIFICADOR"])
+                        }
+                    )
+                    entry["types"].append(
+                        {
+                            "provenance": 'siiu',
+                            "source": 'siiu',
+                            "type": reg["project_subtype"][0]["NOMBRE"],
+                            "level": 1,
+                            "code": str(reg["project_subtype"][0]["project_type"][0]["IDENTIFICADOR"]) + str(reg["project_subtype"][0]["IDENTIFICADOR"])
+                        }
+                    )
 
-        entry["types"].append(
-            {
-                "provenance": 'siiu',
-                "source": 'siiu',
-                "type": reg["project_subtype"][0]["project_type"][0]["NOMBRE"],
-                "level": 0,
-                "code": str(reg["project_subtype"][0]["project_type"][0]["IDENTIFICADOR"])
-            }
-        )
-        entry["types"].append(
-            {
-                "provenance": 'siiu',
-                "source": 'siiu',
-                "type": reg["project_subtype"][0]["NOMBRE"],
-                "level": 1,
-                "code": str(reg["project_subtype"][0]["project_type"][0]["IDENTIFICADOR"]) + str(reg["project_subtype"][0]["IDENTIFICADOR"])
-            }
-        )
-
-    author_entry = {
-        "full_name": "",
-        "affiliations": affiliations,
-        "external_ids": [{"provenance": 'siiu', "source": 'Cédula de Ciudadanía', "id": author["PERSONA_NATURAL"]}]
-    }
-    entry["authors"] = [author_entry]
+                author_entry = {
+                    "full_name": "",
+                    "affiliations": affiliations,
+                    "external_ids": [{"provenance": 'siiu', "source": 'Cédula de Ciudadanía', "id": author["PERSONA_NATURAL"]}]
+                }
+                entry["authors"].append(author_entry)
     return entry
