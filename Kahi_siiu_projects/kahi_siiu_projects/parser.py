@@ -44,7 +44,30 @@ def parse_siiu(reg, empty_project, verbose=0):
         #         "name": group["NOMBRE_COMPLETO"]
         #     }
         # )
-        entry["groups"].append(grec)
+    affiliations.append({
+        "external_ids": [{"provenance": "siiu", "source": "nit", "id": author["INSTITUCION"]}]
+    })
+    # type
+    if "project_subtype" in reg:
+
+        entry["types"].append(
+            {
+                "provenance": 'siiu',
+                "source": 'siiu',
+                "type": reg["project_subtype"][0]["project_type"][0]["NOMBRE"],
+                "level": 0,
+                "code": str(reg["project_subtype"][0]["project_type"][0]["IDENTIFICADOR"])
+            }
+        )
+        entry["types"].append(
+            {
+                "provenance": 'siiu',
+                "source": 'siiu',
+                "type": reg["project_subtype"][0]["NOMBRE"],
+                "level": 1,
+                "code": str(reg["project_subtype"][0]["project_type"][0]["IDENTIFICADOR"]) + str(reg["project_subtype"][0]["IDENTIFICADOR"])
+            }
+        )
 
     author_entry = {
         "full_name": "",
