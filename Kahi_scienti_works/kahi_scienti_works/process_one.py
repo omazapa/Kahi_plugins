@@ -146,7 +146,7 @@ def process_author(entry, colav_reg, db, verbose=0):
                     author_reg["last_names"] = author_reg_fix["last_names"]
                     author_reg["initials"] = author_reg_fix["initials"]
 
-                name_match = compare_author(author_reg, author_db)
+                name_match = compare_author(author_reg, author_db,len(colav_reg['authors']))
 
                 doi1 = get_doi(entry)
                 doi2 = get_doi(colav_reg)
@@ -317,7 +317,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
                                 {'_id': author_rec['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1})
 
                             # author_reg is only needed here
-                            name_match = compare_author(author_reg, author_db)
+                            name_match = compare_author(author_reg, author_db, len(scienti_reg["author_others"]))
                             if name_match:
                                 found = True
                                 author_rec["id"] = author_db["_id"]
