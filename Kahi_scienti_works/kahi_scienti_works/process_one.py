@@ -277,11 +277,9 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
         if rec not in colav_reg["titles"]:
             colav_reg["titles"].append(rec)
     # external_ids
-    ext_ids = [ext["id"] for ext in colav_reg["external_ids"]]
     for ext in entry["external_ids"]:
-        if ext["id"] not in ext_ids:
+        if ext not in colav_reg["external_ids"]:
             colav_reg["external_ids"].append(ext)
-            ext_ids.append(ext["id"])
     # types
     for rec in entry["types"]:
         if rec not in colav_reg["types"]:
