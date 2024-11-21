@@ -275,6 +275,7 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
             }
             entry["ranking"].append(entry_rank)
             # END CLASSIFICATION SECTION
+            entry["_id"] = idgr
             self.collection.insert_one(entry)
             if verbose > 4:
                 print("Inserted group {}".format(idgr))
