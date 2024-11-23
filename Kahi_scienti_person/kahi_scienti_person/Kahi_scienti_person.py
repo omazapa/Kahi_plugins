@@ -514,16 +514,16 @@ class Kahi_scienti_person(KahiBase):
         db = client[config["database_name"]]
         scienti = db[config["collection_name"]]
         author_others = scienti.find(
-            {"author_others": {
+            {"re_author_others.author_others": {
                 "$exists": True},
-                "author_others.COD_RH_REF": {"$ne": None}}, {
+                "re_author_others.author_others.COD_RH_REF": {"$ne": None}}, {
                     "author_others": 1,
                     "COD_RH": 1,
                     "COD_PRODUCTO": 1,
                     "TXT_DOI": 1,
                     "TXT_WEB_PRODUCTO": 1})
         for author_others_reg in author_others:
-            for author in author_others_reg["author_others"]:
+            for author in author_others_reg["re_author_others"]["author_others"]:
                 author_db = None
                 if "COD_RH_REF" in author.keys():
                     if author["COD_RH_REF"]:
