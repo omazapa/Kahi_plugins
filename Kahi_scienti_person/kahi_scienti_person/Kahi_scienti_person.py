@@ -552,7 +552,8 @@ class Kahi_scienti_person(KahiBase):
                         if author["AUTOR_ID_SCP"]:
                             scopus_id = None
                             if "scopus" in author["AUTOR_ID_SCP"]:
-                                scopus_id = get_id_from_url(author["AUTOR_ID_SCP"])
+                                scopus_id = get_id_from_url(
+                                    author["AUTOR_ID_SCP"])
                             else:
                                 scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + \
                                     author["AUTOR_ID_SCP"]
@@ -584,20 +585,20 @@ class Kahi_scienti_person(KahiBase):
                         if author["NRO_DOC_IDENTIFICACION"]:
                             if author["TPO_DOC_IDENTIFICACION"] == "P":
                                 rec = {"provenance": "scienti",
-                                    "source": "Passport",
-                                    "id": author["NRO_DOC_IDENTIFICACION"]}
+                                       "source": "Passport",
+                                       "id": author["NRO_DOC_IDENTIFICACION"]}
                                 if rec not in entry["external_ids"]:
                                     entry["external_ids"].append(rec)
                             if author["TPO_DOC_IDENTIFICACION"] == "C":
                                 rec = {"provenance": "scienti",
-                                    "source": "Cédula de Ciudadanía",
-                                    "id": author["NRO_DOC_IDENTIFICACION"]}
+                                       "source": "Cédula de Ciudadanía",
+                                       "id": author["NRO_DOC_IDENTIFICACION"]}
                                 if rec not in entry["external_ids"]:
                                     entry["external_ids"].append(rec)
                             if author["TPO_DOC_IDENTIFICACION"] == "E":
                                 rec = {"provenance": "scienti",
-                                    "source": "Cédula de Extranjería",
-                                    "id": author["NRO_DOC_IDENTIFICACION"]}
+                                       "source": "Cédula de Extranjería",
+                                       "id": author["NRO_DOC_IDENTIFICACION"]}
                                 if rec not in entry["external_ids"]:
                                     entry["external_ids"].append(rec)
                     if "COD_ORCID" in author.keys():
@@ -617,20 +618,21 @@ class Kahi_scienti_person(KahiBase):
                                     entry["external_ids"].append(rec)
                     if "COD_RH_REF" in author.keys():
                         rec = {"provenance": "scienti",
-                            "source": "scienti", "id": {"COD_RH": author["COD_RH_REF"]}}
+                               "source": "scienti", "id": {"COD_RH": author["COD_RH_REF"]}}
                         if rec not in entry["external_ids"]:
                             entry["external_ids"].append(rec)
                     if "AUTOR_ID_SCP" in author.keys():
                         if author["AUTOR_ID_SCP"]:
                             scopus_id = None
                             if "scopus" in author["AUTOR_ID_SCP"]:
-                                scopus_id = get_id_from_url(author["AUTOR_ID_SCP"])
+                                scopus_id = get_id_from_url(
+                                    author["AUTOR_ID_SCP"])
                             else:
                                 scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + \
                                     author["AUTOR_ID_SCP"]
                             if scopus_id:
                                 rec = {"provenance": "scienti",
-                                    "source": "scopus", "id": scopus_id}
+                                       "source": "scopus", "id": scopus_id}
                                 if rec not in entry["external_ids"]:
                                     entry["external_ids"].append(rec)
                     # Related works
@@ -645,7 +647,8 @@ class Kahi_scienti_person(KahiBase):
                             if rec not in entry["related_works"]:
                                 entry["related_works"].append(rec)
                     if "TXT_WEB_PRODUCTO" in author_others_reg.keys() and author_others_reg["TXT_WEB_PRODUCTO"] and "10." in author_others_reg["TXT_WEB_PRODUCTO"]:
-                        doi = doi_processor(author_others_reg["TXT_WEB_PRODUCTO"])
+                        doi = doi_processor(
+                            author_others_reg["TXT_WEB_PRODUCTO"])
                         if doi:
                             extracted_doi = re.compile(
                                 r'10\.\d{4,9}/[-._;()/:A-Z0-9]+', re.IGNORECASE).match(doi)
@@ -666,7 +669,7 @@ class Kahi_scienti_person(KahiBase):
                     cod_producto = author_others_reg.get("COD_PRODUCTO", "")
                     if cod_rh and cod_producto:
                         scienti_rec = {"COD_RH": cod_rh,
-                                    "COD_PRODUCTO": cod_producto}
+                                       "COD_PRODUCTO": cod_producto}
                     if scienti_rec:
                         rec = {
                             "provenance": "scienti",
