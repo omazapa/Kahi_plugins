@@ -297,8 +297,13 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
     process_author(entry, colav_reg, db, verbose)
 
     # the first author is the original one always (already inserted)
-    if "author_others" in scienti_reg.keys():
-        for i, author in enumerate(scienti_reg["author_others"][1:]):
+    # there is a pair (author_others, author) see schema (but it is a list)
+    if "re_author_others" in scienti_reg.keys():
+        for i, author in enumerate(scienti_reg["re_author_others"][1:]):
+            if "author_others" not in author.keys():
+                continue
+            # for every record in re_author_others there is a record for author_others/author see schema
+            author = author["author_others"][0]
             if author["COD_RH_REF"]:
                 author_db = db["person"].find_one(
                     {"external_ids.id.COD_RH": author["COD_RH_REF"]}, {"_id": 1, "full_name": 1, "affiliations": 1, "first_names": 1, "last_names": 1, "initials": 1, "external_ids": 1})
@@ -317,7 +322,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
 
                             # author_reg is only needed here
                             name_match = compare_author(
-                                author_reg, author_db, len(scienti_reg["author_others"]))
+                                author_reg, author_db, len(scienti_reg["re_author_others"]))
                             if name_match:
                                 found = True
                                 author_rec["id"] = author_db["_id"]
