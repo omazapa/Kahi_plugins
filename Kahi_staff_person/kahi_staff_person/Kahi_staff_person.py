@@ -70,17 +70,17 @@ class Kahi_staff_person(KahiBase):
                     entry["affiliations"].append(udea_aff)
                 if reg["tipo_documento"].strip() == "cédula de ciudadanía":
                     id_entry = {"provenance": "staff",
-                                "source": "cédula de ciudadanía", "id": idx}
+                                "source": "Cédula de Ciudadanía", "id": idx}
                     if id_entry not in entry["external_ids"]:
                         entry["external_ids"].append(id_entry)
                 elif reg["tipo_documento"].strip() == "cédula de extranjería":
                     id_entry = {"provenance": "staff",
-                                "source": "cédula de extranjería", "id": idx}
+                                "source": "Cédula de Extranjería", "id": idx}
                     if id_entry not in entry["external_ids"]:
                         entry["external_ids"].append(id_entry)
                 elif reg["tipo_documento"].strip() == "pasaporte":
                     id_entry = {"provenance": "staff",
-                                "source": "pasaporte", "id": idx}
+                                "source": "Pasaporte", "id": idx}
                     if id_entry not in entry["external_ids"]:
                         entry["external_ids"].append(id_entry)
                 else:
