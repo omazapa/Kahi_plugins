@@ -1,6 +1,5 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
-from bson.objectid import ObjectId
 from pandas import read_excel
 from time import time
 from kahi_impactu_utils.String import title_case
@@ -32,6 +31,40 @@ class Kahi_staff_affiliations(KahiBase):
 
         self.verbose = config["verbose"] if "verbose" in config else 0
 
+    def _id_creator(self, reg, aff, unit):
+        """
+        Create a unique identifier (_id) based on affiliation and academic unit codes.
+
+        Parameters
+        ----------
+        reg : dict
+            A record containing academic unit and subunit codes.
+            Expected keys: "código_unidad_académica", "código_subunidad_académica".
+        aff : dict
+            An affiliation record containing external IDs.
+            Expected key: "external_ids" (a list of dictionaries with "id" and "source").
+        unit : str
+            Determines the type of identifier to generate.
+            Must be either "código_unidad_académica" or "código_subunidad_académica".
+
+        Returns
+        -------
+        str
+            A unique identifier (_id) in the format:
+            - For unidad="código_unidad_académica": "RORID_CODIGO_UNIDAD"
+            - For other values: "RORID_CODIGO_UNIDAD_CODIGO_SUBUNIDAD"
+        """
+        # Extract ROR ID from external IDs or default to an empty string if not found
+        ror_id = next((exid["id"] for exid in aff.get("external_ids", []) if exid.get("source") == "ror"), "")
+
+        # Generate the identifier based on the provided unit code
+        if unit == "código_unidad_académica":
+            _id = f"{ror_id.split('/')[-1]}_{reg['código_unidad_académica']}"
+        if unit == "código_subunidad_académica":
+            _id = f"{ror_id.split('/')[-1]}_{reg['código_unidad_académica']}_{reg['código_subunidad_académica']}"
+
+        return _id
+
     def staff_affiliation(self, data, institution_name, staff_reg):
         # inserting faculties and departments
         for idx, reg in data.iterrows():
@@ -47,6 +80,7 @@ class Kahi_staff_affiliations(KahiBase):
                     # may be updatable, check accordingly
                 else:
                     entry = self.empty_affiliation()
+                    entry["_id"] = self._id_creator(reg, staff_reg, "código_unidad_académica")
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
@@ -61,9 +95,9 @@ class Kahi_staff_affiliations(KahiBase):
 
                     fac = self.collection.insert_one(entry)
                     self.facs_inserted[name] = fac.inserted_id
+
             if reg["subunidad_académica"] != "":
                 name_dep = title_case(reg["subunidad_académica"])
-
                 if name_dep not in self.deps_inserted.keys():
                     is_in_db = self.collection.find_one(
                         {"names.name": name_dep, "relations.id": staff_reg["_id"]})
@@ -75,6 +109,7 @@ class Kahi_staff_affiliations(KahiBase):
                         # may be updatable, check accordingly
                     else:
                         entry = self.empty_affiliation()
+                        entry["_id"] = self._id_creator(reg, staff_reg, "código_subunidad_académica")
                         entry["updated"].append(
                             {"time": int(time()), "source": "staff"})
                         entry["names"].append(
@@ -97,8 +132,8 @@ class Kahi_staff_affiliations(KahiBase):
         for fac, dep in self.fac_dep:
             fac_id = self.facs_inserted[fac]
             dep_id = self.deps_inserted[dep]
-            dep_reg = self.collection.find_one({"_id": ObjectId(dep_id)})
-            fac_reg = self.collection.find_one({"_id": ObjectId(fac_id)})
+            dep_reg = self.collection.find_one({"_id": dep_id})
+            fac_reg = self.collection.find_one({"_id": fac_id})
             self.collection.update_one({"_id": fac_reg["_id"]},
                                        {"$push": {
                                            "relations": {
