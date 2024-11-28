@@ -129,7 +129,7 @@ class Kahi_unicity_person(KahiBase):
         other_docs = []
         for doc in authors_docs:
             if doc['_id'] != target_id:
-                if not compare_author(target_doc, doc):
+                if not compare_author(target_doc, doc, len(authors_docs)):
                     continue
                 # updated
                 target_update_sources = {profile["source"]
@@ -271,6 +271,9 @@ class Kahi_unicity_person(KahiBase):
         """
         # Fetch author documents from the database
         author_ids = reg["authors"]
+        # Store the number of authors
+        n_authors = len(author_ids)
+        # Fetch the author documents from the database
         author_docs = self.collection.find({"_id": {"$in": author_ids}}, {
             "first_names": 1, "last_names": 1, "full_name": 1, "updated": 1, "external_ids": 1, "initials": 1})
 
@@ -296,7 +299,7 @@ class Kahi_unicity_person(KahiBase):
                 if author["_id"] == other_author["_id"]:
                     continue
                 # Perform the author comparison
-                if compare_author(author, other_author):
+                if compare_author(author, other_author, n_authors):
                     if not found:
                         found.append(set([author["_id"], other_author["_id"]]))
                     else:
