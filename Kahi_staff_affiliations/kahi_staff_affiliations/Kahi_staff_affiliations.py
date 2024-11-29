@@ -98,12 +98,13 @@ class Kahi_staff_affiliations(KahiBase):
 
             if reg["subunidad_académica"] != "":
                 name_dep = title_case(reg["subunidad_académica"])
-                if name_dep not in self.deps_inserted.keys():
+                name_dep_id = str(reg["código_unidad_académica"]) + "_" + title_case(reg["subunidad_académica"])
+                if name_dep_id not in self.deps_inserted.keys():
                     is_in_db = self.collection.find_one(
-                        {"names.name": name_dep, "relations.id": staff_reg["_id"]})
+                        {"names.name": name_dep, "external_ids.id": reg["código_subunidad_académica"], "relations.id": staff_reg["_id"]})
                     if is_in_db:
-                        if name_dep not in self.deps_inserted.keys():
-                            self.deps_inserted[name_dep] = is_in_db["_id"]
+                        if name_dep_id not in self.deps_inserted.keys():
+                            self.deps_inserted[name_dep_id] = is_in_db["_id"]
                             print(name_dep, " already in db")
                         # continue
                         # may be updatable, check accordingly
@@ -123,10 +124,10 @@ class Kahi_staff_affiliations(KahiBase):
                                 {"source": "staff", "id": str(reg["código_subunidad_académica"])})
 
                         dep = self.collection.insert_one(entry)
-                        self.deps_inserted[name_dep] = dep.inserted_id
+                        self.deps_inserted[name_dep_id] = dep.inserted_id
 
-                if (name, name_dep) not in self.fac_dep:
-                    self.fac_dep.append((name, name_dep))
+                if (name, name_dep_id) not in self.fac_dep:
+                    self.fac_dep.append((name, name_dep_id))
 
         # Creating relations between faculties and departments
         for fac, dep in self.fac_dep:
@@ -134,16 +135,23 @@ class Kahi_staff_affiliations(KahiBase):
             dep_id = self.deps_inserted[dep]
             dep_reg = self.collection.find_one({"_id": dep_id})
             fac_reg = self.collection.find_one({"_id": fac_id})
-            self.collection.update_one({"_id": fac_reg["_id"]},
-                                       {"$push": {
-                                           "relations": {
-                                               "id": dep_reg["_id"],
-                                               "name": title_case(dep_reg["names"][0]["name"]), "types": dep_reg["types"]}}})
-            self.collection.update_one({"_id": dep_reg["_id"]},
-                                       {"$push": {
-                                           "relations": {
-                                               "id": fac_reg["_id"],
-                                               "name": title_case(fac_reg["names"][0]["name"]), "types": fac_reg["types"]}}})
+            if dep_reg["_id"] == fac_reg["_id"]:
+                # Skip if faculty and department are the same
+                continue
+            self.collection.update_one(
+                {"_id": fac_reg["_id"]},
+                {"$addToSet": {
+                    "relations": {
+                        "id": dep_reg["_id"],
+                        "name": title_case(dep_reg["names"][0]["name"]),
+                        "types": dep_reg["types"]}}})
+            self.collection.update_one(
+                {"_id": dep_reg["_id"]},
+                {"$addToSet": {
+                    "relations": {
+                        "id": fac_reg["_id"],
+                        "name": title_case(fac_reg["names"][0]["name"]),
+                        "types": fac_reg["types"]}}})
         return 0
 
     def run(self):
@@ -151,12 +159,7 @@ class Kahi_staff_affiliations(KahiBase):
             start_time = time()
 
         for config in self.config["staff_affiliations"]["databases"]:
-            if self.verbose > 0:
-                print("Processing {} database".format(
-                    config["institution_id"]))
-
             institution_id = config["institution_id"]
-
             staff_reg = self.collection.find_one(
                 {"external_ids.id": institution_id})
             if not staff_reg:
@@ -167,13 +170,19 @@ class Kahi_staff_affiliations(KahiBase):
                 institution_name = ""
                 for name in staff_reg["names"]:
                     if name["lang"] == "en":
-                        institution_name = name
+                        institution_name = name["name"]
                 if institution_name == "":  # if en not available take any
                     institution_name = staff_reg["names"][0]["name"]
+
+            if self.verbose > 1:
+                print("Processing staff affiliations for institution: ", institution_name)
 
             file_path = config["file_path"]
             dtype_mapping = {col: str for col in self.required_columns}
             data = read_excel(file_path, dtype=dtype_mapping).fillna("")
+            if self.verbose > 4:
+                # Print shape of the data
+                print("Data shape: ", data.shape)
 
             # Check if the columns are in the file
             for aff in self.required_columns:
@@ -181,7 +190,6 @@ class Kahi_staff_affiliations(KahiBase):
                     print(
                         f"Column {aff} not found in file {file_path}, and it is required.")
                     raise ValueError(f"Column {aff} not found in file")
-
             self.staff_affiliation(data, institution_name, staff_reg)
 
         if self.verbose > 4:
