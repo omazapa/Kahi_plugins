@@ -153,10 +153,6 @@ class Kahi_staff_person(KahiBase):
             start_time = time()
 
         for config in self.config["staff_person"]["databases"]:
-            if self.verbose > 0:
-                print("Processing {} database".format(
-                    config["institution_id"]))
-
             institution_id = config["institution_id"]
 
             self.staff_reg = self.db["affiliations"].find_one(
@@ -179,6 +175,10 @@ class Kahi_staff_person(KahiBase):
 
             self.cedula_dep = {}
             self.cedula_fac = {}
+
+            if self.verbose > 1:
+                print("Processing staff authors for institution: ", self.staff_reg["names"][0]["name"])
+
             for idx, reg in self.data.iterrows():
                 self.cedula_fac[reg["identificación"]] = title_case(reg["unidad_académica"])
                 self.cedula_dep[reg["identificación"]] = title_case(reg["subunidad_académica"])
