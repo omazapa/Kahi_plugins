@@ -115,7 +115,7 @@ class Kahi_ciarp_works(KahiBase):
             for col in self.required_columns:
                 if col not in self.ciarp.columns:
                     print(
-                        f"Column {col} not found in file {database["file_path"]}, and it is required.")
+                        f"Column {col} not found in file {database['file_path']}, and it is required.")
                     return
             # Add index for unique identification
             self.ciarp["index"] = [
