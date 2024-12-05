@@ -1,6 +1,6 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
-from pandas import read_excel, isna
+from pandas import read_excel, isna, to_datetime
 from time import time
 from kahi_impactu_utils.String import title_case
 from datetime import datetime as dt
@@ -168,6 +168,14 @@ class Kahi_staff_person(KahiBase):
             dtype_mapping = {col: str for col in self.required_columns}
             self.data = read_excel(file_path, dtype=dtype_mapping).fillna("")
 
+            # check if all required columns are present
+            for aff in self.required_columns:
+                if aff not in self.data.columns:
+                    print(
+                        f"Column {aff} not found in file {file_path}, and it is required.")
+                    raise ValueError(
+                        f"Column {aff} not found in file {file_path}")
+
             # logs for higher verbosity
             self.facs_inserted = {}
             self.deps_inserted = {}
@@ -183,16 +191,13 @@ class Kahi_staff_person(KahiBase):
                 self.cedula_fac[reg["identificación"]] = title_case(reg["unidad_académica"])
                 self.cedula_dep[reg["identificación"]] = title_case(reg["subunidad_académica"])
 
+            # convert dates to the correct format
+            for col in ["fecha_nacimiento", "fecha_inicial_vinculación", "fecha_final_vinculación"]:
+                self.data[col] = to_datetime(self.data[col], errors='coerce').dt.strftime('%d/%m/%Y').fillna("")
+
             self.facs_inserted = {}
             self.deps_inserted = {}
             self.fac_dep = []
-
-            for aff in self.required_columns:
-                if aff not in self.data.columns:
-                    print(
-                        f"Column {aff} not found in file {file_path}, and it is required.")
-                    raise ValueError(
-                        f"Column {aff} not found in file {file_path}")
 
             self.process_staff()
 
