@@ -5,7 +5,7 @@ This plugin have to be added in the post execution of the workflow after works a
 
 # Description
 This go through person and compares the person affiliation with the works affilation for that person,
-and if the works doesn´t have any affiliation reported in person, then it is remove for that person.
+and if the works doesn´t have any affiliation reported in person, then it is remove for that person. (Removing the id of the person in the work)
 
 # Installation
 
