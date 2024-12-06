@@ -5,6 +5,7 @@ from joblib import Parallel, delayed
 from pandas import read_excel, isna
 from kahi_ciarp_works.process_one import process_one
 from kahi_impactu_utils.Utils import doi_processor
+from kahi_impactu_utils.Mapping import ciarp_mapping
 from mohan.Similarity import Similarity
 
 
@@ -105,46 +106,57 @@ class Kahi_ciarp_works(KahiBase):
                 print(
                     f"WARNING: Affiliation {database['institution_id']} not found")
                 continue
+
             # Load Excel file into DataFrame
             dtype_mapping = {col: str for col in self.required_columns}
             self.ciarp = read_excel(
                 database["file_path"],
                 dtype=dtype_mapping
             ).fillna("")
+
             # Validate required columns
             for col in self.required_columns:
                 if col not in self.ciarp.columns:
                     print(
                         f"Column {col} not found in file {database['file_path']}, and it is required.")
                     return
+
+            # Get allowed categories for the current entity
+            allowed_categories = ciarp_mapping(database['institution_id'], "works")
+
+            # Filter DataFrame by `ranking` field
+            self.filtered_ciarp = self.ciarp[self.ciarp["ranking"].isin(allowed_categories)].copy()
+            if self.verbose > 0:
+                print("Filtering by {} categories of works".format(len(allowed_categories)))
+
             # Add index for unique identification
-            self.ciarp["index"] = [
-                f"{i}-{rec}-{int(time())}" for i, rec in enumerate(self.ciarp["identificación"])
+            self.filtered_ciarp["index"] = [
+                f"{i}-{rec}-{int(time())}" for i, rec in enumerate(self.filtered_ciarp["identificación"])
             ]
             index = []
-            for i, rec in enumerate(self.ciarp["identificación"]):
+            for i, rec in enumerate(self.filtered_ciarp["identificación"]):
                 # row index - cedula - timestamp
                 index.append(f"{str(i)}-{rec}-{int(time())}")
-            self.ciarp['index'] = index
-            self.ciarp = self.ciarp.to_dict(orient="records")
+            self.filtered_ciarp['index'] = index
+            self.filtered_ciarp = self.filtered_ciarp.to_dict(orient="records")
 
             # selects papers with doi according to task variable
             if self.task == "doi":
                 papers = []
-                for par in self.ciarp:
+                for par in self.filtered_ciarp:
                     if not isna(par["doi"]):
                         if doi_processor(par["doi"]):
                             papers.append(par)
-                self.ciarp = papers
+                self.filtered_ciarp = papers
             else:
                 # TODO: implement similarity task and a default task that runs all
                 papers = []
-                for par in self.ciarp:
+                for par in self.filtered_ciarp:
                     if isna(par["doi"]):
                         papers.append(par)
                     elif not doi_processor(par["doi"]):
                         papers.append(par)
-                self.ciarp = papers
+                self.filtered_ciarp = papers
 
             with MongoClient(self.mongodb_url) as client:
                 db = client[self.config["database_name"]]
@@ -163,7 +175,7 @@ class Kahi_ciarp_works(KahiBase):
                         True if self.task != "doi" else False,
                         self.es_handler,
                         verbose=self.verbose
-                    ) for paper in self.ciarp
+                    ) for paper in self.filtered_ciarp
                 )
 
     def run(self):
