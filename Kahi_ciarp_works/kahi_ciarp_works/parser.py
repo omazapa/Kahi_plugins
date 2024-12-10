@@ -94,7 +94,7 @@ def parse_ciarp(reg, affiliation, empty_work):
     }
     if reg["código_unidad_académica"]:
         unit = {
-            "external_ids": [{"provenance": "ciarp", "source": "ciarp", "id": reg["código_unidad_académica"]}],
+            "external_ids": [{"provenance": "ciarp", "source": "ciarp", "id": f'{affiliation["_id"]}_{reg["código_unidad_académica"]}'}],
             "name": "",
             "types": "faculty"
         }
@@ -102,7 +102,7 @@ def parse_ciarp(reg, affiliation, empty_work):
             author["affiliations"].append(unit)
     if reg["código_subunidad_académica"]:
         subunit = {
-            "external_ids": [{"provenance": "ciarp", "source": "ciarp", "id": reg["código_subunidad_académica"]}],
+            "external_ids": [{"provenance": "ciarp", "source": "ciarp", "id": f'{affiliation["_id"]}_{reg["código_unidad_académica"]}_{reg["código_subunidad_académica"]}'}],
             "name": "",
             "types": "department"
         }

@@ -55,7 +55,7 @@ def process_one_update(ciarp_reg, colav_reg, db, collection, affiliation, empty_
         if "external_ids" in aff.keys():
             for ext in aff["external_ids"]:
                 aff_db = db["affiliations"].find_one(
-                    {"external_ids.id": ext["id"]})
+                    {"_id": ext["id"]})
                 if aff_db:
                     break
             aff.pop("external_ids", None)
