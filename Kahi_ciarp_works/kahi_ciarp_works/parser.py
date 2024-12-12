@@ -51,7 +51,8 @@ def parse_ciarp(reg, affiliation, empty_work):
                                    "external_ids": [{"provenance": "ciarp", "source": "issn", "id": issn}]}
     if reg["isbn"]:
         if not isna(reg["isbn"]):
-            isbn = {"provenance": "ciarp", "source": "isbn", "id": reg["isbn"].strip()}
+            isbn = {"provenance": "ciarp",
+                    "source": "isbn", "id": reg["isbn"].strip()}
             if isbn not in entry["external_ids"]:
                 entry["external_ids"].append(isbn)
     if not entry["source"]:
@@ -89,14 +90,13 @@ def parse_ciarp(reg, affiliation, empty_work):
         "id": "",
         "external_ids": [{"provenance": "ciarp", "source": "Cédula de Ciudadanía", "id": reg["identificación"]}],
         "full_name": "",
-        "types": [],
         "affiliations": [aff]
     }
     if reg["código_unidad_académica"]:
         unit = {
             "external_ids": [{"provenance": "ciarp", "source": "ciarp", "id": f'{affiliation["_id"]}_{reg["código_unidad_académica"]}'}],
             "name": "",
-            "types": "faculty"
+            "types": [{"type": "faculty"}]
         }
         if unit not in author["affiliations"]:
             author["affiliations"].append(unit)
@@ -104,7 +104,7 @@ def parse_ciarp(reg, affiliation, empty_work):
         subunit = {
             "external_ids": [{"provenance": "ciarp", "source": "ciarp", "id": f'{affiliation["_id"]}_{reg["código_unidad_académica"]}_{reg["código_subunidad_académica"]}'}],
             "name": "",
-            "types": "department"
+            "types": [{"type": "department"}]
         }
         if subunit not in author["affiliations"]:
             author["affiliations"].append(subunit)
