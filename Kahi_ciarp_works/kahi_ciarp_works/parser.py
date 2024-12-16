@@ -74,6 +74,7 @@ def parse_ciarp(reg, affiliation, empty_work):
             {"provenance": "ciarp", "source": "ciarp", "date": "", "rank": reg["ranking"]})
 
     aff = {
+        "id": affiliation["_id"],
         "external_ids": [{"provenance": "ciarp", "source": "ciarp", "id": affiliation["_id"]}],
         "name": affiliation["names"][0]["name"],
         "types": affiliation["types"]

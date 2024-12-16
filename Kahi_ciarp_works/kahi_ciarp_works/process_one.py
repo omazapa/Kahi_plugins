@@ -168,13 +168,18 @@ def process_author(entry, colav_reg, db, verbose=0):
                         reg.pop('end_date')
                     # adding the group, faculty and department for the author
                     groups = []
+                    affs_ids = [aff_id["id"] for aff_id in author_db["affiliations"]]
                     for aff in ciarp_author["affiliations"]:
                         if aff["types"]:
                             for t in aff["types"]:
+                                if t["type"] == "Education" and aff["id"] not in affs_ids:
+                                    if aff not in author["affiliations"]:
+                                        author["affiliations"].append(aff)
                                 if t["type"] == "group":
                                     groups.append(aff)
                                 elif t["type"] == "faculty" or t["type"] == "department":
-                                    author["affiliations"].append(aff)
+                                    if aff["name"] != "":
+                                        author["affiliations"].append(aff)
                     for group in groups:
                         if group not in author["affiliations"]:
                             author["affiliations"].append(group)
@@ -266,10 +271,10 @@ def process_one_update(ciarp_reg, colav_reg, db, collection, affiliation, empty_
     # Check if author is already in the register
     colav_reg_author_ids = [auth["id"] for auth in colav_reg["authors"]]
     for author in entry["authors"]:
+        if author["id"] and author["id"] not in colav_reg_author_ids:
+            colav_reg["authors"].append(author)
         for key in ["external_ids", "types"]:
             author.pop(key, None)
-        if author["id"] not in colav_reg_author_ids:
-            colav_reg["authors"].append(author)
 
     collection.update_one(
         {"_id": colav_reg["_id"]},
