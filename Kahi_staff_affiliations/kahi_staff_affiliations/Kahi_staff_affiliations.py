@@ -22,16 +22,12 @@ class Kahi_staff_affiliations(KahiBase):
         self.collection.create_index("types.type")
         self.collection.create_index([("names.name", TEXT)])
 
-        self.facs_inserted = {}
-        self.deps_inserted = {}
-        self.fac_dep = []
-
         self.required_columns = ["unidad_académica", "subunidad_académica",
                                  "código_unidad_académica", "código_subunidad_académica"]
 
         self.verbose = config["verbose"] if "verbose" in config else 0
 
-    def _id_creator(self, reg, aff, unit):
+    def _id_creator(self, institution_id, reg, aff, unit):
         """
         Create a unique identifier (_id) based on affiliation and academic unit codes.
 
@@ -54,33 +50,35 @@ class Kahi_staff_affiliations(KahiBase):
             - For unidad="código_unidad_académica": "RORID_CODIGO_UNIDAD"
             - For other values: "RORID_CODIGO_UNIDAD_CODIGO_SUBUNIDAD"
         """
-        # Extract ROR ID from external IDs or default to an empty string if not found
-        ror_id = next((exid["id"] for exid in aff.get("external_ids", []) if exid.get("source") == "ror"), "")
 
+        _id = ""
         # Generate the identifier based on the provided unit code
         if unit == "código_unidad_académica":
-            _id = f"{ror_id.split('/')[-1]}_{reg['código_unidad_académica']}"
+            _id = f"{institution_id}_{reg['código_unidad_académica']}"
         if unit == "código_subunidad_académica":
-            _id = f"{ror_id.split('/')[-1]}_{reg['código_unidad_académica']}_{reg['código_subunidad_académica']}"
+            _id = f"{institution_id}_{reg['código_unidad_académica']}_{reg['código_subunidad_académica']}"
 
         return _id
 
-    def staff_affiliation(self, data, institution_name, staff_reg):
+    def staff_affiliation(self, data, institution_id, institution_name, staff_reg):
         # inserting faculties and departments
         for idx, reg in data.iterrows():
             name = title_case(reg["unidad_académica"])
+            _id = self._id_creator(institution_id, reg,
+                                   staff_reg, "código_unidad_académica")
+
             if name not in self.facs_inserted.keys():
-                is_in_db = self.collection.find_one(
-                    {"names.name": name, "relations.id": staff_reg["_id"]})
+                print(f"processing {name} {_id}")
+                is_in_db = self.collection.find_one({"_id": _id})
                 if is_in_db:
                     if name not in self.facs_inserted.keys():
                         self.facs_inserted[name] = is_in_db["_id"]
-                        print(name, " already in db")
+                        print(name, f" already in db {_id}")
                     # continue
                     # may be updatable, check accordingly
                 else:
                     entry = self.empty_affiliation()
-                    entry["_id"] = self._id_creator(reg, staff_reg, "código_unidad_académica")
+                    entry["_id"] = _id
                     entry["updated"].append(
                         {"time": int(time()), "source": "staff"})
                     entry["names"].append(
@@ -98,19 +96,22 @@ class Kahi_staff_affiliations(KahiBase):
 
             if reg["subunidad_académica"] != "":
                 name_dep = title_case(reg["subunidad_académica"])
-                name_dep_id = str(reg["código_unidad_académica"]) + "_" + title_case(reg["subunidad_académica"])
+                name_dep_id = str(reg["código_unidad_académica"]) + \
+                    "_" + title_case(reg["subunidad_académica"])
+                _id = self._id_creator(
+                    institution_id, reg, staff_reg, "código_subunidad_académica")
+                print(f"processing {name_dep} {_id}")
                 if name_dep_id not in self.deps_inserted.keys():
-                    is_in_db = self.collection.find_one(
-                        {"names.name": name_dep, "external_ids.id": reg["código_subunidad_académica"], "relations.id": staff_reg["_id"]})
+                    is_in_db = self.collection.find_one({"_id": _id})
                     if is_in_db:
                         if name_dep_id not in self.deps_inserted.keys():
                             self.deps_inserted[name_dep_id] = is_in_db["_id"]
-                            print(name_dep, " already in db")
+                            print(name_dep, f" already in db {_id}")
                         # continue
                         # may be updatable, check accordingly
                     else:
                         entry = self.empty_affiliation()
-                        entry["_id"] = self._id_creator(reg, staff_reg, "código_subunidad_académica")
+                        entry["_id"] = _id
                         entry["updated"].append(
                             {"time": int(time()), "source": "staff"})
                         entry["names"].append(
@@ -159,9 +160,12 @@ class Kahi_staff_affiliations(KahiBase):
             start_time = time()
 
         for config in self.config["staff_affiliations"]["databases"]:
-            institution_id = config["institution_id"]
-            staff_reg = self.collection.find_one(
-                {"external_ids.id": institution_id})
+            self.facs_inserted = {}
+            self.deps_inserted = {}
+            self.fac_dep = []
+            institution_id = config["institution_id"].replace(
+                "https://ror.org/", "")
+            staff_reg = self.collection.find_one({"_id": institution_id})
             if not staff_reg:
                 print("Institution not found in database")
                 raise ValueError(
@@ -175,7 +179,8 @@ class Kahi_staff_affiliations(KahiBase):
                     institution_name = staff_reg["names"][0]["name"]
 
             if self.verbose > 1:
-                print("Processing staff affiliations for institution: ", institution_name)
+                print("Processing staff affiliations for institution: ",
+                      institution_name)
 
             file_path = config["file_path"]
             dtype_mapping = {col: str for col in self.required_columns}
@@ -190,7 +195,8 @@ class Kahi_staff_affiliations(KahiBase):
                     print(
                         f"Column {aff} not found in file {file_path}, and it is required.")
                     raise ValueError(f"Column {aff} not found in file")
-            self.staff_affiliation(data, institution_name, staff_reg)
+            self.staff_affiliation(data, institution_id,
+                                   institution_name, staff_reg)
 
         if self.verbose > 4:
             print("Execution time: {} minutes".format(
