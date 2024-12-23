@@ -145,7 +145,8 @@ def process_author(entry, colav_reg, db, verbose=0):
                     author_reg["last_names"] = author_reg_fix["last_names"]
                     author_reg["initials"] = author_reg_fix["initials"]
 
-                name_match = compare_author(author_reg, author_db, len(colav_reg['authors']))
+                name_match = compare_author(
+                    author_reg, author_db, len(colav_reg['authors']))
 
                 doi1 = get_doi(entry)
                 doi2 = get_doi(colav_reg)
@@ -160,6 +161,8 @@ def process_author(entry, colav_reg, db, verbose=0):
                                                for aff in author['affiliations']]
                         affiliation_match = any(
                             affil in author_affiliations for affil in affiliations_person)
+                if name_match and author['affiliations'] == []:
+                    affiliation_match = True
 
                 if name_match and affiliation_match:
                     # replace the author, maybe add the openalex id to the record in the future
@@ -168,7 +171,8 @@ def process_author(entry, colav_reg, db, verbose=0):
                         reg.pop('end_date')
                     # adding the group, faculty and department for the author
                     groups = []
-                    affs_ids = [aff_id["id"] for aff_id in author_db["affiliations"]]
+                    affs_ids = [aff_id["id"]
+                                for aff_id in author_db["affiliations"]]
                     for aff in ciarp_author["affiliations"]:
                         if aff["types"]:
                             for t in aff["types"]:
@@ -269,7 +273,8 @@ def process_one_update(ciarp_reg, colav_reg, db, collection, affiliation, empty_
     process_author(entry, colav_reg, db, verbose)
 
     # Filter affiliations
-    author["affiliations"] = [aff for aff in author["affiliations"] if aff.get("name", "") != ""]
+    author["affiliations"] = [
+        aff for aff in author["affiliations"] if aff.get("name", "") != ""]
 
     # Check if author is already in the register
     colav_reg_author_ids = [auth["id"] for auth in colav_reg["authors"]]
