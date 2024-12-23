@@ -268,6 +268,9 @@ def process_one_update(ciarp_reg, colav_reg, db, collection, affiliation, empty_
             }
     process_author(entry, colav_reg, db, verbose)
 
+    # Filter affiliations
+    author["affiliations"] = [aff for aff in author["affiliations"] if aff.get("name", "") != ""]
+
     # Check if author is already in the register
     colav_reg_author_ids = [auth["id"] for auth in colav_reg["authors"]]
     for author in entry["authors"]:
