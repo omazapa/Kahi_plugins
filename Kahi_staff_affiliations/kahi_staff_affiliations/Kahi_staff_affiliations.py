@@ -68,7 +68,6 @@ class Kahi_staff_affiliations(KahiBase):
                                    staff_reg, "código_unidad_académica")
 
             if name not in self.facs_inserted.keys():
-                print(f"processing {name} {_id}")
                 is_in_db = self.collection.find_one({"_id": _id})
                 if is_in_db:
                     if name not in self.facs_inserted.keys():
@@ -100,7 +99,6 @@ class Kahi_staff_affiliations(KahiBase):
                     "_" + title_case(reg["subunidad_académica"])
                 _id = self._id_creator(
                     institution_id, reg, staff_reg, "código_subunidad_académica")
-                print(f"processing {name_dep} {_id}")
                 if name_dep_id not in self.deps_inserted.keys():
                     is_in_db = self.collection.find_one({"_id": _id})
                     if is_in_db:
