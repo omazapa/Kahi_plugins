@@ -1,10 +1,10 @@
 <center><img src="https://raw.githubusercontent.com/colav/colav.github.io/master/img/Logo.png"/></center>
 
 # Kahi CIARP works plugin 
-Kahi will use this plugin to insert or update the works information from ranking office file from University of Antioquia.
+Kahi will use this plugin to insert or update the works information from ciarp office file from public universities.
 
 # Description
-Plugin that read the information from a file with papers published and reported to the ranking office at University of Antioquia to update or insert the information of the research products in CoLav's database format.
+Plugin that read the information from a file with papers published and reported to the ciarp office to update or insert the information of the research products in CoLav's database format.
 
 # Installation
 You could download the repository from github. Go into the folder where the setup.py is located and run
