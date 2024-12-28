@@ -2,6 +2,7 @@ from kahi_impactu_utils.Utils import doi_processor, split_names, get_name_connec
 from unidecode import unidecode
 from time import time
 import copy
+from re import sub
 
 
 def process_authors(s_work, verbose=0):
@@ -14,6 +15,8 @@ def process_authors(s_work, verbose=0):
         for profile_name, profile_id in s_work["profiles"].items():
             if match_profiles == num_profiles:
                 break
+            profile_name = sub(
+                r'\s+', ' ', profile_name.replace(".", " ")).strip()
             profile_name_ = [unidecode(part) for part in profile_name.replace(
                 "-", " ").lower().split()]
             len_profile_name_ = len(profile_name_)
@@ -24,6 +27,7 @@ def process_authors(s_work, verbose=0):
                 for author in authors:
                     if author_found:
                         break
+                    author = sub(r'\s+', ' ', author.replace(".", " ")).strip()
                     name_parts = author.split(",")
                     if len(name_parts) <= 1:
                         continue  # Avoid elements that are not names
