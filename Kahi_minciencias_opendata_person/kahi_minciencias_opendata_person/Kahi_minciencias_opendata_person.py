@@ -1,7 +1,7 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from time import time
-from re import search
+from re import search, sub
 from joblib import Parallel, delayed
 from kahi_impactu_utils.Utils import get_id_from_url, get_id_type_from_url, parse_sex, check_date_format, split_names
 
@@ -291,7 +291,10 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
         })
 
         if "datos_generales" in cvlac_profile.keys() and cvlac_profile["datos_generales"]:
-            full_name = split_names(cvlac_profile["datos_generales"]["Nombre"])
+            full_name = sub(
+                r'\s+', ' ', cvlac_profile["datos_generales"]["Nombre"].replace(".", " ")).strip()
+            full_name = split_names(full_name)
+
             entry["full_name"] = full_name["full_name"]
             entry["first_names"] = full_name["first_names"]
             entry["last_names"] = full_name["last_names"]
@@ -512,7 +515,8 @@ class Kahi_minciencias_opendata_person(KahiBase):
                         {"id_persona_pr": author}),
                     groups_production_list,
                     self.verbose
-                ) for author in authors_private_profile_list  # Iterate over the authors_private_profile_list
+                    # Iterate over the authors_private_profile_list
+                ) for author in authors_private_profile_list
             )
             if production_not_cvlac_cursor:
                 groups_production_not_cvlac_list = list(
@@ -537,7 +541,8 @@ class Kahi_minciencias_opendata_person(KahiBase):
                             {"id_persona_pr": author}),
                         groups_production_not_cvlac_list,
                         self.verbose
-                    ) for author in list(authors_not_cvlac_ids)  # Iterate over the ids of the authors not in cvlac.
+                        # Iterate over the ids of the authors not in cvlac.
+                    ) for author in list(authors_not_cvlac_ids)
                 )
             client.close()
 
