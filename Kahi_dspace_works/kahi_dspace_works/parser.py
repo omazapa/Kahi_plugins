@@ -122,7 +122,7 @@ def get_dspace_url(oai_id, base_url):
         raise ValueError("The ID does not follow the expected OAI-PMH format.")
 
     # Split the ID to extract the item identifier part
-    parts = oai_id[len(prefix) :].split(":")
+    parts = oai_id[len(prefix):].split(":")
     if len(parts) != 2:
         raise ValueError("The OAI-PMH ID has an unexpected format.")
 
@@ -180,11 +180,21 @@ def parse_dspace(reg, empty_work, base_url, verbose=0):
                 else:
                     entry["year_published"] = int(field["#text"][:4])
         # Abstract
-        if field["@element"] == 'description' and '@qualifier' in field and field['@qualifier'] == 'abstract':
+        if (
+            field["@element"] == "description"
+            and "@qualifier" in field
+            and field["@qualifier"] == "abstract"
+        ):
             abstract = field["#text"]
             abstract_lang = lang_poll(abstract, verbose=verbose)
             entry["abstracts"].append(
-                {"abstract": text_to_inverted_index(abstract), "lang": abstract_lang, "source": "dspace", 'provenance': 'space'})
+                {
+                    "abstract": text_to_inverted_index(abstract),
+                    "lang": abstract_lang,
+                    "source": "dspace",
+                    "provenance": "space",
+                }
+            )
 
         # Authors
         author_qualifier = ["author", "advisor"]
@@ -222,7 +232,7 @@ def parse_dspace(reg, empty_work, base_url, verbose=0):
                             "WARNING:dspace_works: doi already assigned and it is different, leaving it as it is."
                         )
                         print(
-                            f"WARNING:dspace_works: {reg['_id']} with doi entry['doi'] and doi {doi}"
+                            f"WARNING:dspace_works: {reg['_id']} with doi {entry['doi']} and doi {doi}"
                         )
                     else:
                         entry["doi"] = doi
@@ -244,7 +254,7 @@ def parse_dspace(reg, empty_work, base_url, verbose=0):
                     {"provenance": "dspace", "source": "url",
                         "url": field["#text"]}
                 )
-            if field["@qualifier"] == [
+            if field["@qualifier"] in [
                 "isbn",
                 "issn",
                 "eissn",
