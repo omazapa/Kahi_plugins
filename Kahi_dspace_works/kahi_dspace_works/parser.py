@@ -18,14 +18,13 @@ def split_name_part(s, connectors=get_name_connector()):
 
     Returns:
     -------
-    A list of names or last names.    
+    A list of names or last names.
     """
     s = " ".join(s.strip().split()).title()
 
     words = s.split()
     last_names = []
     buffer = []
-
     for word in words:
         if word.upper() in connectors:
             buffer.append(word)
@@ -169,9 +168,7 @@ def parse_dspace(reg, empty_work, base_url, verbose=0):
                 {"title": title, "lang": lang, "source": "dspace"})
         # year
         if (
-            field["@element"] == "date"
-            and "@qualifier" in field
-            and field["@qualifier"] == "issued"
+            field["@element"] == "date" and "@qualifier" in field and field["@qualifier"] == "issued"
         ):
             if field["#text"][:4].isdigit():
                 if entry["year_published"]:
@@ -181,9 +178,7 @@ def parse_dspace(reg, empty_work, base_url, verbose=0):
                     entry["year_published"] = int(field["#text"][:4])
         # Abstract
         if (
-            field["@element"] == "description"
-            and "@qualifier" in field
-            and field["@qualifier"] == "abstract"
+            field["@element"] == "description" and "@qualifier" in field and field["@qualifier"] == "abstract"
         ):
             abstract = field["#text"]
             abstract_lang = lang_poll(abstract, verbose=verbose)
@@ -199,10 +194,7 @@ def parse_dspace(reg, empty_work, base_url, verbose=0):
         # Authors
         author_qualifier = ["author", "advisor"]
         if (
-            field["@element"] == "contributor"
-            and "@qualifier" in field
-            and field["@qualifier"] in author_qualifier
-            and "#text" in field
+            field["@element"] == "contributor" and "@qualifier" in field and field["@qualifier"] in author_qualifier and "#text" in field
         ):
             if len(field["#text"].split(",")) != 2:
                 pass

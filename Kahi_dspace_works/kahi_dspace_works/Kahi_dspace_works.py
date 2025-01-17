@@ -1,7 +1,7 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient
 from mohan.Similarity import Similarity
-from kahi_dspace_works.utils import  get_doi, process_affiliation
+from kahi_dspace_works.utils import get_doi, process_affiliation
 from kahi_dspace_works.process_one import process_one
 from joblib import Parallel, delayed
 
@@ -24,16 +24,12 @@ class Kahi_dspace_works(KahiBase):
         self.verbose = config["verbose"] if "verbose" in config else 0
 
         if (
-            "es_index" in config["dspace_works"].keys()
-            and "es_url" in config["dspace_works"].keys()
-            and "es_user" in config["dspace_works"].keys()
-            and "es_password" in config["dspace_works"].keys()
+            "es_index" in config["dspace_works"].keys() and "es_url" in config["dspace_works"].keys() and "es_user" in config["dspace_works"].keys() and "es_password" in config["dspace_works"].keys()
         ):  # noqa: E501
             es_index = config["dspace_works"]["es_index"]
             es_url = config["dspace_works"]["es_url"]
             if (
-                config["dspace_works"]["es_user"]
-                and config["dspace_works"]["es_password"]
+                config["dspace_works"]["es_user"] and config["dspace_works"]["es_password"]
             ):
                 es_auth = (
                     config["dspace_works"]["es_user"],
@@ -41,7 +37,8 @@ class Kahi_dspace_works(KahiBase):
                 )
             else:
                 es_auth = None
-            self.es_handler = Similarity(es_index, es_uri=es_url, es_auth=es_auth)
+            self.es_handler = Similarity(
+                es_index, es_uri=es_url, es_auth=es_auth)
             print("INFO: ES handler created successfully")
         else:
             self.es_handler = None
@@ -107,11 +104,15 @@ class Kahi_dspace_works(KahiBase):
 
     def run(self):
         print("INFO: Running dspace works")
-        dsapce_db_client = MongoClient(self.config["dspace_works"]["database_url"])
-        dsapce_db = dsapce_db_client[self.config["dspace_works"]["database_name"]]
+        dsapce_db_client = MongoClient(
+            self.config["dspace_works"]["database_url"])
+        dsapce_db = dsapce_db_client[self.config["dspace_works"]
+                                     ["database_name"]]
         for repository in self.config["dspace_works"]["repositories"]:
-            print(f"INFO: Processing repository {repository['institution_id']} collection {repository['collection_name']} with url {repository['repository_url']}")
-            affiliation = process_affiliation(repository["institution_id"], self.db)
+            print(
+                f"INFO: Processing repository {repository['institution_id']} collection {repository['collection_name']} with url {repository['repository_url']}")
+            affiliation = process_affiliation(
+                repository["institution_id"], self.db)
             base_url = repository["repository_url"]
             dspace_collection = dsapce_db[repository["collection_name"]]
             self.process_repository(affiliation, base_url, dspace_collection)

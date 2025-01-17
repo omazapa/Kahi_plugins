@@ -28,7 +28,7 @@ def get_doi(reg):
 def process_source(reg, db):
     """
     Given the issn, eissn or other external ids of the source in the dspace record, it tries to find the source in the sources collection.
-    
+
     If the source is found, it creates a dict to put the source id and name in the parsed entry.
     It also deletes the external ids from the source dict in the parsed entry.
 
@@ -60,7 +60,7 @@ def process_affiliation(ror_id, db):
         ror id.
     db : pymongo.database.Database
         database object to kahi(ETL) database.
-    
+
     Returns
     -------
     dict
@@ -69,7 +69,8 @@ def process_affiliation(ror_id, db):
     aff_rec = db["affiliations"].find_one({"external_ids.id": ror_id})
     aff = {}
     aff["id"] = aff_rec["_id"]
-    aff["name"] = next((i["name"] for i in aff_rec["names"] if i["lang"] == "es"), "")
+    aff["name"] = next((i["name"]
+                       for i in aff_rec["names"] if i["lang"] == "es"), "")
     aff["types"] = aff_rec["types"]
     if aff_rec["addresses"]:
         if "country" in aff_rec["addresses"][0]:
