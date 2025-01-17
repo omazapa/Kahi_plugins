@@ -130,7 +130,9 @@ def get_dspace_url(oai_id, base_url):
     return f"{base_url}/handle/{item_identifier}"
 
 
-def parse_dspace(reg, empty_work, base_url, verbose=0):
+def parse_dspace(
+    reg: dict, empty_work: dict, base_url: str, affiliation: dict, verbose: int = 0
+) -> dict:
     """
     Parse a dspace record into a work entry.
 
@@ -145,6 +147,8 @@ def parse_dspace(reg, empty_work, base_url, verbose=0):
         An empty work entry to populate.
     base_url: str
         The base URL of the DSpace instance (ex: https://bibliotecadigital.univalle.edu.co).
+    affiliation: dict
+        The affiliation of the repository. (found in the affiliations collection).
     verbose: int
         A flag to print messages.
 
@@ -164,8 +168,7 @@ def parse_dspace(reg, empty_work, base_url, verbose=0):
             title = parse_mathml(field["#text"])
             title = parse_html(title)
             title = title.strip()
-            entry["titles"].append(
-                {"title": title, "lang": lang, "source": "dspace"})
+            entry["titles"].append({"title": title, "lang": lang, "source": "dspace"})
         # year
         if (
             field["@element"] == "date" and "@qualifier" in field and field["@qualifier"] == "issued"
@@ -201,6 +204,7 @@ def parse_dspace(reg, empty_work, base_url, verbose=0):
                 # print(field)
             author = split_names_dspace(field["#text"])
             if author:
+                author["affiliations"] = [affiliation]
                 author["type"] = field["@qualifier"]
                 entry["authors"].append(author)
         # Type
@@ -243,8 +247,7 @@ def parse_dspace(reg, empty_work, base_url, verbose=0):
 
             if field["@qualifier"] == "url":
                 entry["external_urls"].append(
-                    {"provenance": "dspace", "source": "url",
-                        "url": field["#text"]}
+                    {"provenance": "dspace", "source": "url", "url": field["#text"]}
                 )
             if field["@qualifier"] in [
                 "isbn",
