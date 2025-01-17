@@ -27,7 +27,7 @@ Parameters for kahi_run in the workflow should be similar to.
   dspace_works:
     database_url: localhost:27017
     database_name: oxomoc
-    collections:
+    repositories:
       - institution_id: https://ror.org/03bp5hc83 # Universidad de Antioquia
         collection_name: dspace_udea_records
         repository_url: https://repositorio.udea.edu.co

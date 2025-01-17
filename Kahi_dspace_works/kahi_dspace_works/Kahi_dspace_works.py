@@ -1,8 +1,9 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, TEXT
-from pandas import read_excel
-from time import time
-from kahi_impactu_utils.String import title_case
+from pymongo import MongoClient
+from mohan.Similarity import Similarity
+from kahi_dspace_works.utils import  get_doi, process_affiliation
+from kahi_dspace_works.process_one import process_one
+from joblib import Parallel, delayed
 
 
 class Kahi_dspace_works(KahiBase):
@@ -12,12 +13,107 @@ class Kahi_dspace_works(KahiBase):
     def __init__(self, config):
         self.config = config
 
-        self.client = MongoClient(config["database_url"])
+        self.mongodb_url = config["database_url"]
+
+        self.client = MongoClient(self.mongodb_url)
 
         self.db = self.client[config["database_name"]]
 
+        self.collection = self.db["works"]
+
         self.verbose = config["verbose"] if "verbose" in config else 0
 
-    def run(self):
+        if (
+            "es_index" in config["dspace_works"].keys()
+            and "es_url" in config["dspace_works"].keys()
+            and "es_user" in config["dspace_works"].keys()
+            and "es_password" in config["dspace_works"].keys()
+        ):  # noqa: E501
+            es_index = config["dspace_works"]["es_index"]
+            es_url = config["dspace_works"]["es_url"]
+            if (
+                config["dspace_works"]["es_user"]
+                and config["dspace_works"]["es_password"]
+            ):
+                es_auth = (
+                    config["dspace_works"]["es_user"],
+                    config["dspace_works"]["es_password"],
+                )
+            else:
+                es_auth = None
+            self.es_handler = Similarity(es_index, es_uri=es_url, es_auth=es_auth)
+            print("INFO: ES handler created successfully")
+        else:
+            self.es_handler = None
+            print("WARNING: No elasticsearch configuration provided")
 
-        return 0
+        self.task = (
+            config["dspace_works"]["task"]
+            if "task" in config["dspace_works"].keys()
+            else None
+        )
+        self.n_jobs = (
+            config["dspace_works"]["num_jobs"]
+            if "num_jobs" in config["dspace_works"].keys()
+            else 1
+        )
+        self.verbose = (
+            config["dspace_works"]["verbose"]
+            if "verbose" in config["dspace_works"].keys()
+            else 0
+        )
+
+    def process_repository(self, affiliation, base_url, dspace_collection):
+        if self.task == "doi":
+            work_cursor = dspace_collection.find(
+                {
+                    "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@element": "identifier",
+                    "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@qualifier": "doi",
+                }
+            )
+            Parallel(n_jobs=self.n_jobs, verbose=self.verbose, backend="threading")(
+                delayed(process_one)(
+                    dspace_reg=work,
+                    affiliation=affiliation,
+                    base_url=base_url,
+                    db=self.db,
+                    collection=self.collection,
+                    empty_work=self.empty_work(),
+                    es_handler=self.es_handler,
+                    similarity=False,
+                    verbose=self.verbose,
+                )
+                for work in work_cursor
+                if get_doi(work)
+            )
+
+        else:
+            work_cursor = dspace_collection.find()
+            Parallel(n_jobs=self.n_jobs, verbose=self.verbose, backend="threading")(
+                delayed(process_one)(
+                    dspace_reg=work,
+                    affiliation=affiliation,
+                    base_url=base_url,
+                    db=self.db,
+                    collection=self.collection,
+                    empty_work=self.empty_work(),
+                    es_handler=self.es_handler,
+                    similarity=True,
+                    verbose=self.verbose,
+                )
+                for work in work_cursor
+                if not get_doi(work)
+            )
+
+    def run(self):
+        print("INFO: Running dspace works")
+        dsapce_db_client = MongoClient(self.config["dspace_works"]["database_url"])
+        dsapce_db = dsapce_db_client[self.config["dspace_works"]["database_name"]]
+        for repository in self.config["dspace_works"]["repositories"]:
+            print(f"INFO: Processing repository {repository['institution_id']} collection {repository['collection_name']} with url {repository['repository_url']}")
+            affiliation = process_affiliation(repository["institution_id"], self.db)
+            base_url = repository["repository_url"]
+            dspace_collection = dsapce_db[repository["collection_name"]]
+            self.process_repository(affiliation, base_url, dspace_collection)
+
+        return -1
