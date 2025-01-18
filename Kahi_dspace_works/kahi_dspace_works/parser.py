@@ -183,16 +183,19 @@ def parse_dspace(
         if (
             field["@element"] == "description" and "@qualifier" in field and field["@qualifier"] == "abstract"
         ):
-            abstract = field["#text"]
-            abstract_lang = lang_poll(abstract, verbose=verbose)
-            entry["abstracts"].append(
-                {
-                    "abstract": text_to_inverted_index(abstract),
-                    "lang": abstract_lang,
-                    "source": "dspace",
-                    "provenance": "space",
-                }
-            )
+            if "#text" in field:
+                abstract = field["#text"]
+                abstract_lang = lang_poll(abstract, verbose=verbose)
+                entry["abstracts"].append(
+                    {
+                        "abstract": text_to_inverted_index(abstract),
+                        "lang": abstract_lang,
+                        "source": "dspace",
+                        "provenance": "space",
+                    }
+                )
+            else:
+                print("WARNING: #text not found in abstract \n", field, reg["_id"])
 
         # Authors
         author_qualifier = ["author", "advisor"]

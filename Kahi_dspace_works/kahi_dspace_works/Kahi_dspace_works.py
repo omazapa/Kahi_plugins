@@ -66,6 +66,7 @@ class Kahi_dspace_works(KahiBase):
                 {
                     "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@element": "identifier",
                     "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@qualifier": "doi",
+                    "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@element": "title"
                 }
             )
             Parallel(n_jobs=self.n_jobs, verbose=self.verbose, backend="threading")(
@@ -85,7 +86,11 @@ class Kahi_dspace_works(KahiBase):
             )
 
         else:
-            work_cursor = dspace_collection.find()
+            work_cursor = dspace_collection.find(
+                {
+                    "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@element": "title"
+                }
+            )
             Parallel(n_jobs=self.n_jobs, verbose=self.verbose, backend="threading")(
                 delayed(process_one)(
                     dspace_reg=work,
@@ -103,7 +108,7 @@ class Kahi_dspace_works(KahiBase):
             )
 
     def run(self):
-        print("INFO: Running dspace works")
+        print(f"INFO: Running dspace works with num_jobs = {self.n_jobs} task = {self.task}")
         dsapce_db_client = MongoClient(
             self.config["dspace_works"]["database_url"])
         dsapce_db = dsapce_db_client[self.config["dspace_works"]
