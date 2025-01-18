@@ -64,9 +64,17 @@ class Kahi_dspace_works(KahiBase):
         if self.task == "doi":
             work_cursor = dspace_collection.find(
                 {
-                    "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@element": "identifier",
-                    "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@qualifier": "doi",
-                    "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@element": "title"
+                    "$and": [
+                        {
+                            "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@element": "identifier"
+                        },
+                        {
+                            "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@qualifier": "doi"
+                        },
+                        {
+                            "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@element": "title"
+                        },
+                    ]
                 }
             )
             Parallel(n_jobs=self.n_jobs, verbose=self.verbose, backend="threading")(
