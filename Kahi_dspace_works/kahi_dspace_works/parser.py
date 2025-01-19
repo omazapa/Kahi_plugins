@@ -207,6 +207,7 @@ def parse_dspace(
                 # print(field)
             author = split_names_dspace(field["#text"])
             if author:
+                author["id"] = ""
                 author["affiliations"] = [affiliation]
                 author["type"] = field["@qualifier"]
                 entry["authors"].append(author)

@@ -8,9 +8,34 @@ def process_one_update(entry, colav_reg, db, collection, verbose):
     pass
 
 
-def process_one_insert(entry, db, collection, verbose):
+def process_one_insert(entry, collection, es_handler, verbose):
     # inserting the entry
-    pass
+    response = collection.insert_one(entry)
+    # insert in elasticsearch
+    authors = []
+    if es_handler:
+        work = {}
+        work["title"] = entry["titles"][0]["title"]
+        work["source"] = ""
+        work["year"] = "0"
+        work["volume"] = ""
+        work["issue"] = ""
+        work["first_page"] = ""
+        work["last_page"] = ""
+        for author in entry['authors']:
+            if "full_name" in author.keys():
+                if author["full_name"]:
+                    authors.append(author["full_name"])
+        work["authors"] = authors
+        work["provenance"] = "dspace"
+        if work["title"]:
+            es_handler.insert_work(_id=str(response.inserted_id), work=work)
+        else:
+            if verbose > 4:
+                print("Not enough data for insert in elasticsearch index")
+    else:
+        if verbose > 4:
+            print("No elasticsearch index provided")
 
 
 def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, es_handler, similarity, verbose=0):
@@ -101,7 +126,7 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
                 from sys import exit
                 exit(1)
         else:  # insert new register
-            process_one_insert(entry, db, collection, verbose)
+            process_one_insert(entry, collection, es_handler, verbose)
     else:  # if doi
         doi = get_doi(dspace_reg)
         if doi:
@@ -109,4 +134,4 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
             if colav_reg:
                 process_one_update(entry, colav_reg, db, collection, verbose)
             else:
-                process_one_insert(entry, db, collection, verbose)
+                process_one_insert(entry, collection, es_handler, verbose)
