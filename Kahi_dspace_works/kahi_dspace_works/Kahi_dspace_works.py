@@ -24,7 +24,8 @@ class Kahi_dspace_works(KahiBase):
         self.verbose = config["verbose"] if "verbose" in config else 0
 
         if (
-            "es_index" in config["dspace_works"].keys() and "es_url" in config["dspace_works"].keys() and "es_user" in config["dspace_works"].keys() and "es_password" in config["dspace_works"].keys()
+            "es_index" in config["dspace_works"].keys() and "es_url" in config["dspace_works"].keys(
+            ) and "es_user" in config["dspace_works"].keys() and "es_password" in config["dspace_works"].keys()
         ):  # noqa: E501
             es_index = config["dspace_works"]["es_index"]
             es_url = config["dspace_works"]["es_url"]
@@ -77,7 +78,7 @@ class Kahi_dspace_works(KahiBase):
                     ]
                 }
             )
-            Parallel(n_jobs=self.n_jobs, verbose=self.verbose, backend="threading")(
+            Parallel(n_jobs=self.n_jobs, verbose=10, backend="threading")(
                 delayed(process_one)(
                     dspace_reg=work,
                     affiliation=affiliation,
@@ -99,7 +100,7 @@ class Kahi_dspace_works(KahiBase):
                     "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@element": "title"
                 }
             )
-            Parallel(n_jobs=self.n_jobs, verbose=self.verbose, backend="threading")(
+            Parallel(n_jobs=self.n_jobs, verbose=10, backend="threading")(
                 delayed(process_one)(
                     dspace_reg=work,
                     affiliation=affiliation,
@@ -116,7 +117,8 @@ class Kahi_dspace_works(KahiBase):
             )
 
     def run(self):
-        print(f"INFO: Running dspace works with num_jobs = {self.n_jobs} task = {self.task}")
+        print(
+            f"INFO: Running dspace works with num_jobs = {self.n_jobs} task = {self.task}")
         dsapce_db_client = MongoClient(
             self.config["dspace_works"]["database_url"])
         dsapce_db = dsapce_db_client[self.config["dspace_works"]

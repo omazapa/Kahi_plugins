@@ -168,7 +168,8 @@ def parse_dspace(
             title = parse_mathml(field["#text"])
             title = parse_html(title)
             title = title.strip()
-            entry["titles"].append({"title": title, "lang": lang, "source": "dspace"})
+            entry["titles"].append(
+                {"title": title, "lang": lang, "source": "dspace"})
         # year
         if (
             field["@element"] == "date" and "@qualifier" in field and field["@qualifier"] == "issued"
@@ -195,7 +196,8 @@ def parse_dspace(
                     }
                 )
             else:
-                print("WARNING: #text not found in abstract \n", field, reg["_id"])
+                print("WARNING: #text not found in abstract \n",
+                      field, reg["_id"])
 
         # Authors
         author_qualifier = ["author", "advisor"]
@@ -251,7 +253,8 @@ def parse_dspace(
 
             if field["@qualifier"] == "url":
                 entry["external_urls"].append(
-                    {"provenance": "dspace", "source": "url", "url": field["#text"]}
+                    {"provenance": "dspace", "source": "url",
+                        "url": field["#text"]}
                 )
             if field["@qualifier"] in [
                 "isbn",
@@ -281,5 +284,5 @@ def parse_dspace(
             "id": get_dspace_url(reg["_id"], base_url),
         }
     )
-
+    entry["author_count"] = len(entry["authors"])
     return entry

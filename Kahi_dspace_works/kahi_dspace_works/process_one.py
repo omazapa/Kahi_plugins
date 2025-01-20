@@ -1,14 +1,121 @@
+from kahi_impactu_utils.Utils import compare_author
 from kahi_dspace_works.parser import parse_dspace
 from kahi_dspace_works.utils import process_source, get_doi
 from bson import ObjectId
 
 
 def process_one_update(entry, colav_reg, db, collection, verbose):
+    """
+    Update the entry in the works collection.
+
+    Parameters:
+    -----------
+    entry : dict
+        entry from dspace.
+    colav_reg : dict
+        entry to be updated.
+    db : pymongo.database.Database
+        database object to kahi(ETL) database.
+    collection : pymongo.collection.Collection
+        collection object to kahi(ETL) database.
+    verbose : int
+        verbosity level.
+    """
     # merging the two entries
-    pass
+    colav_reg["updated"].append(entry["updated"])
+
+    for title in entry["titles"]:
+        colav_reg["titles"].append(title)
+
+    if entry["year_published"] and not colav_reg["year_published"]:
+        colav_reg["year_published"] = entry["year_published"]
+
+    if entry["doi"] and not colav_reg["doi"]:
+        colav_reg["doi"] = entry["doi"]
+
+    for abstract in entry["abstracts"]:
+        if abstract not in colav_reg["abstracts"]:
+            colav_reg["abstracts"].append(abstract)
+
+    for dtype in entry["types"]:
+        if dtype not in colav_reg["types"]:
+            colav_reg["types"].append(dtype)
+
+    for did in entry["external_ids"]:
+        if did not in colav_reg["external_ids"]:
+            colav_reg["external_ids"].append(did)
+
+    for url in entry["external_urls"]:
+        if url not in colav_reg["external_urls"]:
+            colav_reg["external_urls"].append(url)
+
+    if entry["source"] and not colav_reg["source"]:
+        colav_reg["source"] = entry["source"]
+
+    # merging autorship only to add the type
+    # affiliation is not considered in this merge
+    for author_reg in entry["authors"]:
+        name_match = False
+        for author in colav_reg["authors"]:
+            if author['id'] == "":
+                if verbose >= 4:
+                    print(
+                        f"WARNING: author with id '' found in colav register: {author}")
+                continue
+            # only the name can be compared, because we dont have the affiliation of the author from the paper in author_others
+            author_db = db['person'].find_one(
+                # this is required to get  first_names and last_names
+                {'_id': author['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1})
+
+            name_match = compare_author(
+                author_reg, author_db, len(colav_reg["authors"]))
+            if name_match:
+                author["type"] = author_reg["type"]
+        if not name_match:
+            del author_reg["first_names"]
+            del author_reg["last_names"]
+            del author_reg["initials"]
+            colav_reg["authors"].append(author_reg)
+    colav_reg["author_count"] = len(author_reg["authors"])
+    collection.update_one(
+        {"_id": colav_reg["_id"]},
+        {"$set": {
+            "updated": colav_reg["updated"],
+            "abstracts": colav_reg["abstracts"],
+            "doi": colav_reg["doi"],
+            "year_published": colav_reg["year_published"],
+            "titles": colav_reg["titles"],
+            "external_ids": colav_reg["external_ids"],
+            "extrnal_urls": colav_reg["external_urls"],
+            "types": colav_reg["types"],
+            "authors": colav_reg["authors"],
+            "author_count": colav_reg["author_count"],
+            "source": colav_reg["source"]
+
+        }}
+    )
 
 
 def process_one_insert(entry, collection, es_handler, verbose):
+    """
+    Insert the entry in the works collection.
+
+    Parameters:
+    -----------
+    entry : dict
+        entry to be inserted.
+    collection : pymongo.collection.Collection
+        collection object to kahi(ETL) database.
+    es_handler : elasticsearch.Elasticsearch
+        elasticsearch handler.
+    verbose : int
+        verbosity level.
+    """
+    # removing unnecessary fields in the work
+    for author in entry['authors']:
+        del author["first_names"]
+        del author["last_names"]
+        del author["initials"]
     # inserting the entry
     response = collection.insert_one(entry)
     # insert in elasticsearch
