@@ -25,7 +25,8 @@ def process_one_update(entry, colav_reg, db, collection, verbose):
     colav_reg["updated"].append(entry["updated"])
 
     for title in entry["titles"]:
-        colav_reg["titles"].append(title)
+        if title not in colav_reg["titles"]:
+            colav_reg["titles"].append(title)
 
     if entry["year_published"] and not colav_reg["year_published"]:
         colav_reg["year_published"] = entry["year_published"]
@@ -75,8 +76,9 @@ def process_one_update(entry, colav_reg, db, collection, verbose):
             del author_reg["first_names"]
             del author_reg["last_names"]
             del author_reg["initials"]
-            colav_reg["authors"].append(author_reg)
-    colav_reg["author_count"] = len(author_reg["authors"])
+            if author_reg not in colav_reg["authors"]:
+                colav_reg["authors"].append(author_reg)
+    colav_reg["author_count"] = len(colav_reg["authors"])
     collection.update_one(
         {"_id": colav_reg["_id"]},
         {"$set": {
