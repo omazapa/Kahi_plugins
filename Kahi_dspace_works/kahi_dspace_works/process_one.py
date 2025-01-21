@@ -22,7 +22,7 @@ def process_one_update(entry, colav_reg, db, collection, verbose):
         verbosity level.
     """
     # merging the two entries
-    colav_reg["updated"].append(entry["updated"])
+    colav_reg["updated"].extend(entry["updated"])
 
     for title in entry["titles"]:
         if title not in colav_reg["titles"]:
@@ -244,3 +244,6 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
                 process_one_update(entry, colav_reg, db, collection, verbose)
             else:
                 process_one_insert(entry, collection, es_handler, verbose)
+        else:
+            print(
+                f"WARNING: invalid doi found in dspace record {dspace_reg['_id']} ")

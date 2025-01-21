@@ -78,6 +78,7 @@ class Kahi_dspace_works(KahiBase):
                     ]
                 }
             )
+
             Parallel(n_jobs=self.n_jobs, verbose=10, backend="threading")(
                 delayed(process_one)(
                     dspace_reg=work,
@@ -90,8 +91,7 @@ class Kahi_dspace_works(KahiBase):
                     similarity=False,
                     verbose=self.verbose,
                 )
-                for work in work_cursor
-                if get_doi(work)
+                for work in work_cursor if get_doi(work)
             )
 
         else:
@@ -112,9 +112,7 @@ class Kahi_dspace_works(KahiBase):
                     similarity=True,
                     verbose=self.verbose,
                 )
-                for work in work_cursor
-                if not get_doi(work)
-            )
+                for work in work_cursor if not get_doi(work))
 
     def run(self):
         print(

@@ -163,13 +163,18 @@ def parse_dspace(
     ]:
 
         # Title
-        if field["@element"] == "title":
+        if field["@element"] == "title" and "#text" in field:
             lang = lang_poll(field["#text"], verbose=verbose)
             title = parse_mathml(field["#text"])
             title = parse_html(title)
             title = title.strip()
             entry["titles"].append(
                 {"title": title, "lang": lang, "source": "dspace"})
+        if field["@element"] == "title" and "#text" not in field:
+            if "#text" not in field:
+                print("WARNING: #text not found in title \n",
+                      field, reg["_id"])
+
         # year
         if (
             field["@element"] == "date" and "@qualifier" in field and field["@qualifier"] == "issued"
