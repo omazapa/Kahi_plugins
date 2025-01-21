@@ -61,6 +61,18 @@ class Kahi_dspace_works(KahiBase):
             else 0
         )
 
+        thresholds = config["dspace_works"]["thresholds"] if "thresholds" in config["dspace_works"].keys(
+        ) else None
+
+        if thresholds and len(thresholds) == 3:
+            self.thresholds = {"author_thd": thresholds[0],
+                               "paper_thd_low": thresholds[1], "paper_thd_high": thresholds[2]}
+        else:
+            if self.verbose > 4:
+                print("Invalid thresholds values provided, using default values")
+            self.thresholds = {"author_thd": 65,
+                               "paper_thd_low": 90, "paper_thd_high": 95}
+
     def process_repository(self, affiliation, base_url, dspace_collection):
         if self.task == "doi":
             work_cursor = dspace_collection.find(
@@ -89,6 +101,7 @@ class Kahi_dspace_works(KahiBase):
                     empty_work=self.empty_work(),
                     es_handler=self.es_handler,
                     similarity=False,
+                    thresholds=self.thresholds,
                     verbose=self.verbose,
                 )
                 for work in work_cursor if get_doi(work)
@@ -110,6 +123,7 @@ class Kahi_dspace_works(KahiBase):
                     empty_work=self.empty_work(),
                     es_handler=self.es_handler,
                     similarity=True,
+                    thresholds=self.thresholds,
                     verbose=self.verbose,
                 )
                 for work in work_cursor if not get_doi(work))

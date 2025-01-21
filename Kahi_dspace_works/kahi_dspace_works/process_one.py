@@ -1,6 +1,6 @@
 from kahi_impactu_utils.Utils import compare_author
 from kahi_dspace_works.parser import parse_dspace
-from kahi_dspace_works.utils import process_source, get_doi
+from kahi_dspace_works.utils import process_source, get_doi, check_work
 from bson import ObjectId
 
 
@@ -147,7 +147,7 @@ def process_one_insert(entry, collection, es_handler, verbose):
             print("No elasticsearch index provided")
 
 
-def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, es_handler, similarity, verbose=0):
+def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, es_handler, similarity, thresholds, verbose=0):
     """
     Dspace record is parsed and processed to be inserted/updated in the works collection.
 
@@ -212,7 +212,7 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
                 authors.append(author["full_name"])
         work["authors"] = authors
         work["provenance"] = "dspace"
-        response = es_handler.search_work(
+        responses = es_handler.search_work(
             title=work["title"],
             source=work["source"],
             year=str(work["year"]),
@@ -221,19 +221,29 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
             issue=work["issue"],
             page_start=work["first_page"],
             page_end=work["last_page"],
+            use_es_thold=True,
+            es_thold=0,
+            hits=20
         )
-        if response:  # register already on db... update accordingly
-            colav_reg = db["works"].find_one(
-                {"_id": ObjectId(response["_id"])})
-            if colav_reg:
-                process_one_update(entry, colav_reg, db, collection, verbose)
-            else:
-                print(
-                    "ERROR: Register with id {} found in elasticsaerch not found in mongodb".format(
-                        response["_id"])
-                )
-                from sys import exit
-                exit(1)
+        if responses:
+            found = False
+            for response in responses:
+                found = check_work(
+                    work["title"], authors, response, thresholds)
+                if found:
+                    colav_reg = collection.find_one(
+                        {"_id": ObjectId(response["_id"])})
+                    if colav_reg:
+                        process_one_update(
+                            entry, colav_reg, db, collection, verbose)
+                        return
+                    else:
+                        if verbose > 4:
+                            print("Register with {} not found in mongodb".format(
+                                response["_id"]))
+                        return
+            if not found:
+                process_one_insert(entry, collection, es_handler, verbose)
         else:  # insert new register
             process_one_insert(entry, collection, es_handler, verbose)
     else:  # if doi
