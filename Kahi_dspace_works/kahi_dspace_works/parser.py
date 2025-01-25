@@ -2,6 +2,7 @@ from time import time
 from kahi_impactu_utils.Utils import lang_poll, get_name_connector, doi_processor
 from kahi_impactu_utils.String import parse_mathml, parse_html
 from kahi_impactu_utils.String import text_to_inverted_index
+from kahi_dspace_works.utils import is_thesis
 import unicodedata
 
 
@@ -158,6 +159,7 @@ def parse_dspace(
     """
     entry = empty_work.copy()
     entry["updated"] = [{"source": "dspace", "time": int(time())}]
+    thesis = False
     for field in reg["OAI-PMH"]["GetRecord"]["record"]["metadata"]["dim:dim"][
         "dim:field"
     ]:
@@ -215,11 +217,13 @@ def parse_dspace(
             author = split_names_dspace(field["#text"])
             if author:
                 author["id"] = ""
-                author["affiliations"] = [affiliation]
+                author["affiliations"] = []
                 author["type"] = field["@qualifier"]
                 entry["authors"].append(author)
         # Type
         if field["@element"] == "type":
+            if is_thesis(field["#text"]):
+                thesis = True
             entry["types"].append(
                 {
                     "provenance": "dspace",
@@ -299,5 +303,12 @@ def parse_dspace(
             "id": get_dspace_url(reg["_id"], base_url),
         }
     )
+    if thesis:  # only thesis have affiliation
+        for author in entry["authors"]:
+            author["affiliations"].append(affiliation)
+
+    if len(entry["authors"]) == 1:  # with only one author, I can assume the affiliation
+        entry["authors"][0]["affiliations"].append(affiliation)
+
     entry["author_count"] = len(entry["authors"])
     return entry

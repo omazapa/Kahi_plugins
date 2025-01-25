@@ -142,3 +142,43 @@ def check_work(title_work, authors, response, thresholds):
             if score >= thresholds["paper_thd_high"]:
                 return True
     return False
+
+
+thesis_types = ['http://purl.org/coar/resource_type/c_46ec',
+                'http://purl.org/coar/resource_type/c_bdcc',
+                'http://purl.org/coar/resource_type/c_db06',
+                'http://purl.org/coar/resource_type/c_7a1f',
+                'https://purl.org/redcol/resource_type/TP',
+                'https://purl.org/redcol/resource_type/TM',
+                'http://purl.org/redcol/resource_type/TD_A',
+                'https://purl.org/redcol/resource_type/TD',
+                'http://purl.org/redcol/resource_type/TP_A']
+
+
+def is_thesis(work_type):
+    """
+    Check if the work type is a thesis.
+
+    Parameters
+    ----------
+    work_type : str
+        work type.
+
+    Returns
+    -------
+    bool
+        True if the work type is a thesis, False otherwise.
+    """
+    if work_type in thesis_types:
+        return True
+    if "tesis" in work_type.lower():
+        return True
+    if "thesis" in work_type.lower():
+        return True
+    if "trabajo de grado" in work_type.lower():
+        return True
+    if "monografia" in work_type.lower():
+        return True
+    if "monografía" in work_type.lower():
+        return True
+    return False
