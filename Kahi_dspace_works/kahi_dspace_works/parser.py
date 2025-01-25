@@ -228,6 +228,16 @@ def parse_dspace(
                     "level": None,
                 }
             )
+        # Rights
+        if field["@element"] == "rights":
+            entry["rights"].append(
+                {
+                    "provenance": "dspace",
+                    "source": "dspace",
+                    "rights": field["#text"],
+                }
+            )
+
         # ids
         if field["@element"] == "identifier" and "@qualifier" in field:
 

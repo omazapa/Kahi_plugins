@@ -53,6 +53,10 @@ def process_one_update(entry, colav_reg, db, collection, verbose):
     if entry["source"] and not colav_reg["source"]:
         colav_reg["source"] = entry["source"]
 
+    for right in entry["rights"]:
+        if right not in colav_reg["rights"]:
+            colav_reg["rights"].append(right)
+
     # merging autorship only to add the type
     # affiliation is not considered in this merge
     for author_reg in entry["authors"]:
