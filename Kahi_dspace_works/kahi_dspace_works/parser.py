@@ -295,14 +295,21 @@ def parse_dspace(
     entry["external_ids"].append(
         {"provenance": "dspace", "source": "dspace", "id": reg["_id"]}
     )
-    # urls
-    entry["external_urls"].append(
+    entry["external_ids"].append(
         {
             "provenance": "dspace",
             "source": "dspace",
             "id": get_dspace_url(reg["_id"], base_url),
         }
     )
+    entry["external_ids"].append(
+        {
+            "provenance": "dspace",
+            "source": "dspace",
+            "id": get_dspace_url(reg["_id"], base_url),
+        }
+    )
+
     if thesis:  # only thesis have affiliation
         for author in entry["authors"]:
             author["affiliations"].append(affiliation)
