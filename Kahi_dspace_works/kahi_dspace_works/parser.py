@@ -2,7 +2,7 @@ from time import time
 from kahi_impactu_utils.Utils import lang_poll, get_name_connector, doi_processor
 from kahi_impactu_utils.String import parse_mathml, parse_html
 from kahi_impactu_utils.String import text_to_inverted_index
-from kahi_dspace_works.utils import is_thesis
+from kahi_dspace_works.utils import is_thesis, get_oai_pmh_url
 import unicodedata
 
 
@@ -305,8 +305,8 @@ def parse_dspace(
     entry["external_ids"].append(
         {
             "provenance": "dspace",
-            "source": "dspace",
-            "id": get_dspace_url(reg["_id"], base_url),
+            "source": "oaipmh",
+            "id": get_oai_pmh_url(reg),
         }
     )
 
