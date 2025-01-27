@@ -145,14 +145,14 @@ def check_work(title_work, authors, response, thresholds):
 
 
 thesis_types = ['http://purl.org/coar/resource_type/c_46ec',
- 'http://purl.org/coar/resource_type/c_bdcc',
- 'http://purl.org/coar/resource_type/c_db06',
- 'http://purl.org/coar/resource_type/c_7a1f',
- 'https://purl.org/redcol/resource_type/TP',
- 'https://purl.org/redcol/resource_type/TM',
- 'http://purl.org/redcol/resource_type/TD_A',
- 'https://purl.org/redcol/resource_type/TD',
- 'http://purl.org/redcol/resource_type/TP_A']
+                'http://purl.org/coar/resource_type/c_bdcc',
+                'http://purl.org/coar/resource_type/c_db06',
+                'http://purl.org/coar/resource_type/c_7a1f',
+                'https://purl.org/redcol/resource_type/TP',
+                'https://purl.org/redcol/resource_type/TM',
+                'http://purl.org/redcol/resource_type/TD_A',
+                'https://purl.org/redcol/resource_type/TD',
+                'http://purl.org/redcol/resource_type/TP_A']
 
 
 def is_thesis(work_type):
@@ -180,3 +180,26 @@ def is_thesis(work_type):
     if "monografia" in str_normilize(work_type.lower()):
         return True
     return False
+
+
+def get_oai_pmh_url(reg):
+    """
+    Return the oai-pmh url of the dspace record.
+
+    Parameters
+    ----------
+    reg : dict
+        dspace record.
+
+    Returns
+    -------
+    str
+        oai-pmh url.
+    """
+    base_url = reg['OAI-PMH']['request']['#text']
+    verb = reg['OAI-PMH']['request']['@verb']
+    metadataPrefix = reg['OAI-PMH']['request']['@metadataPrefix']
+    identifier = reg['OAI-PMH']['request']['@identifier']
+
+    url = f"{base_url}?verb={verb}&metadataPrefix={metadataPrefix}&identifier={identifier}"
+    return url
