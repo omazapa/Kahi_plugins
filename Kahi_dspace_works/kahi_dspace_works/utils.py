@@ -27,7 +27,7 @@ def get_doi(reg):
     return None
 
 
-def process_source(reg, db):
+def set_source(reg, db):
     """
     Given the issn, eissn or other external ids of the source in the dspace record, it tries to find the source in the sources collection.
 
@@ -205,7 +205,7 @@ def get_oai_pmh_url(reg):
     return url
 
 
-def process_affiliation(entry, affiliation, collection):
+def set_affiliation(entry, affiliation, collection):
     """
     Set the affiliation of the authors in the entry.
     if the entry is a thesis, the affiliation is set to the authors.
