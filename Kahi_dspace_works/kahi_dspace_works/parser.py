@@ -132,7 +132,7 @@ def get_dspace_url(oai_id, base_url):
 
 
 def parse_dspace(
-    reg: dict, empty_work: dict, base_url: str, affiliation: dict, verbose: int = 0
+    reg: dict, empty_work: dict, base_url: str, verbose: int = 0
 ) -> dict:
     """
     Parse a dspace record into a work entry.
@@ -207,13 +207,12 @@ def parse_dspace(
                       field, reg["_id"])
 
         # Authors
-        author_qualifier = ["author", "advisor"]
         if (
-            field["@element"] == "contributor" and "@qualifier" in field and field["@qualifier"] in author_qualifier and "#text" in field
+            field["@element"] == "contributor" and "@qualifier" in field and field["@qualifier"] in [
+                "author", "advisor"] and "#text" in field
         ):
             if len(field["#text"].split(",")) != 2:
-                pass
-                # print(field)
+                continue
             author = split_names_dspace(field["#text"])
             if author:
                 author["id"] = ""
@@ -310,13 +309,6 @@ def parse_dspace(
             "id": get_oai_pmh_url(reg),
         }
     )
-
-    if thesis:  # only thesis have affiliation
-        for author in entry["authors"]:
-            author["affiliations"].append(affiliation)
-
-    if len(entry["authors"]) == 1:  # with only one author, I can assume the affiliation
-        entry["authors"][0]["affiliations"].append(affiliation)
-
+    entry["thesis"] = thesis
     entry["author_count"] = len(entry["authors"])
     return entry

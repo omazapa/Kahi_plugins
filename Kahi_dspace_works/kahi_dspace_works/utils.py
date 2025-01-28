@@ -203,3 +203,44 @@ def get_oai_pmh_url(reg):
 
     url = f"{base_url}?verb={verb}&metadataPrefix={metadataPrefix}&identifier={identifier}"
     return url
+
+
+def process_affiliation(entry, affiliation, collection):
+    """
+    Set the affiliation of the authors in the entry.
+    if the entry is a thesis, the affiliation is set to the authors.
+    if the entry is not a thesis, the affiliation is set to the authors that are in the database.
+    if the number of authors is one, the affiliation is set to the author.
+
+    read https://github.com/colav/impactu/issues/385
+
+    Parameters
+    ----------
+    entry : dict
+        entry to set the affiliation.
+    thesis : bool
+        True if the entry is a thesis, False otherwise.
+    affiliation : dict
+        affiliation to set.
+    collection : pymongo.collection.Collection
+        collection object to person in kahi(ETL) database.
+    """
+    if entry["thesis"]:  # only thesis have affiliation
+        for author in entry["authors"]:
+            author["affiliations"].append(affiliation)
+        return
+
+    if len(entry["authors"]) == 1:  # with only one author, I can assume the affiliation
+        if affiliation not in entry["authors"][0]["affiliations"]:
+            entry["authors"][0]["affiliations"].append(affiliation)
+        return
+    for author in entry["authors"]:
+        author_found = collection.find_one({"full_name": author["full_name"]})
+        if author_found:
+            if len(author_found["affiliations"]) == 0:
+                author["affiliations"].append(affiliation)
+                continue
+            for aff in author_found["affiliations"]:
+                if aff["id"] == affiliation["id"]:
+                    author["affiliations"].append(affiliation)
+                    break

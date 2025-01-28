@@ -1,6 +1,6 @@
 from kahi_impactu_utils.Utils import compare_author
 from kahi_dspace_works.parser import parse_dspace
-from kahi_dspace_works.utils import process_source, get_doi, check_work
+from kahi_dspace_works.utils import process_source, process_affiliation, get_doi, check_work
 from bson import ObjectId
 
 
@@ -178,9 +178,10 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
     """
     # processing bad dois as well
     entry = parse_dspace(dspace_reg, empty_work,
-                         base_url, affiliation, verbose)
+                         base_url, verbose)
     process_source(entry, db)  # setting source to entry
-
+    # setting affiliation to authors
+    process_affiliation(entry, affiliation, db['person'])
     if similarity:
         work = {}
         work["title"] = entry["titles"][0]["title"]
