@@ -126,22 +126,22 @@ class Kahi_dspace_works(KahiBase):
                     thresholds=self.thresholds,
                     verbose=self.verbose,
                 )
-                for work in work_cursor if not get_doi(work) and filter_work(work)
+                for work in work_cursor if not get_doi(work) and filter_work(work))
 
     def run(self):
         print(
             f"INFO: Running dspace works with num_jobs = {self.n_jobs} task = {self.task}")
-        dsapce_db_client=MongoClient(
+        dsapce_db_client = MongoClient(
             self.config["dspace_works"]["database_url"])
-        dsapce_db=dsapce_db_client[self.config["dspace_works"]
+        dsapce_db = dsapce_db_client[self.config["dspace_works"]
                                      ["database_name"]]
         for repository in self.config["dspace_works"]["repositories"]:
             print(
                 f"INFO: Processing repository {repository['institution_id']} collection {repository['collection_name']} with url {repository['repository_url']}")
-            affiliation=process_affiliation(
+            affiliation = process_affiliation(
                 repository["institution_id"], self.db)
-            base_url=repository["repository_url"]
-            dspace_collection=dsapce_db[repository["collection_name"]]
+            base_url = repository["repository_url"]
+            dspace_collection = dsapce_db[repository["collection_name"]]
             self.process_repository(affiliation, base_url, dspace_collection)
 
         return -1
