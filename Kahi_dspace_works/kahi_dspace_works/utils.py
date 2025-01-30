@@ -182,6 +182,31 @@ def is_thesis(work_type):
     return False
 
 
+def filter_work(reg):
+    """
+    Check if the dspace record is a valid product to be processed.
+
+    At the moment, only thesis are valid products.
+    TODO: add more types of products such as book, articles etc..
+
+    Parameters
+    ----------
+    reg : dict
+        dspace record.
+
+    Returns
+    -------
+    bool
+        True if the dspace record is a valid product to be processed, False otherwise.
+    """
+    for field in reg["OAI-PMH"]["GetRecord"]["record"]["metadata"]["dim:dim"][
+            "dim:field"]:
+        if field["@element"] == "type":
+            if is_thesis(field["#text"]):
+                return True
+    return False
+
+
 def get_oai_pmh_url(reg):
     """
     Return the oai-pmh url of the dspace record.
