@@ -1,6 +1,6 @@
 from kahi_impactu_utils.Utils import compare_author
 from kahi_dspace_works.parser import parse_dspace
-from kahi_dspace_works.utils import set_source, set_affiliation, get_doi, check_work
+from kahi_dspace_works.utils import set_source, set_affiliation, get_doi, check_work, str_normilize
 from bson import ObjectId
 
 
@@ -214,11 +214,11 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
             if len(authors) >= 5:
                 break
             if "full_name" in author.keys():
-                authors.append(author["full_name"])
+                authors.append(str_normilize(author["full_name"]))
         work["authors"] = authors
         work["provenance"] = "dspace"
         responses = es_handler.search_work(
-            title=work["title"],
+            title=str_normilize(work["title"]),
             source=work["source"],
             year=str(work["year"]),
             authors=authors,
