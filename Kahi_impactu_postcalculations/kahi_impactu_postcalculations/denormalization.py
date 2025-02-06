@@ -384,3 +384,18 @@ def set_works_authors_ranking(collection):  # type: ignore
         },
     ]
     collection.aggregate(pipeline)
+
+
+def denormalize(colletion):
+    """
+    Denormalize the data in the collection
+
+    Parameters
+    ----------
+    colletion : pymongo.collection.Collection
+        Collection to denormalize
+    """
+    set_works_authors_affiliations_country(colletion)
+    set_works_authors_affiliations_country_code(colletion)
+    set_works_groups_ranking(colletion)
+    set_works_authors_ranking(colletion)
