@@ -4,6 +4,8 @@ from pymongo import MongoClient
 import subprocess
 from spacy import cli, load
 from kahi_impactu_postcalculations.process_one import network_creation_process_one, top_words_process_one, count_works_one, load_nlp_models
+from kahi_impactu_postcalculations.indexes import create_indexes
+from kahi_impactu_postcalculations.denormalization import denormalize
 
 
 class Kahi_impactu_postcalculations(KahiBase):
@@ -80,8 +82,12 @@ class Kahi_impactu_postcalculations(KahiBase):
         client = MongoClient(self.mongodb_url)
         db = client[self.database_name]
 
-        print("INFO: Creating indexes")
+        print(f"INFO: Creating indexes in db {self.database_name} for backend")
         db["works"].create_index("authors.id")
+        create_indexes(db)
+
+        print(f"INFO: Denormalizing data in {self.database_name}.works")
+        denormalize(db.works)
 
         # Getting the list of institutions ids with works
         print("INFO: Getting authors and affiliations ids")
