@@ -28,7 +28,12 @@ def bump_kahi_impactu(repo, repo_path, plugins):
         plugin_spec.loader.exec_module(plugin_mod)
         version = plugin_mod.get_version()
         setup = re.sub(
-            plugin+'==(\d.\d.\d[a-z]+\d)', plugin+'=='+version, setup)
+            rf"({re.escape(plugin)}==\d+\.\d+\.\d+(?:[-a-z0-9]*)?)",
+            f"{plugin}=={version}",
+            setup,
+            flags=re.IGNORECASE
+        )
+
         del sys.modules[plugin]
     file.seek(0)
     file.truncate()
