@@ -131,6 +131,37 @@ def get_dspace_url(oai_id, base_url):
     return f"{base_url}/handle/{item_identifier}"
 
 
+def get_type_dspace(text: str) -> dict:
+    """
+    Get the type of a dspace record.
+
+    Parameters:
+    ----------
+    reg: dict
+        The dspace record.
+
+    Returns:
+    -------
+    The type of the dspace record.
+    """
+    types = ["redcol", "coar", "eu-repo"]
+    for t in types:
+        if t in text:
+            return {
+                "provenance": "dspace",
+                "source": t,
+                "type": text.split("/")[-1].lower().strip(),
+                "level": None,
+            }
+    rec = {
+        "provenance": "dspace",
+        "source": "dspace",
+        "type": text.lower().strip(),
+        "level": None,
+    }
+    return rec
+
+
 def parse_dspace(
     reg: dict, empty_work: dict, base_url: str, verbose: int = 0
 ) -> dict:
@@ -223,14 +254,7 @@ def parse_dspace(
         if field["@element"] == "type":
             if is_thesis(field["#text"]):
                 thesis = True
-            entry["types"].append(
-                {
-                    "provenance": "dspace",
-                    "source": "dspace",
-                    "type": field["#text"],
-                    "level": None,
-                }
-            )
+            entry["types"].append(get_type_dspace(field["#text"]))
         # Rights
         if field["@element"] == "rights":
             if "#text" in field:
