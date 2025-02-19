@@ -152,7 +152,7 @@ class Kahi_ciarp_works(KahiBase):
                 # TODO: implement similarity task and a default task that runs all
                 papers = []
                 for par in self.filtered_ciarp:
-                    if par["doi"]:
+                    if par["doi"] == "":
                         papers.append(par)
                     elif not doi_processor(par["doi"]):
                         papers.append(par)

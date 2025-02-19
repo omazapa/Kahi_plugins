@@ -36,26 +36,23 @@ def parse_ciarp(reg, affiliation, empty_work):
     entry["titles"].append(
         {"title": title, "lang": lang, "source": "ciarp", "provenance": "ciarp"})
     if reg["doi"]:
-        if reg["doi"]:
-            doi = doi_processor(reg["doi"])
-            if doi:
-                entry["doi"] = doi
-                entry["external_ids"].append(
-                    {"provenance": "ciarp", "source": "doi", "id": doi})
+        doi = doi_processor(reg["doi"])
+        if doi:
+            entry["doi"] = doi
+            entry["external_ids"].append(
+                {"provenance": "ciarp", "source": "doi", "id": doi})
     if reg["issn"]:
-        if reg["issn"]:
-            for issn in reg["issn"].strip().split():
-                if "-" not in issn:
-                    continue
-                issn = issn.strip()
-                entry["source"] = {"name": reg["revista"],
-                                   "external_ids": [{"provenance": "ciarp", "source": "issn", "id": issn}]}
+        for issn in reg["issn"].strip().split():
+            if "-" not in issn:
+                continue
+            issn = issn.strip()
+            entry["source"] = {"name": reg["revista"],
+                               "external_ids": [{"provenance": "ciarp", "source": "issn", "id": issn}]}
     if reg["isbn"]:
-        if not reg["isbn"]:
-            isbn = {"provenance": "ciarp",
-                    "source": "isbn", "id": reg["isbn"].strip()}
-            if isbn not in entry["external_ids"]:
-                entry["external_ids"].append(isbn)
+        isbn = {"provenance": "ciarp",
+                "source": "isbn", "id": reg["isbn"].strip()}
+        if isbn not in entry["external_ids"]:
+            entry["external_ids"].append(isbn)
     if not entry["source"]:
         entry["source"] = {
             "name": reg["revista"], "external_ids": []}

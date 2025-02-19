@@ -3,7 +3,9 @@ from pymongo import MongoClient, TEXT
 from pandas import read_excel, to_datetime
 from time import time
 from kahi_impactu_utils.String import title_case
+from kahi_impactu_utils.Utils import parse_sex
 from datetime import datetime as dt
+from datetime import datetime, timezone
 
 
 class Kahi_staff_person(KahiBase):
@@ -33,7 +35,13 @@ class Kahi_staff_person(KahiBase):
         ]
 
     def process_staff(self):
+        # Iterate over the unique identifiers
         for idx in list(self.cedula_dep.keys()):
+            # Set to store the years of vinculation
+            vinculation_years = set()
+            # Get the current year
+            current_year = datetime.now(timezone.utc).year
+            # Check if the person is already in the database
             check_db = self.collection.find_one({"external_ids.id": idx})
             if not check_db:
                 check_db = self.collection.find_one({"external_ids.id.COD_RH": idx})
@@ -43,21 +51,25 @@ class Kahi_staff_person(KahiBase):
             entry["updated"].append({"time": int(time()), "source": "staff", "provenance": "staff"})
             entry["first_names"] = self.data[self.data["identificación"] == idx].iloc[0]["nombres"].split()
             entry["last_names"].append(self.data[self.data["identificación"] == idx].iloc[0]["primer_apellido"])
-
-            segundo_apellido = None
-            segundo_apellido = self.data[self.data["identificación"] == idx].iloc[0]["segundo_apellido"]
-            if segundo_apellido != "":
-                entry["last_names"].append(segundo_apellido)
-
+            second_lastname = None
+            second_lastname = self.data[self.data["identificación"] == idx].iloc[0]["segundo_apellido"]
+            if second_lastname != "":
+                entry["last_names"].append(second_lastname)
             entry["full_name"] = " ".join(entry["first_names"] + entry["last_names"])
             entry["initials"] = "".join([name[0] for name in entry["first_names"]])
+
             for i, reg in self.data[self.data["identificación"] == idx].iterrows():
-                aff_time = None
-                end_date = None
-                if reg["fecha_inicial_vinculación"]:
-                    aff_time = int(dt.strptime(reg["fecha_inicial_vinculación"], "%d/%m/%Y").timestamp())
-                if reg["fecha_final_vinculación"]:
-                    end_date = int(dt.strptime(reg["fecha_final_vinculación"], "%d/%m/%Y").timestamp())
+                start_date = end_date = None
+                start_date = reg.get("fecha_inicial_vinculación")
+                end_date = reg.get("fecha_final_vinculación")
+                if end_date:
+                    end_date = int(datetime.strptime(end_date, "%d/%m/%Y").timestamp())
+                if start_date:
+                    start_date = int(datetime.strptime(start_date, "%d/%m/%Y").timestamp())
+                    start_year = datetime.fromtimestamp(start_date, tz=timezone.utc).year
+                    end_year = datetime.fromtimestamp(end_date, tz=timezone.utc).year if end_date else current_year
+                    vinculation_years.update(range(start_year, end_year + 1))
+
                 name = self.staff_reg["names"][0]["name"]
                 for n in self.staff_reg["names"]:
                     if n["lang"] == "es":
@@ -66,10 +78,10 @@ class Kahi_staff_person(KahiBase):
                     elif n["lang"] == "en":
                         name = n["name"]
                 name = title_case(name)
-                udea_aff = {"id": self.staff_reg["_id"], "name": name,
-                            "types": self.staff_reg["types"], "start_date": aff_time, "end_date": end_date if end_date else -1}
-                if udea_aff["id"] not in [aff["id"] for aff in entry["affiliations"]]:
-                    entry["affiliations"].append(udea_aff)
+                auth_aff = {"id": self.staff_reg["_id"], "name": name,
+                            "types": self.staff_reg["types"], "start_date": start_date, "end_date": end_date if end_date else -1}
+                if auth_aff["id"] not in [aff["id"] for aff in entry["affiliations"]]:
+                    entry["affiliations"].append(auth_aff)
                 # Define a mapping between document types and their respective sources
                 document_types = {
                     "cédula de ciudadanía": "Cédula de Ciudadanía",
@@ -87,7 +99,6 @@ class Kahi_staff_person(KahiBase):
                         "source": document_types[doc_type],  # Get corresponding source name
                         "id": idx if doc_type != "código rh de scienti" else {"COD_RH": idx}
                     }
-
                     # Add the entry only if it's not already in the list
                     if id_entry not in entry["external_ids"]:
                         entry["external_ids"].append(id_entry)
@@ -109,7 +120,7 @@ class Kahi_staff_person(KahiBase):
                             name = n["name"]
                     name = title_case(name)
                     dep_affiliation = {
-                        "id": dep["_id"], "name": name, "types": dep["types"], "start_date": aff_time, "end_date": end_date if end_date else -1}
+                        "id": dep["_id"], "name": name, "types": dep["types"], "start_date": start_date, "end_date": end_date if end_date else -1}
                     if dep_affiliation["id"] not in [aff["id"] for aff in entry["affiliations"]]:
                         entry["affiliations"].append(dep_affiliation)
                 fac = self.db["affiliations"].find_one(
@@ -124,36 +135,40 @@ class Kahi_staff_person(KahiBase):
                             name = n["name"]
                     name = title_case(name)
                     fac_affiliation = {
-                        "id": fac["_id"], "name": name, "types": fac["types"], "start_date": aff_time, "end_date": end_date if end_date else -1}
+                        "id": fac["_id"], "name": name, "types": fac["types"], "start_date": start_date, "end_date": end_date if end_date else -1}
                     if fac_affiliation["id"] not in [aff["id"] for aff in entry["affiliations"]]:
                         entry["affiliations"].append(fac_affiliation)
 
                 if reg["fecha_nacimiento"] != "":
                     entry["birthdate"] = int(dt.strptime(reg["fecha_nacimiento"], "%d/%m/%Y").timestamp())
-                else:
-                    entry["birthdate"] = None
-                entry["sex"] = reg["sexo"].lower()
+                sex = reg.get("sexo")
+                if sex:
+                    entry["sex"] = sex.capitalize() if sex.capitalize() in {"Hombre", "Mujer", "Intersexual"} else parse_sex(sex)
                 if reg["nivel_académico"]:
                     degree = {"date": -1, "degree": reg["nivel_académico"], "id": "", "institutions": [
                     ], "source": "nivel_académico", "provenance": "staff"}
                     if degree not in entry["degrees"]:
                         entry["degrees"].append(degree)
                 if reg["tipo_contrato"]:
-                    ranking = {"date": aff_time,
+                    ranking = {"date": start_date,
                                "rank": reg["tipo_contrato"], "source": "tipo_contrato", "provenace": "staff"}
                     if ranking not in entry["ranking"]:
                         entry["ranking"].append(ranking)
                 if reg["jornada_laboral"]:
-                    ranking = {"date": aff_time,
+                    ranking = {"date": start_date,
                                "rank": reg["jornada_laboral"], "source": "jornada_laboral", "provenace": "staff"}
                     if ranking not in entry["ranking"]:
                         entry["ranking"].append(ranking)
                 if reg["categoría_laboral"]:
-                    ranking = {"date": aff_time,
+                    ranking = {"date": start_date,
                                "rank": reg["categoría_laboral"], "source": "categoría_laboral", "provenace": "staff"}
                     if ranking not in entry["ranking"]:
                         entry["ranking"].append(ranking)
 
+            # Set vinculations years to affiliation
+            aff = next((a for a in entry["affiliations"] if a["id"] == self.staff_reg["_id"]), None)
+            aff["vinculation_years"] = sorted(list(vinculation_years)) if vinculation_years else []
+            # Add the entry to the database
             self.collection.insert_one(entry)
 
     def run(self):
@@ -201,7 +216,8 @@ class Kahi_staff_person(KahiBase):
 
             # convert dates to the correct format
             for col in ["fecha_nacimiento", "fecha_inicial_vinculación", "fecha_final_vinculación"]:
-                self.data[col] = to_datetime(self.data[col], errors='coerce').dt.strftime('%d/%m/%Y').fillna("")
+                self.data[col] = to_datetime(self.data[col], dayfirst=True, errors='coerce')
+                self.data[col] = self.data[col].dt.strftime('%d/%m/%Y').fillna('')
 
             self.facs_inserted = {}
             self.deps_inserted = {}

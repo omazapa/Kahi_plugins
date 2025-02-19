@@ -337,7 +337,7 @@ class Kahi_unicity_person(KahiBase):
         #  Unicity by ids
         if isinstance(self.task, list):
             for task in self.task:
-                if task in ['linkedin', 'orcid', 'publons', 'researchgate',
+                if task in ['scienti', 'linkedin', 'orcid', 'publons', 'researchgate',
                             'scholar', 'scopus', 'ssrn', 'wos']:
                     pipeline = [
                         {"$project": {"external_ids": 1, "_id": 1}},
