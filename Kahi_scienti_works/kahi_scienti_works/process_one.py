@@ -5,6 +5,49 @@ from time import time
 from bson import ObjectId
 
 
+def has_scienti_source(lst):
+    """
+    Checks if scienti type is available
+
+    Parameters
+    ----------
+    lst : list
+        List of types from the first register
+
+    Returns
+    -------
+    bool
+        True if the scienti type is available, False otherwise.
+    """
+    return any(item.get("source") == "scienti" for item in lst)
+
+
+def check_first_level_type(list1, list2):
+    """
+    Function to check if the first level types of two registers are different.
+
+    Parameters
+    ----------
+    list1 : list
+        List of types from the first register
+    list2 : list
+        List of types from the second register
+
+    Returns
+    -------
+    bool
+        True if the first level types are equal, False otherwise.
+    """
+    # Extraer los tipos donde source='scienti' y level=0
+    types1 = {item["type"] for item in list1 if item.get(
+        "source") == "scienti" and item.get("level") == 0}
+    types2 = {item["type"] for item in list2 if item.get(
+        "source") == "scienti" and item.get("level") == 0}
+
+    # Comparar conjuntos de tipos
+    return types1 == types2
+
+
 def get_doi(reg):
     """
     Method to get the doi of a register.
@@ -705,8 +748,21 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
                 colav_reg = collection.find_one(
                     {"_id": ObjectId(response["_id"])})
                 if colav_reg:
-                    process_one_update(scienti_reg, colav_reg, db,
-                                       collection, empty_work, verbose)
+                    # TODO: add author check here before to do the update
+
+                    if has_scienti_source(entry["types"]) and has_scienti_source(entry["types"]):
+
+                        # if type is equ
+                        if check_first_level_type(entry["types"], colav_reg["types"]):
+                            process_one_update(scienti_reg, colav_reg, db,
+                                               collection, empty_work, verbose)
+                        else:
+                            process_one_insert(scienti_reg, db, collection,
+                                               empty_work, es_handler, doi=None, verbose=verbose)
+                    else:  # there is not scienti types to compare, then update them
+                        process_one_update(scienti_reg, colav_reg, db,
+                                           collection, empty_work, verbose)
+
                 else:
                     if verbose > 4:
                         print("Register with {} not found in mongodb".format(
