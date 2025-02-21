@@ -1,6 +1,6 @@
 from kahi_impactu_utils.Utils import doi_processor, lang_poll
 from time import time
-from pandas import isna
+import copy
 from iso639 import is_valid639_1
 
 
@@ -17,7 +17,8 @@ def parse_ciarp(reg, affiliation, empty_work):
     empty_work: dict
         A template for the work entry.
     """
-    entry = empty_work.copy()
+    entry = copy.deepcopy(empty_work)
+
     entry["updated"] = [{"source": "ciarp", "time": int(time())}]
     title = reg["título"].strip().replace('""', '')
     if title.count('"') == 1:
@@ -35,26 +36,23 @@ def parse_ciarp(reg, affiliation, empty_work):
     entry["titles"].append(
         {"title": title, "lang": lang, "source": "ciarp", "provenance": "ciarp"})
     if reg["doi"]:
-        if not isna(reg["doi"]):
-            doi = doi_processor(reg["doi"])
-            if doi:
-                entry["doi"] = doi
-                entry["external_ids"].append(
-                    {"provenance": "ciarp", "source": "doi", "id": doi})
+        doi = doi_processor(reg["doi"])
+        if doi:
+            entry["doi"] = doi
+            entry["external_ids"].append(
+                {"provenance": "ciarp", "source": "doi", "id": doi})
     if reg["issn"]:
-        if not isna(reg["issn"]):
-            for issn in reg["issn"].strip().split():
-                if "-" not in issn:
-                    continue
-                issn = issn.strip()
-                entry["source"] = {"name": reg["revista"],
-                                   "external_ids": [{"provenance": "ciarp", "source": "issn", "id": issn}]}
+        for issn in reg["issn"].strip().split():
+            if "-" not in issn:
+                continue
+            issn = issn.strip()
+            entry["source"] = {"name": reg["revista"],
+                               "external_ids": [{"provenance": "ciarp", "source": "issn", "id": issn}]}
     if reg["isbn"]:
-        if not isna(reg["isbn"]):
-            isbn = {"provenance": "ciarp",
-                    "source": "isbn", "id": reg["isbn"].strip()}
-            if isbn not in entry["external_ids"]:
-                entry["external_ids"].append(isbn)
+        isbn = {"provenance": "ciarp",
+                "source": "isbn", "id": reg["isbn"].strip()}
+        if isbn not in entry["external_ids"]:
+            entry["external_ids"].append(isbn)
     if not entry["source"]:
         entry["source"] = {
             "name": reg["revista"], "external_ids": []}
