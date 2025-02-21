@@ -148,39 +148,179 @@ def process_info_from_works(db, author, entry, groups_production_list):
                     {"provenance": "minciencias", "source": "scienti", "id": ids})
 
 
-def process_one(author, db, collection, empty_person, cvlac_profile, groups_production_list, verbose):
+def process_one(author_entry, db, collection, empty_person, cvlac_profile, groups_production_list, privates, verbose):
 
-    if not author or not cvlac_profile:
+    if not author_entry or not cvlac_profile:
         return
 
-    # Define the author as a dictionary if it is not to permit the use of the same function for the cvlac_profile and the private_profiles.
-    author = author if isinstance(author, dict) else {"id_persona_pr": author}
+    # If the author is a dictionary, it is a private profile, otherwise it is a cvlac_profile.
+    authors = [author_entry] if privates else author_entry
 
-    auid = author["id_persona_pr"]
-    reg_db = collection.find_one({"external_ids.id.COD_RH": auid})
-    if reg_db:
-        # Author update
-        sources = [x["source"] for x in reg_db["updated"]]
-        if "minciencias" in sources:
-            return
-        # Updated
-        sources = [x["source"] for x in reg_db["updated"]]
-        if "minciencias" not in sources:
-            reg_db["updated"].append({
-                "source": "minciencias",
-                "time": int(time())})
+    # Iterate over the authors
+    for author in authors:
+        # Define the author as a dictionary if it is not to permit the use of the same function for the cvlac_profile and the private_profiles.
+        author = author if isinstance(author, dict) else {"id_persona_pr": author}
 
+        reg_db = collection.find_one({"external_ids.id.COD_RH": author["id_persona_pr"]})
+
+        if reg_db:
+            # Updated
+            sources = [x["source"] for x in reg_db["updated"]]
+            if "minciencias" not in sources:
+                reg_db["updated"].append({
+                    "source": "minciencias",
+                    "time": int(time())})
+
+            if cvlac_profile:
+                # Identifiers
+                ids = set()
+                if "red_identificadores" in cvlac_profile.keys():
+                    if cvlac_profile["red_identificadores"]:
+                        for rid in cvlac_profile["red_identificadores"].values():
+                            ids.add(rid)
+                if "redes_identificadoes" in cvlac_profile.keys():
+                    if cvlac_profile["redes_identificadoes"]:
+                        for rid in cvlac_profile["redes_identificadoes"].values():
+                            ids.add(rid)
+                if ids:
+                    for _id in list(ids):
+                        if isinstance(_id, str):
+                            value = get_id_from_url(_id)
+                            if value:
+                                rec = {
+                                    "provenance": "minciencias",
+                                    "source": get_id_type_from_url(_id),
+                                    "id": value
+                                }
+                                if rec["id"] not in [x["id"] for x in reg_db["external_ids"]]:
+                                    if rec not in reg_db["external_ids"]:
+                                        reg_db["external_ids"].append(rec)
+
+            # Subjects
+            if "nme_gran_area_pr" and "nme_area_pr" in author.keys():
+                subjects_entry = {
+                    "provenance": "minciencias",
+                    "source": "OECD",
+                    "subjects": [
+                        {
+                            "level": 0,
+                            "name": author["nme_gran_area_pr"],
+                            "id": "",
+                            "external_ids": [{"source": "OECD", "id": author["id_area_con_pr"][0]}]
+                        },
+                        {
+                            "level": 1,
+                            "name": author["nme_area_pr"],
+                            "id": "",
+                            "external_ids": [{"source": "OECD", "id": author["id_area_con_pr"][1]}]
+                        },
+                    ]
+                }
+                if subjects_entry not in reg_db["subjects"]:
+                    reg_db["subjects"].append(subjects_entry)
+
+            # Ranking
+            if "nme_clasificacion_pr" in author.keys():
+                entry_rank = {
+                    "source": "minciencias",
+                    "rank": author["nme_clasificacion_pr"],
+                    "id": author["id_clas_pr"],
+                    "order": author["orden_clas_pr"],
+                    "date": check_date_format(author["ano_convo"])
+                }
+                if entry_rank not in reg_db["ranking"]:
+                    reg_db["ranking"].append(entry_rank)
+
+            # Affiliations and related_works
+            # process_info_from_works(db, author, reg_db, groups_production_list)
+            # Update the record
+            collection.update_one(
+                {"_id": reg_db["_id"]},
+                {"$set": {
+                    "updated": reg_db["updated"],
+                    "external_ids": reg_db["external_ids"],
+                    "subjects": reg_db["subjects"],
+                    "related_works": reg_db["related_works"],
+                    "ranking": reg_db["ranking"],
+                    "affiliations": reg_db["affiliations"]
+                }})
+            continue
+
+        entry = empty_person.copy()
+        entry["updated"].append({
+            "source": "minciencias",
+            "time": int(time())})
+
+        # Author creation
         if cvlac_profile:
-            # Identifiers
+            if "datos_generales" in cvlac_profile.keys():
+                if "0000000082" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Mujer"
+                if "0001385093" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Mujer"
+                if "0001506130" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0001393305" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0001353302" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0001165976" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0001437782" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0000287938" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0001511182" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0000037796" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0001386076" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0000346748" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0000327220" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0001317792" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0001103741" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0000059161" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+                if "0000896519" in author["id_persona_pr"]:
+                    cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
+
+            entry["external_ids"].append({
+                "provenance": "minciencias",
+                "source": "scienti",
+                "id": {"COD_RH": cvlac_profile["id_persona_pr"]}
+            })
+
+            if "datos_generales" in cvlac_profile.keys() and cvlac_profile["datos_generales"]:
+                full_name = sub(
+                    r'\s+', ' ', cvlac_profile["datos_generales"]["Nombre"].replace(".", " ")).strip()
+                full_name = split_names(full_name)
+
+                entry["full_name"] = full_name["full_name"]
+                entry["first_names"] = full_name["first_names"]
+                entry["last_names"] = full_name["last_names"]
+                entry["initials"] = full_name["initials"]
+
+            if "sexo" in cvlac_profile["datos_generales"].keys():
+                entry["sex"] = parse_sex(cvlac_profile["datos_generales"]["Sexo"].lower(
+                )) if "Sexo" in cvlac_profile["datos_generales"].keys() else ""
+
+            # all the ids are mixed, so we need to check each one in the next columns
             ids = set()
             if "red_identificadores" in cvlac_profile.keys():
                 if cvlac_profile["red_identificadores"]:
                     for rid in cvlac_profile["red_identificadores"].values():
                         ids.add(rid)
+
             if "redes_identificadoes" in cvlac_profile.keys():
                 if cvlac_profile["redes_identificadoes"]:
                     for rid in cvlac_profile["redes_identificadoes"].values():
                         ids.add(rid)
+
             if ids:
                 for _id in list(ids):
                     if isinstance(_id, str):
@@ -191,13 +331,14 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
                                 "source": get_id_type_from_url(_id),
                                 "id": value
                             }
-                            if rec["id"] not in [x["id"] for x in reg_db["external_ids"]]:
-                                if rec not in reg_db["external_ids"]:
-                                    reg_db["external_ids"].append(rec)
+                            if rec not in entry["external_ids"]:
+                                entry["external_ids"].append(rec)
+        # degrees
+        # Pending to add the degrees
 
-        # Subjects
+        # subjects
         if "nme_gran_area_pr" and "nme_area_pr" in author.keys():
-            reg_db["subjects"].append({
+            entry["subjects"].append({
                 "provenance": "minciencias",
                 "source": "OECD",
                 "subjects": [
@@ -215,6 +356,10 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
                     },
                 ]
             })
+
+        # affiliations and related works
+        process_info_from_works(db, author, entry, groups_production_list)
+
         # Ranking
         if "nme_clasificacion_pr" in author.keys():
             entry_rank = {
@@ -224,149 +369,9 @@ def process_one(author, db, collection, empty_person, cvlac_profile, groups_prod
                 "order": author["orden_clas_pr"],
                 "date": check_date_format(author["ano_convo"])
             }
-            reg_db["ranking"].append(entry_rank)
+            entry["ranking"].append(entry_rank)
 
-        # Affiliations and related_works
-        process_info_from_works(db, author, reg_db, groups_production_list)
-        # Update the record
-        collection.update_one(
-            {"_id": reg_db["_id"]},
-            {"$set": {
-                "updated": reg_db["updated"],
-                "external_ids": reg_db["external_ids"],
-                "subjects": reg_db["subjects"],
-                "related_works": reg_db["related_works"],
-                "ranking": reg_db["ranking"],
-                "affiliations": reg_db["affiliations"]
-            }})
-        return
-
-    entry = empty_person.copy()
-    entry["updated"].append({
-        "source": "minciencias",
-        "time": int(time())})
-
-    # Author creation
-    if cvlac_profile:
-        if "datos_generales" in cvlac_profile.keys():
-            if "0000000082" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Mujer"
-            if "0001385093" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Mujer"
-            if "0001506130" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0001393305" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0001353302" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0001165976" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0001437782" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0000287938" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0001511182" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0000037796" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0001386076" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0000346748" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0000327220" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0001317792" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0001103741" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0000059161" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-            if "0000896519" in author["id_persona_pr"]:
-                cvlac_profile["datos_generales"]["Sexo"] = "Hombre"
-
-        entry["external_ids"].append({
-            "provenance": "minciencias",
-            "source": "scienti",
-            "id": {"COD_RH": cvlac_profile["id_persona_pr"]}
-        })
-
-        if "datos_generales" in cvlac_profile.keys() and cvlac_profile["datos_generales"]:
-            full_name = sub(
-                r'\s+', ' ', cvlac_profile["datos_generales"]["Nombre"].replace(".", " ")).strip()
-            full_name = split_names(full_name)
-
-            entry["full_name"] = full_name["full_name"]
-            entry["first_names"] = full_name["first_names"]
-            entry["last_names"] = full_name["last_names"]
-            entry["initials"] = full_name["initials"]
-
-        if "sexo" in cvlac_profile["datos_generales"].keys():
-            entry["sex"] = parse_sex(cvlac_profile["datos_generales"]["Sexo"].lower(
-            )) if "Sexo" in cvlac_profile["datos_generales"].keys() else ""
-
-        # all the ids are mixed, so we need to check each one in the next columns
-        ids = set()
-        if "red_identificadores" in cvlac_profile.keys():
-            if cvlac_profile["red_identificadores"]:
-                for rid in cvlac_profile["red_identificadores"].values():
-                    ids.add(rid)
-
-        if "redes_identificadoes" in cvlac_profile.keys():
-            if cvlac_profile["redes_identificadoes"]:
-                for rid in cvlac_profile["redes_identificadoes"].values():
-                    ids.add(rid)
-
-        if ids:
-            for _id in list(ids):
-                if isinstance(_id, str):
-                    value = get_id_from_url(_id)
-                    if value:
-                        rec = {
-                            "provenance": "minciencias",
-                            "source": get_id_type_from_url(_id),
-                            "id": value
-                        }
-                        if rec not in entry["external_ids"]:
-                            entry["external_ids"].append(rec)
-    # degrees
-    # Pending to add the degrees
-
-    # subjects
-    if "nme_gran_area_pr" and "nme_area_pr" in author.keys():
-        entry["subjects"].append({
-            "provenance": "minciencias",
-            "source": "OECD",
-            "subjects": [
-                {
-                    "level": 0,
-                    "name": author["nme_gran_area_pr"],
-                    "id": "",
-                    "external_ids": [{"source": "OECD", "id": author["id_area_con_pr"][0]}]
-                },
-                {
-                    "level": 1,
-                    "name": author["nme_area_pr"],
-                    "id": "",
-                    "external_ids": [{"source": "OECD", "id": author["id_area_con_pr"][1]}]
-                },
-            ]
-        })
-
-    # affiliations and related works
-    process_info_from_works(db, author, entry, groups_production_list)
-
-    # Ranking
-    if "nme_clasificacion_pr" in author.keys():
-        entry_rank = {
-            "source": "minciencias",
-            "rank": author["nme_clasificacion_pr"],
-            "id": author["id_clas_pr"],
-            "order": author["orden_clas_pr"],
-            "date": check_date_format(author["ano_convo"])
-        }
-        entry["ranking"].append(entry_rank)
-
-    collection.insert_one(entry)
+        collection.insert_one(entry)
 
 
 class Kahi_minciencias_opendata_person(KahiBase):
@@ -430,9 +435,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
             print("Creating the aggregate for {} authors.".format(
                 self.researchers_collection.count_documents({})))
         pipeline = [
-            {"$sort": {"edad_anos_pr": -1}},
-            {"$group": {"_id": "$id_persona_pr", "doc": {"$first": "$$ROOT"}}},
-            {"$replaceRoot": {"newRoot": "$doc"}}
+            {"$group": {"_id": "$id_persona_pr", "docs": {"$push": "$$ROOT"}}}
         ]
         cvlac_authors_list = list(self.researchers_collection.aggregate(
             pipeline, allowDiskUse=True))
@@ -486,14 +489,15 @@ class Kahi_minciencias_opendata_person(KahiBase):
                 verbose=10,
                 backend="threading")(
                 delayed(process_one)(
-                    author,
+                    author["docs"],
                     db,
                     person_collection,
                     self.empty_person(),
                     # Find the document in the cvlac_stage collection using the id_persona_pr field.
                     self.cvlac_stage.find_one(
-                        {"id_persona_pr": author["id_persona_pr"]}),
+                        {"id_persona_pr": author["_id"]}),
                     groups_production_list,
+                    False,  # author is list of author documents
                     self.verbose
                 ) for author in cvlac_authors_list  # Iterate over the cvlac_authors_list
             )
@@ -514,6 +518,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
                     self.private_profiles.find_one(
                         {"id_persona_pr": author}),
                     groups_production_list,
+                    True,  # author is an author id
                     self.verbose
                     # Iterate over the authors_private_profile_list
                 ) for author in authors_private_profile_list
@@ -540,6 +545,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
                         self.cvlac_stage.find_one(
                             {"id_persona_pr": author}),
                         groups_production_not_cvlac_list,
+                        True,  # author is an author id
                         self.verbose
                         # Iterate over the ids of the authors not in cvlac.
                     ) for author in list(authors_not_cvlac_ids)
