@@ -39,8 +39,8 @@ def extract_affiliation_years(affiliations):
         list of years of vinculation of an author
     """
     for affiliation in affiliations:
-        if 'vinculation_years' in affiliation:
-            return affiliation['vinculation_years']
+        if 'years' in affiliation:
+            return affiliation['years']
     return []
 
 
@@ -302,7 +302,7 @@ def process_one_update(ciarp_reg, colav_reg, db, collection, affiliation, empty_
     author["affiliations"] = [
         aff for aff in author["affiliations"] if aff.get("name", "") != ""]
     # Check if year of the publication is in the author affiliation years
-    if author_db and int(entry["year_published"]) in extract_affiliation_years(author_db["affiliations"]):
+    if author_db and entry["year_published"] and int(entry["year_published"]) in extract_affiliation_years(author_db["affiliations"]):
         author["affiliations"] = author["affiliations"]
     else:
         author["affiliations"] = []
@@ -416,7 +416,7 @@ def process_one_insert(ciarp_reg, db, collection, affiliation, empty_work, es_ha
 
             # Check if the author affiliation in the year of the publication
             aff_correspond = False
-            if int(entry["year_published"]) in extract_affiliation_years(author_db["affiliations"]):
+            if entry["year_published"] and int(entry["year_published"]) in extract_affiliation_years(author_db["affiliations"]):
                 aff_correspond = True
 
             entry["authors"][i] = {
@@ -441,7 +441,7 @@ def process_one_insert(ciarp_reg, db, collection, affiliation, empty_work, es_ha
 
                 # Check if the author affiliation in the year of the publication
                 aff_correspond = False
-                if int(entry["year_published"]) in extract_affiliation_years(author_db["affiliations"]):
+                if entry["year_published"] and int(entry["year_published"]) in extract_affiliation_years(author_db["affiliations"]):
                     aff_correspond = True
 
                 entry["authors"][i] = {

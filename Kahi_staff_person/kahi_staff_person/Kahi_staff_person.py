@@ -38,7 +38,7 @@ class Kahi_staff_person(KahiBase):
         # Iterate over the unique identifiers
         for idx in list(self.cedula_dep.keys()):
             # Set to store the years of vinculation
-            vinculation_years = set()
+            years = set()
             # Get the current year
             current_year = datetime.now(timezone.utc).year
             # Check if the person is already in the database
@@ -68,7 +68,7 @@ class Kahi_staff_person(KahiBase):
                     start_date = int(datetime.strptime(start_date, "%d/%m/%Y").timestamp())
                     start_year = datetime.fromtimestamp(start_date, tz=timezone.utc).year
                     end_year = datetime.fromtimestamp(end_date, tz=timezone.utc).year if end_date else current_year
-                    vinculation_years.update(range(start_year, end_year + 1))
+                    years.update(range(start_year, end_year + 1))
 
                 name = self.staff_reg["names"][0]["name"]
                 for n in self.staff_reg["names"]:
@@ -167,7 +167,7 @@ class Kahi_staff_person(KahiBase):
 
             # Set vinculations years to affiliation
             aff = next((a for a in entry["affiliations"] if a["id"] == self.staff_reg["_id"]), None)
-            aff["vinculation_years"] = sorted(list(vinculation_years)) if vinculation_years else []
+            aff["years"] = sorted(list(years)) if years else []
             # Add the entry to the database
             self.collection.insert_one(entry)
 
