@@ -87,7 +87,7 @@ class Kahi_staff_person(KahiBase):
                     "cédula de ciudadanía": "Cédula de Ciudadanía",
                     "cédula de extranjería": "Cédula de Extranjería",
                     "pasaporte": "Pasaporte",
-                    "código rh de scienti": "scienti"
+                    "COD_RH": "scienti"
                 }
                 # Get the document type from the record
                 doc_type = reg["tipo_documento"]
@@ -97,7 +97,7 @@ class Kahi_staff_person(KahiBase):
                     id_entry = {
                         "provenance": "staff",
                         "source": document_types[doc_type],  # Get corresponding source name
-                        "id": idx if doc_type != "código rh de scienti" else {"COD_RH": idx}
+                        "id": idx if doc_type != "COD_RH" else {"COD_RH": idx}
                     }
                     # Add the entry only if it's not already in the list
                     if id_entry not in entry["external_ids"]:
