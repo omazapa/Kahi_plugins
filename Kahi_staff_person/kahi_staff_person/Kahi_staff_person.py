@@ -209,7 +209,7 @@ class Kahi_staff_person(KahiBase):
                 if author_works:
                     for work in author_works:
                         rec = {
-                            "provenance": "ciarp", "source": "doi", "id": "https://doi.org/" + work["doi"], "year": work["año"]}
+                            "provenance": "ciarp", "source": "doi", "id": doi_processor(work["doi"]), "year": work["año"]}
                         if rec not in entry["related_works"]:
                             entry["related_works"].append(rec)
 
