@@ -26,6 +26,10 @@ def process_one(paper, db, collection, empty_person, verbose):
             if not already_updated:
                 author_db["updated"].append(
                     {"source": "scholar", "time": int(time())})
+            # Merge the full name (use the longest one)
+            if len(author["full_name"]) > len(author_db["full_name"]):
+                author_db["aliases"].append(author_db["full_name"])
+                author_db["full_name"] = author["full_name"]
             # Merge related works (only add new ones)
             if author["related_works"]:
                 for work in author["related_works"]:
@@ -36,6 +40,8 @@ def process_one(paper, db, collection, empty_person, verbose):
                 {"_id": author_db["_id"]},
                 {"$set": {
                     "updated": author_db["updated"],
+                    "full_name": author_db["full_name"],
+                    "aliases": author_db["aliases"],
                     "related_works": author_db["related_works"]
                 }}
             )
