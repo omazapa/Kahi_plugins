@@ -28,8 +28,10 @@ def process_one(paper, db, collection, empty_person, verbose):
                     {"source": "scholar", "time": int(time())})
             # Merge the full name (use the longest one)
             if len(author["full_name"]) > len(author_db["full_name"]):
-                author_db["aliases"].append(author_db["full_name"])
                 author_db["full_name"] = author["full_name"]
+                # Merge the aliases (only add new ones)
+                if author_db["full_name"] not in author_db["aliases"]:
+                    author_db["aliases"].append(author_db["full_name"])
             # Merge related works (only add new ones)
             if author["related_works"]:
                 for work in author["related_works"]:
