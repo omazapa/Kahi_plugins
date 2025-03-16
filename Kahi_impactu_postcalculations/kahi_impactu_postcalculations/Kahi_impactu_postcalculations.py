@@ -111,7 +111,7 @@ class Kahi_impactu_postcalculations(KahiBase):
 
         impactu_client = MongoClient(self.impactu_database_url)
 
-        print(f"INFO: Setting up impactu types for works")
+        print("INFO: Setting up impactu types for works")
         self.process_types(db)
 
         print(f"INFO: Creating indexes in db {self.database_name} for backend")
