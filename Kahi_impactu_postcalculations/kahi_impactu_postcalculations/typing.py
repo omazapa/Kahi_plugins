@@ -1,5 +1,4 @@
 
-
 def get_scienti_string(work):
     """
     Get the scienti string of the work types
@@ -72,7 +71,7 @@ def process_minciencias(work, types):
     return {}
 
 
-def process_others(source, types):
+def process_others(source):
     """
     Allows to process other type sources such as ciarp, openalex and scholar
 
@@ -80,8 +79,6 @@ def process_others(source, types):
     ----------
     source: str
         The source of the types ex: ciarp, openalex, scholar
-    types: pandas.DataFrame
-        The impactu types
 
     Returns:
     -------
@@ -89,6 +86,21 @@ def process_others(source, types):
         The function to process the type source
     """
     def process_source(work, types):
+        """
+        Functor to process the type source
+
+        Parameters:
+        ----------
+        work: dict
+            The work from kahi
+        types: pandas.DataFrame
+            The impactu types
+
+        Returns:
+        -------
+        dict
+            The colav type or an empty dictionary if type is not found
+        """
         t = work["types"][0]["type"]
         colav_type = types[types["Tipo"] == t]["Tipo Colav"].values
         if len(colav_type) > 1:
@@ -107,7 +119,7 @@ functors["openalex"] = process_others("openalex")
 functors["scholar"] = process_others("scholar")
 
 
-def process_one(db, work, source, types, verbose=True):
+def process_type(db, work, source, types, verbose=True):
     """
     Process one work to get the colav type
 
