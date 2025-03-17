@@ -6,6 +6,9 @@ from spacy import cli, load
 from kahi_impactu_postcalculations.process_one import network_creation_process_one, top_words_process_one, count_works_one, load_nlp_models
 from kahi_impactu_postcalculations.indexes import create_indexes
 from kahi_impactu_postcalculations.denormalization import denormalize
+from kahi_impactu_postcalculations.typing import process_type
+from pathlib import Path
+import pandas as pd
 
 
 class Kahi_impactu_postcalculations(KahiBase):
@@ -35,6 +38,15 @@ class Kahi_impactu_postcalculations(KahiBase):
         self.author_count = self.config["impactu_postcalculations"][
             "author_count"] if "author_count" in self.config["impactu_postcalculations"] else 6
         self._check_and_install_spacy_models()
+        self.types_file = str(
+            Path(__file__).parent.resolve()) + "/impactu_types.csv"
+        self.types_priority = ["minciencias",
+                               "scienti", "ciarp", "openalex", "scholar"]
+        self.types = pd.read_csv(self.types_file)
+        self.types = self.types[self.types["Entidad Actual"] == "works"][[
+            "Fuente", "Tipo", "Tipo Colav", "COAR Contolled Vocabularies for Repositories"]]
+        self.types["Tipo"] = self.types["Tipo"].apply(
+            lambda x: " ".join(x.split()).strip() if isinstance(x, str) else x)
 
     def _check_and_install_spacy_models(self):
         """
@@ -69,6 +81,26 @@ class Kahi_impactu_postcalculations(KahiBase):
         subprocess.run(["python3", "-m", "spacy",
                        "download", "es_core_news_sm"])
 
+    def process_types(self, db):
+        for source in self.types_priority:
+            print(f"INFO: processing types for {source}")
+            pipe = [{"$match": {"types.source": {"$ne": "impactu"}}},
+                    {"$match": {"types.source": source}},
+                    {"$unwind": "$types"},
+                    {"$match": {"types.source": source}},
+                    {"$group": {"_id": "$_id", "types": {"$push": "$types"}}},
+                    {"$set": {
+                        "types": {
+                            "$sortArray": {"input": "$types", "sortBy": {"level": 1}}
+                        }
+                    }
+            },
+                {"$project": {"types": 1}},
+            ]
+            data = db["works"].aggregate(pipe)
+            Parallel(n_jobs=self.n_jobs, verbose=10, backend="threading")(delayed(process_type)(db, work, source, self.types
+                                                                                                ) for work in data)
+
     def run(self):
         """
         Execute the plugin to create co-authorship networks and extract top words.
@@ -79,8 +111,8 @@ class Kahi_impactu_postcalculations(KahiBase):
 
         impactu_client = MongoClient(self.impactu_database_url)
 
-        client = MongoClient(self.mongodb_url)
-        db = client[self.database_name]
+        print("INFO: Setting up impactu types for works")
+        self.process_types(db)
 
         print(f"INFO: Creating indexes in db {self.database_name} for backend")
         db["works"].create_index("authors.id")
