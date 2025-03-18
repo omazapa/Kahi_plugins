@@ -19,3 +19,6 @@ def create_indexes(db):
     db["works"].create_index(
         {"types.source": 1, "types.type": 1, "types.code": 1})
     db["works"].create_index({"open_access.open_access_status": 1})
+    # https://github.com/colav/impactu/issues/418
+    db["works"].create_index(
+        {"subjects.subjects.level": 1, "subjects.subjects.name": 1})
