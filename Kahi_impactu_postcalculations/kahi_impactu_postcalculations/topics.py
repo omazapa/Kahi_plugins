@@ -64,7 +64,7 @@ def get_openalex_topic(col_oa, topic_pred):
         Topic from OpenAlex with the score of the prediction
 
     """
-    topic_url = type_url_base+str(topic_pred['topic_id'])
+    topic_url = type_url_base + str(topic_pred['topic_id'])
     topic = col_oa.find_one({"id": topic_url}, {
                             "id": 1, "display_name": 1, "subfield": 1, "field": 1, "domain": 1})
     if topic is None:
