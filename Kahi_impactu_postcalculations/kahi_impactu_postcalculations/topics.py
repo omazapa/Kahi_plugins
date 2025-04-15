@@ -93,8 +93,9 @@ def process_topic(col, col_oa, work, inference_endpoint="http://localhost:8080/i
         Endpoint of the inference service, by default "http://localhost:8080/invocations"
     """
     title = work["titles"][0]["title"]
-    abstract = work["abstracts"][0]["abstract"] if len(
-        work["abstracts"]) > 0 else {}
+    if len(work["abstracts"]) == 0:
+        return
+    abstract = work["abstracts"][0]["abstract"]
     journal_name = work["source"]["name"] if work["source"] != {} else ""
     req = request_topic_inference(
         title, abstract, journal_name, inference_endpoint)
