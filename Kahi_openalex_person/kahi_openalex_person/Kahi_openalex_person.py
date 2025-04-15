@@ -2,7 +2,7 @@ from kahi.KahiBase import KahiBase
 from pymongo import MongoClient, TEXT
 from time import time
 from joblib import Parallel, delayed
-from kahi_impactu_utils.Utils import get_id_from_url
+from kahi_impactu_utils.Utils import get_id_from_url, split_names
 from re import sub
 
 
@@ -15,7 +15,10 @@ def process_one(oa_author, client, db_name, empty_person, related_works, max_tri
 
     entry["full_name"] = sub(
         r'\s+', ' ', oa_author["display_name"].replace(".", " ")).strip()
-
+    author_data = split_names(entry["full_name"])
+    entry["last_names"] = author_data["last_names"]
+    entry["first_names"] = author_data["first_names"]
+    entry["initials"] = author_data["initials"]
     for name in oa_author["display_name_alternatives"]:
         if not name.lower() in entry["aliases"]:
             entry["aliases"].append(name.lower())
