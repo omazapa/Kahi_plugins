@@ -72,9 +72,10 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
         entry["date_published"] = check_date_format(
             f'{month}-{year}')
         entry["year_published"] = int(year)
-    if "SGL_CATEGORIA" in reg.keys():
-        entry["ranking"].append(
-            {"provenance": "scienti", "date": "", "rank": reg["SGL_CATEGORIA"], "source": "scienti"})
+    if "SGL_CATEGORIA" in reg.keys() and reg["SGL_CATEGORIA"]:
+        ranking_reg = {"provenance": "scienti", "date": "", "rank": reg["SGL_CATEGORIA"], "source": "scienti"}
+        if ranking_reg not in entry["ranking"]:
+            entry["ranking"].append(ranking_reg)
     # types section
     tpo_obj = reg["product_type"][0]
     for _ in range(0, 4):

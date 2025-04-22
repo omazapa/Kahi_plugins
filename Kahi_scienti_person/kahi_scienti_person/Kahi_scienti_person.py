@@ -275,8 +275,9 @@ class Kahi_scienti_person(KahiBase):
                             if "orcid" in author["COD_ORCID"]:
                                 orcid_id = get_id_from_url(author["COD_ORCID"])
                             else:
-                                orcid_id = "https://orcid.org/" + \
+                                orcid_url = "https://orcid.org/" + \
                                     author["COD_ORCID"]
+                                orcid_id = get_id_from_url(orcid_url)
                             if orcid_id:
                                 author_db = self.collection.find_one(
                                     {"external_ids.id": orcid_id})
@@ -289,8 +290,9 @@ class Kahi_scienti_person(KahiBase):
                                 scopus_id = get_id_from_url(
                                     author["AUTHOR_ID_SCP"])
                             else:
-                                scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + \
+                                scopus_url = "https://www.scopus.com/authid/detail.uri?authorId=" + \
                                     author["AUTHOR_ID_SCP"]
+                                scopus_id = get_id_from_url(scopus_url)
                             # get_id_from_url can return None (we need to double check)
                             if scopus_id:
                                 author_db = self.collection.find_one(
@@ -323,8 +325,9 @@ class Kahi_scienti_person(KahiBase):
                             if "orcid" in author["COD_ORCID"]:
                                 orcid_id = get_id_from_url(author["COD_ORCID"])
                             else:
-                                orcid_id = "https://orcid.org/" + \
+                                orcid_url = "https://orcid.org/" + \
                                     author["COD_ORCID"]
+                                orcid_id = get_id_from_url(orcid_url)
                             if orcid_id:
                                 entry["external_ids"].append(
                                     {"provenance": "scienti",
@@ -336,8 +339,9 @@ class Kahi_scienti_person(KahiBase):
                                 scopus_id = get_id_from_url(
                                     author["AUTHOR_ID_SCP"])
                             else:
-                                scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + \
+                                scopus_url = "https://www.scopus.com/authid/detail.uri?authorId=" + \
                                     author["AUTHOR_ID_SCP"]
+                                scopus_id = get_id_from_url(scopus_url)
                             # get_id_from_url can return None (we need to double check)
                             if scopus_id:
                                 entry["external_ids"].append({
@@ -567,8 +571,9 @@ class Kahi_scienti_person(KahiBase):
                             if "orcid" in author["COD_ORCID"]:
                                 orcid_id = get_id_from_url(author["COD_ORCID"])
                             else:
-                                orcid_id = "https://orcid.org/" + \
+                                orcid_url = "https://orcid.org/" + \
                                     author["COD_ORCID"]
+                                orcid_id = get_id_from_url(orcid_url)
                             if orcid_id:
                                 author_db = self.collection.find_one(
                                     {"external_ids.id": orcid_id})
@@ -580,8 +585,9 @@ class Kahi_scienti_person(KahiBase):
                                 scopus_id = get_id_from_url(
                                     author["AUTOR_ID_SCP"])
                             else:
-                                scopus_id = "https://www.scopus.com/authid/detail.uri?authorId=" + \
+                                scopus_url = "https://www.scopus.com/authid/detail.uri?authorId=" + \
                                     author["AUTOR_ID_SCP"]
+                                scopus_id = get_id_from_url(scopus_url)
                             # get_id_from_url can return None (we need to double check)
                             if scopus_id:
                                 author_db = self.collection.find_one(
