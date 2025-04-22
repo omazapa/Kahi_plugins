@@ -208,10 +208,12 @@ class Kahi_staff_person(KahiBase):
                 author_works = self.filter_research_products(self.ciarp_data, self.allowed_categories, idx)
                 if author_works:
                     for work in author_works:
-                        rec = {
-                            "provenance": "ciarp", "source": "doi", "id": doi_processor(work["doi"]), "year": work["año"]}
-                        if rec not in entry["related_works"]:
-                            entry["related_works"].append(rec)
+                        work_doi = doi_processor(work["doi"])
+                        if work_doi:
+                            rec = {
+                                "provenance": "ciarp", "source": "doi", "id": work_doi, "year": work["año"]}
+                            if rec not in entry["related_works"]:
+                                entry["related_works"].append(rec)
 
             # Add the entry to the database
             self.collection.insert_one(entry)
