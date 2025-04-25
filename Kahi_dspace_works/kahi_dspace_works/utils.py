@@ -152,7 +152,22 @@ thesis_types = ['http://purl.org/coar/resource_type/c_46ec',
                 'https://purl.org/redcol/resource_type/TM',
                 'http://purl.org/redcol/resource_type/TD_A',
                 'https://purl.org/redcol/resource_type/TD',
-                'http://purl.org/redcol/resource_type/TP_A']
+                'http://purl.org/redcol/resource_type/TP_A',
+                'hnfo:eu-repo/semantics/bachelorthesis',
+                'info:eu-repo/semantics/ masterthesis',
+                'info:eu-repo/semantics/bachelorthesis',
+                'info:eu-repo/semantics/bachelorthesis pregrado',
+                'info:eu-repo/semantics/bachelorthesisd',
+                'info:eu-repo/semantics/bachelorthesist',
+                'info:eu-repo/semantics/bachelorthesistab',
+                'info:eu-repo/semantics/doctoralthesis',
+                'info:eu-repo/semantics/master thesis',
+                'info:eu-repo/semantics/masterthesis',
+                'info:eu-repo/semantics/masterthesisc',
+                'info:eu-repo/semantics/masterthesisd',
+                'info:eu-repo/semantics/masterthesist',
+                'info:eu-repo/semantics/masterthesistab',
+                'info:eu-repo/semantics/mastherthesis']
 
 
 def is_thesis(work_type):
@@ -182,12 +197,9 @@ def is_thesis(work_type):
     return False
 
 
-def filter_work(reg):
+def is_thesis_work(reg):
     """
     Check if the dspace record is a valid product to be processed.
-
-    At the moment, only thesis are valid products.
-    TODO: add more types of products such as book, articles etc..
 
     Parameters
     ----------
@@ -228,6 +240,28 @@ def get_oai_pmh_url(reg):
 
     url = f"{base_url}?verb={verb}&metadataPrefix={metadataPrefix}&identifier={identifier}"
     return url
+
+
+def is_similarity_reg(reg):
+    """
+    Check if the dspace record has not doi but if it a thesis with doi it is valid.
+    We are processing the thesis with doi with elasticsearch.
+
+    Parameters
+    ----------
+    reg : dict
+        dspace record.
+
+    Returns
+    -------
+    bool
+        True if the dspace record has a doi, False otherwise.
+    """
+    if get_doi(reg) and is_thesis_work(reg):
+        return True
+    elif not get_doi(reg):
+        return True
+    return False
 
 
 def set_affiliation(entry, affiliation, collection):

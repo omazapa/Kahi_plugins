@@ -1,7 +1,7 @@
 from kahi.KahiBase import KahiBase
 from pymongo import MongoClient
 from mohan.Similarity import Similarity
-from kahi_dspace_works.utils import get_doi, process_affiliation, filter_work
+from kahi_dspace_works.utils import get_doi, process_affiliation, is_similarity_reg, thesis_types
 from kahi_dspace_works.process_one import process_one
 from joblib import Parallel, delayed
 
@@ -75,6 +75,7 @@ class Kahi_dspace_works(KahiBase):
 
     def process_repository(self, affiliation, base_url, dspace_collection):
         if self.task == "doi":
+            # the thesis with doi will be processed with elastic, we can't trust the doi from dspace for thesis.
             work_cursor = dspace_collection.find(
                 {
                     "$and": [
@@ -87,6 +88,9 @@ class Kahi_dspace_works(KahiBase):
                         {
                             "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.@element": "title"
                         },
+                        {
+                            "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.#text": {"$nin": thesis_types}
+                        }
                     ]
                 }
             )
@@ -104,7 +108,7 @@ class Kahi_dspace_works(KahiBase):
                     thresholds=self.thresholds,
                     verbose=self.verbose,
                 )
-                for work in work_cursor if get_doi(work) and filter_work(work)
+                for work in work_cursor if get_doi(work)
             )
 
         else:
@@ -126,7 +130,7 @@ class Kahi_dspace_works(KahiBase):
                     thresholds=self.thresholds,
                     verbose=self.verbose,
                 )
-                for work in work_cursor if not get_doi(work) and filter_work(work))
+                for work in work_cursor if is_similarity_reg(work))
 
     def run(self):
         print(
