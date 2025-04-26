@@ -2,6 +2,7 @@ from kahi_impactu_utils.Utils import compare_author
 from kahi_dspace_works.parser import parse_dspace
 from kahi_dspace_works.utils import set_source, set_affiliation, get_doi, check_work, str_normilize
 from bson import ObjectId
+from unidecode import unidecode
 
 
 def process_one_update(entry, colav_reg, db, collection, verbose):
@@ -70,7 +71,7 @@ def process_one_update(entry, colav_reg, db, collection, verbose):
             # only the name can be compared, because we dont have the affiliation of the author from the paper in author_others
             author_db = db['person'].find_one(
                 # this is required to get  first_names and last_names
-                {'_id': author['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1})
+                {'_id': author['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1, "updated": 1})
 
             name_match = compare_author(
                 author_reg, author_db, len(colav_reg["authors"]))
@@ -81,7 +82,14 @@ def process_one_update(entry, colav_reg, db, collection, verbose):
             del author_reg["last_names"]
             del author_reg["initials"]
             if author_reg not in colav_reg["authors"]:
-                colav_reg["authors"].append(author_reg)
+                openalex = False
+                for updated in colav_reg["updated"]:
+                    if updated["source"] == "openalex":
+                        openalex = True
+                # si no es un registro que fue actualizado por openalex, se le añade el autor
+                # https://github.com/colav/impactu/issues/494
+                if not openalex:
+                    colav_reg["authors"].append(author_reg)
     colav_reg["author_count"] = len(colav_reg["authors"])
     collection.update_one(
         {"_id": colav_reg["_id"]},
@@ -102,7 +110,7 @@ def process_one_update(entry, colav_reg, db, collection, verbose):
     )
 
 
-def process_one_insert(entry, collection, es_handler, verbose):
+def process_one_insert(entry, affiliation, db, collection, es_handler, verbose):
     """
     Insert the entry in the works collection.
 
@@ -117,13 +125,40 @@ def process_one_insert(entry, collection, es_handler, verbose):
     verbose : int
         verbosity level.
     """
+    # Verificar por ROR
+    # Que tenga dos apellidos
+
     # removing unnecessary fields in the work
     for author in entry['authors']:
+        # verifiying more than one last name
+        # https://github.com/colav/impactu/issues/494
+        if len(author["last_names"]) > 1:
+            author_normalized = author["full_name"]
+            author_normalized = unidecode(author_normalized).lower()
+            priotiry_source = ["staff", "scienti", "minciencias"]
+            author_found = db['person'].find_one(
+                {"full_name": author_normalized, "affiliations.id": affiliation["id"], "updated.source": {
+                    "$in": priotiry_source}},
+                {"full_name": 1, "updated": 1},
+                collation={"locale": "es", "strength": 1}
+            )
+            if not author_found:
+                author_found = db['person'].find_one(
+                    {"full_name": author_normalized,
+                        "affiliations.id": affiliation["id"]},
+                    {"full_name": 1, "updated": 1},
+                    collation={"locale": "es", "strength": 1}
+                )
+            if author_found:
+                author["id"] = author_found["_id"]
+                author["affiliations"].append(affiliation)
         del author["first_names"]
         del author["last_names"]
         del author["initials"]
+
     # inserting the entry
     response = collection.insert_one(entry)
+
     # insert in elasticsearch
     authors = []
     if es_handler:
@@ -181,7 +216,7 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
                          base_url, verbose)
     set_source(entry, db)  # setting source to entry
     # setting affiliation to authors
-    set_affiliation(entry, affiliation, db['person'])
+    # set_affiliation(entry, affiliation, db['person'])
     if similarity:
         work = {}
         work["title"] = entry["titles"][0]["title"]
@@ -248,9 +283,11 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
                                 response["_id"]))
                         return
             if not found:
-                process_one_insert(entry, collection, es_handler, verbose)
+                process_one_insert(entry, affiliation, db,
+                                   collection, es_handler, verbose)
         else:  # insert new register
-            process_one_insert(entry, collection, es_handler, verbose)
+            process_one_insert(entry, affiliation, db,
+                               collection, es_handler, verbose)
     else:  # if doi
         doi = get_doi(dspace_reg)
         if doi:
@@ -258,7 +295,8 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
             if colav_reg:
                 process_one_update(entry, colav_reg, db, collection, verbose)
             else:
-                process_one_insert(entry, collection, es_handler, verbose)
+                process_one_insert(entry, affiliation, db,
+                                   collection, es_handler, verbose)
         else:
             print(
                 f"WARNING: invalid doi found in dspace record {dspace_reg['_id']} ")
