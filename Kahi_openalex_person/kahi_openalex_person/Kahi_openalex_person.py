@@ -134,6 +134,11 @@ def process_one_update(person_db, oa_author, client, db_name, empty_person, rela
         "source": "openalex",
         "time": int(time())
     })
+    # Update the aliases
+    entry["aliases"] = person_db.get("aliases", [])
+    for name in oa_author["display_name_alternatives"]:
+        if not name.lower() in entry["aliases"]:
+            entry["aliases"].append(name.lower())
 
     # Iterate over OpenAlex IDs and add any that are not already in the document
     new_external_ids = []
@@ -211,6 +216,7 @@ def process_one_update(person_db, oa_author, client, db_name, empty_person, rela
         {
             "$addToSet": {
                 "updated": {"$each": entry["updated"]},
+                "aliases": {"$each": entry["aliases"]},
                 "external_ids": {"$each": entry["external_ids"]},
                 "affiliations": {"$each": entry.get("affiliations", [])},
                 "related_works": {"$each": entry.get("related_works", [])}
