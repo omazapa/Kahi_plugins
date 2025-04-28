@@ -54,12 +54,14 @@ class Kahi_orcid_person(KahiBase):
         # Close the initial connection to the main database; it will be reopened in process_orcid
         self.client.close()
 
-    def process_one_update(self, query, update_fields, person_collection, orcid):
+    def process_one_update(self, person_reg, query, update_fields, person_collection, orcid):
         """
         Process update for a single ORCID record that already exists in the 'person' collection.
 
         Parameters
         ----------
+        person_reg : dict
+            The existing document in the 'person' collection.
         query : dict
             Query to identify the document.
         update_fields : dict
@@ -74,22 +76,33 @@ class Kahi_orcid_person(KahiBase):
         dict
             The update fields used to update the document.
         """
-        update_operation = {
-            "$set": update_fields,
-            "$push": {"updated": {"source": "orcid", "time": int(time())}}
-        }
+        # Update the document with the new fields only if scienti is not in the person updated record
+        updated_sources = [
+            update["source"] for update in person_reg.get("updated", [])
+        ]
+        if "scienti" in updated_sources:
+            update_operation = {
+                "$push": {"updated": {"source": "orcid", "time": int(time())}}}
+        else:
+            update_operation = {
+                "$set": update_fields,
+                "$push": {"updated": {"source": "orcid", "time": int(time())}}
+            }
+
         result = person_collection.update_one(query, update_operation)
         if self.verbose > 0:
             print(
                 f"ORCID: {orcid} - Updated: Matched documents: {result.matched_count}, Modified documents: {result.modified_count}")
         return update_fields
 
-    def process_one_insert(self, query, update_fields, person_collection, empty_person, orcid):
+    def process_one_insert(self, person_reg, query, update_fields, person_collection, empty_person, orcid):
         """
         Process insertion for a single ORCID record that does not exist in the 'person' collection.
 
         Parameters
         ----------
+        person_reg : dict
+            The existing document in the 'person' collection (for consistency).
         query : dict
             Query to identify the document (for consistency).
         update_fields : dict
@@ -176,10 +189,11 @@ class Kahi_orcid_person(KahiBase):
         }
 
         # Check if the record exists in the 'person' collection
-        if person_collection.find_one(query):
-            return self.process_one_update(query, update_fields, person_collection, orcid)
+        person_reg = person_collection.find_one(query)
+        if person_reg:
+            return self.process_one_update(person_reg, query, update_fields, person_collection, orcid)
         else:
-            return self.process_one_insert(query, update_fields, person_collection, empty_person, orcid)
+            return self.process_one_insert(person_reg, query, update_fields, person_collection, empty_person, orcid)
 
     def process_orcid(self):
         """
