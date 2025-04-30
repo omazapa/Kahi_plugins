@@ -1,5 +1,5 @@
 from kahi.KahiBase import KahiBase
-from pymongo import MongoClient, ASCENDING
+from pymongo import MongoClient, InsertOne, UpdateOne, ASCENDING
 from time import time
 from langid import classify
 from kahi_impactu_utils.Utils import check_date_format
@@ -55,6 +55,77 @@ class Kahi_scienti_sources(KahiBase):
                     [("details.article.journal.TXT_ISSN_SEP", ASCENDING)])
                 client.close()
 
+    def process_editorials(self, editorials_list):
+        unique_codes = list(set(editorials_list))
+        # Capture current timestamp once for use in all operations
+        now = int(time())
+
+        # Query all documents whose external_ids.id is in our unique_codes list
+        existing_docs = list(self.collection.find(
+            {"external_ids.id": {"$in": unique_codes}},
+            {"external_ids.id": 1}
+        ))
+        # Build a set of codes already present in the DB for O(1) membership checks
+        existing_ids = {doc["external_ids"][0]["id"] for doc in existing_docs}
+
+        # Query scienti_collection for details matching any of our editorial codes
+        scienti_docs = list(self.scienti_collection.find(
+            {"details.book.editorial.COD_EDITORIAL": {"$in": unique_codes}},
+            {"details": 1}
+        ))
+        # Map each editorial code to its corresponding scienti document for quick lookup
+        scienti_map = {}
+        for doc in scienti_docs:
+            details = doc.get("details", [])
+            if details:
+                # Drill down to book.editorial arrays
+                entry = details[0]
+                for book in entry.get("book", []):
+                    for ed in book.get("editorial", []):
+                        code = ed.get("COD_EDITORIAL")
+                        if code:
+                            scienti_map[code] = doc
+
+        ops = []
+        for code in unique_codes:
+            if code in existing_ids:
+                # If the editorial code exists, prepare an UpdateOne to add new sources
+                ops.append(UpdateOne(
+                    {"external_ids.id": str(code)},
+                    {"$addToSet": {
+                        "updated": {"source": "scienti", "time": now},
+                        "external_ids": {"source": "scienti", "id": str(code)}
+                    }}
+                ))
+            else:
+                # If the editorial code does not exist, prepare an InsertOne
+                reg = scienti_map.get(code)
+                if not reg:
+                    continue
+                # Initialize a new document using the empty template
+                entry = self.empty_source()
+                entry["updated"] = [{"source": "scienti", "time": now}]
+                # Extract editorial name from nested details structure
+                details = reg.get("details", [])
+                editorial_list = (
+                    details[0].get("book", [])[0]
+                    .get("editorial", [])
+                ) if details else []
+                # Clean and title-case the editorial text name, defaulting to empty string
+                name = editorial_list[0].get(
+                    "TXT_NME_EDITORIAL", "").title().strip() if editorial_list else ""
+                entry["names"] = [
+                    {"lang": "es", "name": name, "source": "scienti"}]
+                # Set the primary external ID for the editorial
+                entry["external_ids"] = [
+                    {"source": "scienti", "id": str(code)}]
+                # Queue an insert operation
+                ops.append(InsertOne(entry))
+
+        if ops:
+            # Execute all operations in bulk
+            self.collection.bulk_write(ops, ordered=False)
+
     def update_scienti(self, reg, entry, issn):
         updated_scienti = False
         for upd in entry["updated"]:
@@ -85,7 +156,7 @@ class Kahi_scienti_sources(KahiBase):
         ranks = []
         dates = [(rank["from_date"], rank["to_date"])
                  for rank in entry["ranking"] if rank["source"] == "scienti"]
-        for reg_scienti in self.scienti_collection["products"].find({"details.article.journal.TXT_ISSN_SEP": issn}):
+        for reg_scienti in self.scienti_collection.find({"details.article.journal.TXT_ISSN_SEP": issn}):
             paper = None
             journal = None
             if "details" not in reg_scienti.keys():
@@ -150,6 +221,11 @@ class Kahi_scienti_sources(KahiBase):
             "details.article.journal.TXT_ISSN_SEP"))
         issn_list.extend(self.scienti_collection.distinct(
             "details.article.journal_others.TXT_ISSN"))
+        # extracting the editorial codes
+        editorials_list = list(self.scienti_collection.distinct(
+            "details.book.editorial.COD_EDITORIAL"))
+        editorials_list = [str(code) for code in editorials_list]
+
         for issn in set(issn_list):
             reg_db = self.collection.find_one({"external_ids.id": issn})
             if reg_db:
@@ -251,6 +327,10 @@ class Kahi_scienti_sources(KahiBase):
                                 dates[idx] = (date1, date2)
                     entry["ranking"] = rankings_list
                     self.collection.insert_one(entry)
+
+        if editorials_list:
+            self.process_editorials(editorials_list)
+
         self.scienti_client.close()
 
     def run(self):
