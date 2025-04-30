@@ -1,4 +1,4 @@
-from kahi_impactu_utils.Utils import compare_author, split_names, split_names_fix
+from kahi_impactu_utils.Utils import compare_author
 from pymongo import MongoClient, TEXT
 from joblib import Parallel, delayed
 from kahi.KahiBase import KahiBase
