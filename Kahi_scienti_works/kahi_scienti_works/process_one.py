@@ -1,8 +1,89 @@
 from kahi_scienti_works.parser import parse_scienti
-from kahi_impactu_utils.Utils import lang_poll, doi_processor, compare_author, split_names, split_names_fix
+from kahi_impactu_utils.Utils import lang_poll, doi_processor, compare_author, split_names, split_names_fix, check_date_format
 import re
 from time import time
 from bson import ObjectId
+
+
+def cod_product_mismatch(list1, list2):
+    """
+    check if the COD_PRODUCTO of the registers are different for the same COD_RH
+
+    Parameters
+    ----------
+    list1 : list
+        List of external_ids from the first register
+    list2 : list
+        List of external_ids from the second register
+
+    Returns
+    -------
+    bool
+        True if the COD_PRODUCTO are different, False otherwise.
+    """
+    # Extract COD_RH and their respective COD_PRODUCTO in list1
+    rh_to_product1 = {
+        entry["id"]["COD_RH"]: entry["id"]["COD_PRODUCTO"]
+        for entry in list1 if isinstance(entry["id"], dict) and "COD_RH" in entry["id"] and "COD_PRODUCTO" in entry["id"]
+    }
+
+    # Extract COD_RH and their respective COD_PRODUCTO in list2
+    rh_to_product2 = {
+        entry["id"]["COD_RH"]: entry["id"]["COD_PRODUCTO"]
+        for entry in list2 if isinstance(entry["id"], dict) and "COD_RH" in entry["id"] and "COD_PRODUCTO" in entry["id"]
+    }
+
+    # Identify the COD_RH that exist in both lists but have different COD_PRODUCTO
+    mismatched_cod_rh = {
+        rh: (rh_to_product1[rh], rh_to_product2[rh])
+        # Only COD_RH that exist in both lists
+        for rh in rh_to_product1.keys() & rh_to_product2.keys()
+        if rh_to_product1[rh] != rh_to_product2[rh]  # Different COD_PRODUCTO
+    }
+    return False if len(list(mismatched_cod_rh)) == 0 else True
+
+
+def has_scienti_source(lst):
+    """
+    Checks if scienti in field source is available
+
+    Parameters
+    ----------
+    lst : list
+        List of types/external_ids from register
+
+    Returns
+    -------
+    bool
+        True if the scienti type is available, False otherwise.
+    """
+    return any(item.get("source") == "scienti" for item in lst)
+
+
+def check_first_level_type(list1, list2):
+    """
+    Function to check if the first level types of two registers are different.
+
+    Parameters
+    ----------
+    list1 : list
+        List of types from the first register
+    list2 : list
+        List of types from the second register
+
+    Returns
+    -------
+    bool
+        True if the first level types are equal, False otherwise.
+    """
+    # Extraer los tipos donde source='scienti' y level=0
+    types1 = {item["type"] for item in list1 if item.get(
+        "source") == "scienti" and item.get("level") == 0}
+    types2 = {item["type"] for item in list2 if item.get(
+        "source") == "scienti" and item.get("level") == 0}
+
+    # Comparar conjuntos de tipos
+    return types1 == types2
 
 
 def get_doi(reg):
@@ -356,6 +437,9 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
             if not group_reg:
                 print(
                     f'WARNING: group with ids {scienti_reg["group"]["COD_ID_GRUPO"]} and {scienti_reg["group"]["NRO_ID_GRUPO"]} not found in affiliation')
+
+    colav_reg["author_count"] = len(colav_reg["authors"])
+
     collection.update_one(
         {"_id": colav_reg["_id"]},
         {"$set": {
@@ -367,6 +451,7 @@ def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbo
             # scienti provides poor quality data, so it is better to keep the data from colav
             "bibliographic_info": colav_reg["bibliographic_info"],
             "external_urls": colav_reg["external_urls"],
+            "author_count": colav_reg["author_count"],
             "authors": colav_reg["authors"],
             "subjects": colav_reg["subjects"],
             "groups": colav_reg["groups"]
@@ -564,21 +649,66 @@ def process_one_insert(scienti_reg, db, collection, empty_work, es_handler, doi=
                     "types": []
                 }
     entry["authors"][0] = author
-    # the first author is the original one always (already inserted)
-    if "author_others" in scienti_reg.keys():
-        for author in scienti_reg["author_others"][1:]:
-            if author["COD_RH_REF"]:
-                author_db = db["person"].find_one(
-                    {"external_ids.id.COD_RH": author["COD_RH_REF"]}, {"_id": 1, "full_name": 1})
-                if author_db:
-                    rec = {"id": author_db["_id"],
-                           "full_name": author_db["full_name"],
-                           # we dont have affiliation of the author from the paper, we can´t assume one.
-                           "affiliations": []
-                           }
-                    entry["authors"].append(rec)
+
+    # Inserting other authors
+    directed_work = False
+    other_authors = scienti_reg.get("re_author_others", [])
+    primary_cod_rh = scienti_reg["COD_RH"]
+
+    for other_author in other_authors:
+        author_others = other_author.get("author_others")
+        if not author_others:
+            author_others = other_author.get("author")
+            if author_others:
+                directed_work = True
+            if not author_others:
+                continue
+
+        if directed_work:
+            cod_rh_ref = author_others[0].get("COD_RH")
+        else:
+            cod_rh_ref = author_others[0].get("COD_RH_REF")
+        if not cod_rh_ref:
+            continue
+
+        author_role = other_author.get("TPO_PARTICIPACION", "")
+
+        if author_role and cod_rh_ref == primary_cod_rh:
+            entry["authors"][0]["type"] = "advisor" if author_role in ["TUT", "ASE", "COT"] else ""
+            continue  # first author is already inserted
+
+        author_db = db["person"].find_one(
+            {"external_ids.id.COD_RH": cod_rh_ref}, {"_id": 1, "full_name": 1})
+
+        if not author_db:
+            continue
+
+        # Add author to the list of authors only if it is not already in the list
+        if not any(author["id"] == author_db["_id"] for author in entry["authors"]):
+            entry["authors"].append({
+                "id": author_db["_id"],
+                "full_name": author_db["full_name"],
+                "affiliations": []
+            })
 
     entry["author_count"] = len(entry["authors"])
+
+    # Update date_published if oriented_thesis is available
+    details = scienti_reg.get("details", [])
+    if details and "oriented_thesis" in details[0].keys():
+        oriented_tesis = details[0].get("oriented_thesis")[0] if details else None
+        if oriented_tesis:
+            if "NRO_ANO_FIN" in oriented_tesis.keys():
+                year = oriented_tesis["NRO_ANO_FIN"]
+            if "NRO_MES_FIN" in oriented_tesis.keys():
+                month = oriented_tesis["NRO_MES_FIN"]
+                if len(str(month)) == 1:
+                    month = f'0{month}'
+            if year and month:
+                entry["date_published"] = check_date_format(
+                    f'{month}-{year}')
+                entry["year_published"] = int(year)
+
     # scienti group
     if "group" in scienti_reg.keys():
         for group in scienti_reg["group"]:
@@ -705,8 +835,26 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
                 colav_reg = collection.find_one(
                     {"_id": ObjectId(response["_id"])})
                 if colav_reg:
-                    process_one_update(scienti_reg, colav_reg, db,
-                                       collection, empty_work, verbose)
+                    # TODO: add author check here before to do the update
+                    if has_scienti_source(entry["external_ids"]) and has_scienti_source(colav_reg["external_ids"]):
+                        if cod_product_mismatch(entry["external_ids"], colav_reg["external_ids"]):
+                            # if they have the same COD_RH  but different COD_PRODUCTO
+                            # then insert the new register
+                            process_one_insert(scienti_reg, db, collection,
+                                               empty_work, es_handler, doi=None, verbose=verbose)
+                            return
+                    if has_scienti_source(entry["types"]) and has_scienti_source(colav_reg["types"]):
+                        # if type is equal, then update the register
+                        if check_first_level_type(entry["types"], colav_reg["types"]):
+                            process_one_update(scienti_reg, colav_reg, db,
+                                               collection, empty_work, verbose)
+                        else:
+                            process_one_insert(scienti_reg, db, collection,
+                                               empty_work, es_handler, doi=None, verbose=verbose)
+                    else:  # there is not scienti types to compare, then update them
+                        process_one_update(scienti_reg, colav_reg, db,
+                                           collection, empty_work, verbose)
+
                 else:
                     if verbose > 4:
                         print("Register with {} not found in mongodb".format(

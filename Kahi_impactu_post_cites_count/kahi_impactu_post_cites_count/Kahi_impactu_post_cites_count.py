@@ -207,3 +207,4 @@ class Kahi_impactu_post_cites_count(KahiBase):
     def run(self):
         self.run_cites_count()
         self.client.close()
+        return 0

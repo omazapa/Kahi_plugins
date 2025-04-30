@@ -1,0 +1,2 @@
+recursive-include kahi_orcid_person/ *.py
+recursive-include kahi_orcid_person/ *.*

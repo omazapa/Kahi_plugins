@@ -29,8 +29,9 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
         lang = lang_poll(abstract, verbose=verbose)
         entry["abstracts"].append(
             {"abstract": text_to_inverted_index(abstract), "lang": lang, "source": "scienti", 'provenance': 'scienti'})
-    entry["external_ids"].append(
-        {"provenance": "scienti", "source": "scienti", "id": {"COD_RH": reg["COD_RH"], "COD_PRODUCTO": reg["COD_PRODUCTO"]}})
+    ext_ids_reg = {"provenance": "scienti", "source": "scienti", "id": {"COD_RH": reg["COD_RH"], "COD_PRODUCTO": reg["COD_PRODUCTO"]}}
+    if ext_ids_reg not in entry["external_ids"]:
+        entry["external_ids"].append(ext_ids_reg)
     if doi:
         entry["doi"] = doi
         entry["external_ids"].append(
@@ -71,9 +72,10 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
         entry["date_published"] = check_date_format(
             f'{month}-{year}')
         entry["year_published"] = int(year)
-    if "SGL_CATEGORIA" in reg.keys():
-        entry["ranking"].append(
-            {"provenance": "scienti", "date": "", "rank": reg["SGL_CATEGORIA"], "source": "scienti"})
+    if "SGL_CATEGORIA" in reg.keys() and reg["SGL_CATEGORIA"]:
+        ranking_reg = {"provenance": "scienti", "date": "", "rank": reg["SGL_CATEGORIA"], "source": "scienti"}
+        if ranking_reg not in entry["ranking"]:
+            entry["ranking"].append(ranking_reg)
     # types section
     tpo_obj = reg["product_type"][0]
     for _ in range(0, 4):
@@ -86,7 +88,8 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
         tpo_base["level"] = level
         tpo_base["class"] = tpo_class
         tpo_base["code"] = code
-        entry["types"].append(tpo_base)
+        if tpo_base not in entry["types"]:
+            entry["types"].append(tpo_base)
         if "product_type" in tpo_obj.keys():
             tpo_obj = tpo_obj["product_type"][0]
         else:
@@ -127,6 +130,12 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
                 print(
                     f'Error parsing issue on RH:{reg["COD_RH"]} and COD_PROD:{reg["COD_PRODUCTO"]}')
                 print(e)
+    elif "details" in reg.keys() and len(reg["details"]) > 0 and "oriented_thesis" in reg["details"][0].keys():
+        details = None
+        details = reg["details"][0]["oriented_thesis"][0]
+        if details and details["NRO_PAGINAS"]:
+            entry["bibliographic_info"]["start_page"] = "1"
+            entry["bibliographic_info"]["end_page"] = str(details["NRO_PAGINAS"])
 
         # source section
         source = {"external_ids": [], "title": ""}
@@ -172,7 +181,6 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
     author = reg["author"][0]
     author_entry = {
         "full_name": author["TXT_TOTAL_NAMES"],
-        "types": [],
         "affiliations": affiliations,
         "external_ids": [{"provenance": "scienti", "source": "scienti", "id": {"COD_RH": author["COD_RH"]}}]
     }
