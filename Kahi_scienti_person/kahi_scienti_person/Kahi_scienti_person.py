@@ -92,24 +92,25 @@ class Kahi_scienti_person(KahiBase):
                                    "source": "orcid", "id": orcid_id}
                             if rec not in person["external_ids"]:
                                 person["external_ids"].append(rec)
-                first_names = re.sub(
-                    r'\s+', ' ', author["TXT_NAMES_RH"].replace(".", " ")).strip()
-                person["first_names"] = title_case(first_names).strip().split()
-                person["last_names"] = []
-                if "TXT_PRIM_APELL" in author.keys():
-                    lname = re.sub(
-                        r'\s+', ' ', author["TXT_PRIM_APELL"].replace(".", " ")).strip()
-                    if lname:
-                        person["last_names"].append(title_case(lname))
-                if "TXT_SEG_APELL" in author.keys():
-                    if author["TXT_SEG_APELL"] is not None:
+                if "staff" not in [source["source"] for source in person["updated"]]:
+                    first_names = re.sub(
+                        r'\s+', ' ', author["TXT_NAMES_RH"].replace(".", " ")).strip()
+                    person["first_names"] = title_case(first_names).strip().split()
+                    person["last_names"] = []
+                    if "TXT_PRIM_APELL" in author.keys():
                         lname = re.sub(
-                            r'\s+', ' ', author["TXT_SEG_APELL"].replace(".", " ")).strip()
+                            r'\s+', ' ', author["TXT_PRIM_APELL"].replace(".", " ")).strip()
                         if lname:
                             person["last_names"].append(title_case(lname))
-                initials = "".join([p[0].upper()
-                                   for p in person["first_names"]])
-                person["full_name"] = title_case(person["full_name"])
+                    if "TXT_SEG_APELL" in author.keys():
+                        if author["TXT_SEG_APELL"] is not None:
+                            lname = re.sub(
+                                r'\s+', ' ', author["TXT_SEG_APELL"].replace(".", " ")).strip()
+                            if lname:
+                                person["last_names"].append(title_case(lname))
+                    full_name = " ".join(person["first_names"]) + " " + " ".join(person["last_names"])
+                    person["full_name"] = title_case(full_name)
+                    person["initials"] = "".join([p[0].upper() for p in person["first_names"]])
 
                 marital = None
                 if "TPO_ESTADO_CIVIL" in author.keys():
@@ -243,8 +244,8 @@ class Kahi_scienti_person(KahiBase):
                     "external_ids": person["external_ids"],
                     "first_names": person["first_names"],
                     "last_names": person["last_names"],
-                    "initials": initials,
-                    "full_name": " ".join(person["first_names"]) + " " + " ".join(person["last_names"]),
+                    "initials": person["initials"],
+                    "full_name": person["full_name"],
                     "updated": person["updated"],
                     "affiliations": person["affiliations"],
                     "ranking": rank,
