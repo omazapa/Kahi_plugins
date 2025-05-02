@@ -204,6 +204,11 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                     if author["id"] == author_db["_id"]:
                         author["type"] = "advisor"
                         break
+    # work ranking
+    if "ranking" in entry.keys():
+        for rank in entry["ranking"]:
+            if rank not in colav_reg["ranking"]:
+                colav_reg["ranking"].append(rank)
     # groups
     group_id = openadata_reg["cod_grupo_gr"]
     rgroup = db["affiliations"].find_one({"external_ids.id": group_id})
@@ -246,6 +251,7 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
             "external_ids": colav_reg["external_ids"],
             "types": colav_reg["types"],
             "authors": colav_reg["authors"],
+            "ranking": colav_reg["ranking"],
             "groups": colav_reg["groups"]
         }}
     )
