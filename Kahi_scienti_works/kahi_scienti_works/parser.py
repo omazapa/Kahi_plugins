@@ -1,6 +1,7 @@
 from kahi_impactu_utils.Utils import lang_poll, doi_processor, check_date_format
 from time import time
 import re
+from copy import deepcopy
 from kahi_impactu_utils.String import text_to_inverted_index
 
 
@@ -17,7 +18,7 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
     verbose : int
         The verbosity level. Default is 0.
     """
-    entry = empty_work.copy()
+    entry = deepcopy(empty_work)
     entry["updated"] = [{"source": "scienti", "time": int(time())}]
     title = reg["TXT_NME_PROD"].strip().replace("\t", "").replace('"', '')
     lang = lang_poll(title, verbose=verbose)
