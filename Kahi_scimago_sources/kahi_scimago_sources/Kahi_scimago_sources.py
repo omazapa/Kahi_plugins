@@ -30,12 +30,10 @@ class Kahi_scimago_sources(KahiBase):
         _id = entry["_id"]
         del (entry["_id"])
 
-        for upd in entry["updated"]:
-            if upd["source"] == "scimago":
-                entry["updated"].remove(upd)
-                entry["updated"].append(
-                    {"source": "scimago", "time": int(time())})
-                break
+        if "scimago" not in [upd["source"] for upd in entry["updated"]]:
+            entry["updated"].append(
+                {"source": "scimago", "time": int(time())})
+
         for name in entry["names"]:
             if name == sjr["Title"]:
                 if name["source"] != "scimago":
