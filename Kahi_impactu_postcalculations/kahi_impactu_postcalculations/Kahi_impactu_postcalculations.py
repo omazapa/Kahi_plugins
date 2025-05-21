@@ -53,9 +53,9 @@ class Kahi_impactu_postcalculations(KahiBase):
         df_redcol = pd.read_excel(self.types_file, sheet_name='REDCOL')
         df_eurepo = pd.read_excel(self.types_file, sheet_name='INFO-EU-REPO')
 
-        df_coar["Fuente"] = ["coar"]*df_coar.shape[0]
-        df_redcol["Fuente"] = ["redcol"]*df_redcol.shape[0]
-        df_eurepo["Fuente"] = ["eu-repo"]*df_eurepo.shape[0]
+        df_coar["Fuente"] = ["coar"] * df_coar.shape[0]
+        df_redcol["Fuente"] = ["redcol"] * df_redcol.shape[0]
+        df_eurepo["Fuente"] = ["eu-repo"] * df_eurepo.shape[0]
 
         df_all = pd.concat([df_all,
                             df_coar[["Fuente", "Tipo",
@@ -69,8 +69,7 @@ class Kahi_impactu_postcalculations(KahiBase):
         del df_coar, df_redcol, df_eurepo
         gc.collect()
         df_all = df_all.fillna("No Asignado")
-        self.types = df_all[df_all["Entidad"] ==
-                            "works"][["Fuente", "Tipo", "Tipo ImpactU"]]
+        self.types = df_all[df_all["Entidad"] == "works"][["Fuente", "Tipo", "Tipo ImpactU"]]
 
         self.types["Tipo"] = self.types["Tipo"].apply(
             lambda x: " ".join(x.split()).strip() if isinstance(x, str) else x)
