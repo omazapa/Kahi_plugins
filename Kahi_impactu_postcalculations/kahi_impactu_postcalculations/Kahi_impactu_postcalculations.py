@@ -145,7 +145,7 @@ class Kahi_impactu_postcalculations(KahiBase):
                 cursor = db["person"].find(
                     {"_id_old": {"$exists": False}, "external_ids.source": source})
 
-            Parallel(n_jobs=-1, backend="threading", verbose=10)(
+            Parallel(n_jobs=self.n_jobs, backend="threading", verbose=10)(
                 delayed(process_person_id)(client, db["person"], db["works"], person, source) for person in cursor
             )
 
