@@ -67,29 +67,29 @@ def process_one_update(entry, colav_reg, db, collection, verbose):
                 if verbose >= 4:
                     print(
                         f"WARNING: author with id '' found in colav register: {author}")
-                continue
-            # only the name can be compared, because we dont have the affiliation of the author from the paper in author_others
-            author_db = db['person'].find_one(
-                # this is required to get  first_names and last_names
-                {'_id': author['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1, "updated": 1})
-
-            name_match = compare_author(
-                author_reg, author_db, len(colav_reg["authors"]))
+                author_db = db['person'].find_one(
+                    # this is required to get  first_names and last_names
+                    {'full_name': author['full_name']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1, "updated": 1})
+            else:
+                # only the name can be compared, because we dont have the affiliation of the author from the paper in author_others
+                author_db = db['person'].find_one(
+                    # this is required to get  first_names and last_names
+                    {'_id': author['id']}, {"_id": 1, "full_name": 1, "first_names": 1, "last_names": 1, "initials": 1, "updated": 1})
+            if author_db:
+                name_match = compare_author(
+                    author_reg, author_db, len(colav_reg["authors"]))
             if name_match:
                 author["type"] = author_reg["type"]
+                break
         if not name_match:
-            del author_reg["first_names"]
-            del author_reg["last_names"]
-            del author_reg["initials"]
             if author_reg not in colav_reg["authors"]:
-                openalex = False
-                for updated in colav_reg["updated"]:
-                    if updated["source"] == "openalex":
-                        openalex = True
-                # si no es un registro que fue actualizado por openalex, se le añade el autor
+                # como no hay match se añade, ver
                 # https://github.com/colav/impactu/issues/494
-                if not openalex:
-                    colav_reg["authors"].append(author_reg)
+                colav_reg["authors"].append({"id": "",
+                                             "full_name": author_reg["full_name"],
+                                             "type": author_reg["type"],
+                                             "affiliations": author_reg["affiliations"],
+                                             })
     colav_reg["author_count"] = len(colav_reg["authors"])
     collection.update_one(
         {"_id": colav_reg["_id"]},
@@ -293,7 +293,8 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
         if doi:
             colav_reg = collection.find_one({"external_ids.id": doi})
             if colav_reg:
-                process_one_update(entry, colav_reg, db, collection, verbose)
+                process_one_update(
+                    entry, colav_reg, db, collection, verbose)
             else:
                 process_one_insert(entry, affiliation, db,
                                    collection, es_handler, verbose)
