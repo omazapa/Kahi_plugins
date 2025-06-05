@@ -1,4 +1,5 @@
 from kahi.KahiBase import KahiBase
+from kahi_impactu_utils.Utils import split_name_part
 from pymongo import MongoClient, TEXT
 from joblib import Parallel, delayed
 import copy
@@ -173,19 +174,29 @@ class Kahi_orcid_person(KahiBase):
         given_names = name_data.get("personal-details:given-names", "")
         family_name = name_data.get("personal-details:family-name", "")
 
+        # Extract other names if available
+        other_name = person.get("other-name:other-names", {})
+        other_names = other_name.get("other-name:other-name", [])
+        other_name = other_names[0] if other_names else ""
+        alias = other_name.get("other-name:content", "")
+
         # Process the names: split into lists, build full_name, and calculate initials
-        first_names_list = given_names.split() if given_names else []
-        last_names_list = family_name.split() if family_name else []
+        given_names = given_names.replace(".", "") if given_names else ""
+        family_name = family_name.replace(".", "") if family_name else ""
+        first_names_list = split_name_part(given_names) if given_names else []
+        last_names_list = split_name_part(family_name) if family_name else []
         full_name = f"{given_names} {family_name}".strip()
         initials = ''.join(name[0].upper()
                            for name in first_names_list) if first_names_list else ""
+        aliases = [alias] if alias else []
 
         query = {"external_ids.id": orcid}
         update_fields = {
             "full_name": full_name,
             "first_names": first_names_list,
             "last_names": last_names_list,
-            "initials": initials
+            "initials": initials,
+            "aliases": aliases,
         }
 
         # Check if the record exists in the 'person' collection
