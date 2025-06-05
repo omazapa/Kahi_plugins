@@ -16,12 +16,6 @@ From the package you can install by running
 pip3 install kahi_orcid_person
 ```
 
-## Dependencies
-Software dependencies will automatically be installed when installing the plugin.
-```shell
-$ sudo apt install libhunspell-dev
-```
-
 # Usage
 To use this plugin you must have kahi installed in your system and construct a yaml file such as
 ```yaml
@@ -30,7 +24,7 @@ config:
   database_name: kahi
   log_database: kahi_log
 workflow:
-  scholar_person:
+  orcid_person:
     num_jobs: 72
     verbose: 2
     database_url: localhost:27017
