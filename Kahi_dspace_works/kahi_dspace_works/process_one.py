@@ -1,6 +1,6 @@
 from kahi_impactu_utils.Utils import compare_author
 from kahi_dspace_works.parser import parse_dspace
-from kahi_dspace_works.utils import set_source, get_doi, check_work, str_normilize
+from kahi_dspace_works.utils import set_source, get_doi, check_work, str_normilize, title_similarity
 from bson import ObjectId
 from unidecode import unidecode
 
@@ -293,8 +293,13 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
         if doi:
             colav_reg = collection.find_one({"external_ids.id": doi})
             if colav_reg:
-                process_one_update(
-                    entry, colav_reg, db, collection, verbose)
+                if title_similarity(entry["titles"], colav_reg["titles"]):
+                    process_one_update(
+                        entry, colav_reg, db, collection, verbose)
+                else:  # if the dois are equal but the titles are not similar
+                    process_one_insert(entry, affiliation, db,
+                                       collection, es_handler, verbose)
+
             else:
                 process_one_insert(entry, affiliation, db,
                                    collection, es_handler, verbose)

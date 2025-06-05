@@ -303,3 +303,37 @@ def set_affiliation(entry, affiliation, collection):
                 if aff["id"] == affiliation["id"]:
                     author["affiliations"].append(affiliation)
                     break
+
+
+def title_similarity(titles, titles_kahi, threshold=60):
+    """
+    Check if the titles are similar enough to be considered the same.
+
+    Parameters
+    ----------
+    titles : dict
+        incoming titles from a source db sto be compared with work kahi ex:
+        [{'title': 'Jóvenes: cuerpos, calles y movimiento',
+           'lang': 'es',
+           'source': 'openalex'},
+         {'title': 'Jóvenes: cuerpos, calles y movimiento',
+           'lang': 'es',
+           'source': 'scholar'}]
+    titles_kahi : dict
+        titles from kahi.
+    threshold : int
+        threshold to consider the titles as similar.
+
+    Returns
+    -------
+    bool
+        True if the titles are similar, False otherwise.
+    """
+    for dtitle in titles:
+        for ktitle in titles_kahi:
+            score = fuzz.ratio(
+                str_normilize(dtitle["title"]), str_normilize(ktitle["title"])
+            )
+            if score >= threshold:
+                return True
+    return False

@@ -244,7 +244,8 @@ def parse_dspace(
         ):
             if len(field["#text"].split(",")) != 2:
                 continue
-            author = split_names_dspace(field["#text"])
+            author = split_names_dspace(
+                field["#text"].replace(".", "").replace("-", " "))
             if author:
                 author["id"] = ""
                 author["affiliations"] = []
