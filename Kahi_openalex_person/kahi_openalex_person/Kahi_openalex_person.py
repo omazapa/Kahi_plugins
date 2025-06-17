@@ -44,6 +44,7 @@ def process_one_insert(person_db, oa_author, client, db_name, empty_person, rela
             "first_names": [],
             "initials": []
         }
+    entry["full_name"] = entry["full_name"].replace("-", " ")
     entry["last_names"] = author_data["last_names"]
     entry["first_names"] = author_data["first_names"]
     entry["initials"] = author_data["initials"]
@@ -81,29 +82,6 @@ def process_one_insert(person_db, oa_author, client, db_name, empty_person, rela
                         "start_date": -1,
                         "end_date": -1
                     })
-    elif "last_known_institution" in oa_author.keys():
-        if oa_author["last_known_institution"]:
-            aff_reg = None
-            for source, idx in oa_author["last_known_institution"].items():
-                aff_reg = db["affiliations"].find_one(
-                    {"external_ids.id": idx})
-                if aff_reg:
-                    break
-            if aff_reg:
-                name = aff_reg["names"][0]["name"]
-                for n in aff_reg["names"]:
-                    if n["lang"] == "es":
-                        name = n["name"]
-                        break
-                    elif n["lang"] == "en":
-                        name = n["name"]
-                entry["affiliations"].append({
-                    "id": aff_reg["_id"],
-                    "name": name,
-                    "types": aff_reg["types"],
-                    "start_date": -1,
-                    "end_date": -1
-                })
 
     for rwork in related_works:
         for key in rwork["ids"].keys():
