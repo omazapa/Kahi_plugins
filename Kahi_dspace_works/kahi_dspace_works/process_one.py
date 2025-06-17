@@ -82,14 +82,15 @@ def process_one_update(entry, colav_reg, db, collection, verbose):
                 author["type"] = author_reg["type"]
                 break
         if not name_match:
-            if author_reg not in colav_reg["authors"]:
+            new_author = {"id": "",
+                          "full_name": author_reg["full_name"],
+                          "type": author_reg["type"],
+                          "affiliations": author_reg["affiliations"],
+                          }
+            if new_author not in colav_reg["authors"]:
                 # como no hay match se añade, ver
                 # https://github.com/colav/impactu/issues/494
-                colav_reg["authors"].append({"id": "",
-                                             "full_name": author_reg["full_name"],
-                                             "type": author_reg["type"],
-                                             "affiliations": author_reg["affiliations"],
-                                             })
+                colav_reg["authors"].append(new_author)
     colav_reg["author_count"] = len(colav_reg["authors"])
     collection.update_one(
         {"_id": colav_reg["_id"]},
