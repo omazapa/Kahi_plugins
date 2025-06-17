@@ -73,6 +73,9 @@ class Kahi_dspace_works(KahiBase):
             self.thresholds = {"author_thd": 65,
                                "paper_thd_low": 90, "paper_thd_high": 95}
 
+        print("INFO: Creating index for full_name in person collection")
+        self.db["person"].create_index("full_name")
+
     def process_repository(self, affiliation, base_url, dspace_collection):
         if self.task == "doi":
             # the thesis with doi will be processed with elastic, we can't trust the doi from dspace for thesis.
@@ -108,7 +111,7 @@ class Kahi_dspace_works(KahiBase):
                     thresholds=self.thresholds,
                     verbose=self.verbose,
                 )
-                for work in work_cursor if get_doi(work)
+                for work in list(work_cursor) if get_doi(work)
             )
 
         else:
@@ -130,7 +133,7 @@ class Kahi_dspace_works(KahiBase):
                     thresholds=self.thresholds,
                     verbose=self.verbose,
                 )
-                for work in work_cursor if is_similarity_reg(work))
+                for work in list(work_cursor) if is_similarity_reg(work))
 
     def run(self):
         print(
