@@ -212,9 +212,18 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
     verbose : int
         verbosity level.
     """
+    if collection.find_one({"external_ids.id": dspace_reg["_id"]}):
+        if verbose > 4:
+            print("Record with id {} already exists in the works collection".format(
+                dspace_reg["_id"]))
+        return
     # processing bad dois as well
     entry = parse_dspace(dspace_reg, empty_work,
                          base_url, verbose)
+    if len(entry["titles"]) == 0:
+        if verbose > 4:
+            print("No title found in dspace record {}".format(dspace_reg["_id"]))
+        return
     set_source(entry, db)  # setting source to entry
     # setting affiliation to authors
     # set_affiliation(entry, affiliation, db['person'])

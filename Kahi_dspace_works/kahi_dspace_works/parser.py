@@ -212,12 +212,16 @@ def parse_dspace(
         if (
             field["@element"] == "date" and "@qualifier" in field and field["@qualifier"] == "issued"
         ):
-            if field["#text"][:4].isdigit():
-                if entry["year_published"]:
-                    if entry["year_published"] >= int(field["#text"][:4]):
+            if "#text" not in field:
+                print("WARNING: #text not found in date \n",
+                      field, reg["_id"])
+            if "#text" in field and field["#text"] and len(field["#text"]) >= 4:
+                if field["#text"][:4].isdigit():
+                    if entry["year_published"]:
+                        if entry["year_published"] >= int(field["#text"][:4]):
+                            entry["year_published"] = int(field["#text"][:4])
+                    else:
                         entry["year_published"] = int(field["#text"][:4])
-                else:
-                    entry["year_published"] = int(field["#text"][:4])
         # Abstract
         if (
             field["@element"] == "description" and "@qualifier" in field and field["@qualifier"] == "abstract"
@@ -253,9 +257,13 @@ def parse_dspace(
                 entry["authors"].append(author)
         # Type
         if field["@element"] == "type":
-            if is_thesis(field["#text"]):
-                thesis = True
-            entry["types"].append(get_type_dspace(field["#text"]))
+            if "#text" not in field:
+                print("WARNING: #text not found in type \n",
+                      field, reg["_id"])
+            else:
+                if is_thesis(field["#text"]):
+                    thesis = True
+                entry["types"].append(get_type_dspace(field["#text"]))
         # Rights
         if field["@element"] == "rights":
             if "#text" in field:
@@ -271,50 +279,65 @@ def parse_dspace(
         if field["@element"] == "identifier" and "@qualifier" in field:
 
             if field["@qualifier"] == "doi":
-                doi = doi_processor(field["#text"])
-                if doi:
-                    if entry["doi"] and entry["doi"] != doi:
-                        print(
-                            "WARNING:dspace_works: doi already assigned and it is different, leaving it as it is."
+                if "#text" not in field:
+                    print("WARNING: #text not found in doi \n",
+                          field, reg["_id"])
+                else:
+                    doi = doi_processor(field["#text"])
+                    if doi:
+                        if entry["doi"] and entry["doi"] != doi:
+                            print(
+                                "WARNING:dspace_works: doi already assigned and it is different, leaving it as it is."
+                            )
+                            print(
+                                f"WARNING:dspace_works: {reg['_id']} with doi {entry['doi']} and doi {doi}"
+                            )
+                        else:
+                            entry["doi"] = doi
+                        entry["external_ids"].append(
+                            {"provenance": "dspace", "source": "doi", "id": doi}
                         )
-                        print(
-                            f"WARNING:dspace_works: {reg['_id']} with doi {entry['doi']} and doi {doi}"
-                        )
-                    else:
-                        entry["doi"] = doi
-                    entry["external_ids"].append(
-                        {"provenance": "dspace", "source": "doi", "id": doi}
-                    )
 
             if field["@qualifier"] in ["ismn", "uri", "other"]:
-                entry["external_ids"].append(
-                    {
-                        "provenance": "dspace",
-                        "source": field["@qualifier"],
-                        "id": field["#text"],
-                    }
-                )
+                if "#text" not in field:
+                    print("WARNING: #text not found in external_ids \n",
+                          field, reg["_id"])
+                else:
+                    entry["external_ids"].append(
+                        {
+                            "provenance": "dspace",
+                            "source": field["@qualifier"],
+                            "id": field["#text"],
+                        }
+                    )
 
             if field["@qualifier"] == "url":
-                entry["external_urls"].append(
-                    {"provenance": "dspace", "source": "url",
-                        "url": field["#text"]}
-                )
+                if "#text" not in field:
+                    print("WARNING: #text not found in url \n",
+                          field, reg["_id"])
+                else:
+                    entry["external_urls"].append(
+                        {"provenance": "dspace", "source": "url",
+                            "url": field["#text"]}
+                    )
             if field["@qualifier"] in [
                 "isbn",
                 "issn",
                 "eissn",
             ]:  # esto es para los sources
-
-                if "external_ids" not in entry["source"]:
-                    entry["source"]["external_ids"] = []
-                entry["source"]["external_ids"] = [
-                    {
-                        "provenance": "dspace",
-                        "source": field["@qualifier"],
-                        "id": field["#text"],
-                    }
-                ]
+                if "#text" not in field:
+                    print("WARNING: #text not found in external_ids \n",
+                          field, reg["_id"])
+                else:
+                    if "external_ids" not in entry["source"]:
+                        entry["source"]["external_ids"] = []
+                    entry["source"]["external_ids"] = [
+                        {
+                            "provenance": "dspace",
+                            "source": field["@qualifier"],
+                            "id": field["#text"],
+                        }
+                    ]
 
     # ids
     entry["external_ids"].append(

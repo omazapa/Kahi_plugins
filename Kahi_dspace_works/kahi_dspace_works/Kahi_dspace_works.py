@@ -93,7 +93,7 @@ class Kahi_dspace_works(KahiBase):
                         },
                         {
                             "OAI-PMH.GetRecord.record.metadata.dim:dim.dim:field.#text": {"$nin": thesis_types}
-                        }
+                        },
                     ]
                 }
             )
@@ -151,4 +151,4 @@ class Kahi_dspace_works(KahiBase):
             dspace_collection = dsapce_db[repository["collection_name"]]
             self.process_repository(affiliation, base_url, dspace_collection)
 
-        return -1
+        return 0

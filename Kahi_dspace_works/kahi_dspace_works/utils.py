@@ -20,6 +20,8 @@ def get_doi(reg):
     for field in reg["OAI-PMH"]["GetRecord"]["record"]["metadata"]["dim:dim"][
         "dim:field"
     ]:
+        if "#text" not in field:
+            continue
         if field["@element"] == "identifier" and "@qualifier" in field:
             if field["@qualifier"] == "doi":
                 doi = doi_processor(field["#text"])
@@ -214,6 +216,8 @@ def is_thesis_work(reg):
     for field in reg["OAI-PMH"]["GetRecord"]["record"]["metadata"]["dim:dim"][
             "dim:field"]:
         if field["@element"] == "type":
+            if "#text" not in field:
+                continue
             if is_thesis(field["#text"]):
                 return True
     return False
