@@ -101,7 +101,7 @@ def process_one_update(entry, colav_reg, db, collection, verbose):
             "year_published": colav_reg["year_published"],
             "titles": colav_reg["titles"],
             "external_ids": colav_reg["external_ids"],
-            "extrnal_urls": colav_reg["external_urls"],
+            "external_urls": colav_reg["external_urls"],
             "types": colav_reg["types"],
             "authors": colav_reg["authors"],
             "author_count": colav_reg["author_count"],

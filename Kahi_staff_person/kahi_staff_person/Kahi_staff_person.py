@@ -184,17 +184,17 @@ class Kahi_staff_person(KahiBase):
                         entry["degrees"].append(degree)
                 if reg["tipo_contrato"]:
                     ranking = {"date": start_date,
-                               "rank": reg["tipo_contrato"], "source": "tipo_contrato", "provenace": "staff"}
+                               "rank": reg["tipo_contrato"], "source": "tipo_contrato", "provenance": "staff"}
                     if ranking not in entry["ranking"]:
                         entry["ranking"].append(ranking)
                 if reg["jornada_laboral"]:
                     ranking = {"date": start_date,
-                               "rank": reg["jornada_laboral"], "source": "jornada_laboral", "provenace": "staff"}
+                               "rank": reg["jornada_laboral"], "source": "jornada_laboral", "provenance": "staff"}
                     if ranking not in entry["ranking"]:
                         entry["ranking"].append(ranking)
                 if reg["categoría_laboral"]:
                     ranking = {"date": start_date,
-                               "rank": reg["categoría_laboral"], "source": "categoría_laboral", "provenace": "staff"}
+                               "rank": reg["categoría_laboral"], "source": "categoría_laboral", "provenance": "staff"}
                     if ranking not in entry["ranking"]:
                         entry["ranking"].append(ranking)
 
