@@ -183,8 +183,8 @@ def process_author(entry, colav_reg, db, verbose=0):
                 {'external_ids': {'$elemMatch': {'$or': author_ids}}}, {"_id": 1, "full_name": 1, "affiliations": 1, "first_names": 1, "last_names": 1, "initials": 1, "external_ids": 1})
 
         if author_db:
-            name_match = None
-            affiliation_match = None
+            name_match = False
+            affiliation_match = False
             for i, author in enumerate(colav_reg['authors']):
                 if author['id'] == author_db['_id']:
                     # adding the group for the author
@@ -243,7 +243,7 @@ def process_author(entry, colav_reg, db, verbose=0):
                                                for aff in author['affiliations']]
                         affiliation_match = any(
                             affil in author_affiliations for affil in affiliations_person)
-
+                # if name and affiliation match, we can replace the author
                 if name_match and affiliation_match:
                     # replace the author, maybe add the openalex id to the record in the future
                     for reg in author_db["affiliations"]:
@@ -272,6 +272,16 @@ def process_author(entry, colav_reg, db, verbose=0):
                         "affiliations": author["affiliations"]
                     }
                     break
+
+                else:
+                    # if name match but not affiliation, add the author
+                    if name_match and not affiliation_match:
+                        colav_reg["authors"].append({
+                            "id": author_db["_id"],
+                            "full_name": author_db["full_name"],
+                            "affiliations": scienti_author["affiliations"]
+                        })
+                        break
 
 
 def process_one_update(scienti_reg, colav_reg, db, collection, empty_work, verbose=0):
