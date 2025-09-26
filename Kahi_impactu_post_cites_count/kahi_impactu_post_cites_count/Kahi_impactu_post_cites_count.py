@@ -40,6 +40,7 @@ class Kahi_impactu_post_cites_count(KahiBase):
         self.works_collection = self.db["works"]
         self.person_collection = self.db["person"]
         self.affiliations_collection = self.db["affiliations"]
+        self.sources_collection = self.db["sources"]
 
     def count_cites_products_person(self, pid):
         """
@@ -68,7 +69,8 @@ class Kahi_impactu_post_cites_count(KahiBase):
                                         "count": cites["count"]}]
 
         # Count products for each author
-        count = self.works_collection.count_documents({"authors.id": pid["_id"]})
+        count = self.works_collection.count_documents(
+            {"authors.id": pid["_id"]})
         rec["products_count"] = count
 
         # Update the person collection
@@ -149,6 +151,41 @@ class Kahi_impactu_post_cites_count(KahiBase):
         self.affiliations_collection.update_one(
             {"_id": pid["_id"]}, {"$set": rec}, upsert=True)
 
+    def count_cites_products_source(self, sid):
+        """
+        Method to calculate the citation and product count for each source
+        """
+        # Count cites for each source
+        pipeline = [
+            {
+                "$match": {
+                    "source.id": sid["_id"],
+                },
+            },
+            {"$project": {"citations_count": 1}},
+            {"$unwind": "$citations_count"},
+            {
+                "$group": {
+                    "_id": "$citations_count.source",
+                    "count": {"$sum": "$citations_count.count"},
+                },
+            },
+        ]
+        ret = list(self.works_collection.aggregate(pipeline))
+        rec = {"citations_count": []}
+        for cites in ret:
+            rec["citations_count"] += [{"source": cites["_id"],
+                                        "count": cites["count"]}]
+
+        # Count products for each source
+        count = self.works_collection.count_documents(
+            {"source.id": sid["_id"]})
+        rec["products_count"] = count
+
+        # Update the sources collection
+        self.sources_collection.update_one(
+            {"_id": sid["_id"]}, {"$set": rec}, upsert=True)
+
     def run_cites_count(self):
         """
         Method to run the cites and products count calculation for each person, institution, faculty, department and group.
@@ -201,6 +238,22 @@ class Kahi_impactu_post_cites_count(KahiBase):
                 delayed(self.count_cites_products_faculty_department_group)(
                     reg,
                 ) for reg in aff_ids
+            )
+            client.close()
+
+        # Count cites and products for sources
+        souces_ids = list(self.sources_collection.find({}, {"_id"}))
+        if self.verbose > 0:
+            print("Calculating cites and products count for {} sources".format(
+                len(souces_ids)))
+        with MongoClient(self.mongodb_url) as client:
+            Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                backend="threading")(
+                delayed(self.count_cites_products_source)(
+                    reg,
+                ) for reg in souces_ids
             )
             client.close()
 
