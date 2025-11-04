@@ -36,6 +36,12 @@ def process_info_from_works(db, author, entry, groups_production_list):
             papers = prod["products"]
             break
     if papers:
+        print(author["id_persona_pr"])
+        trabajos = [p["id_producto_pd"] for p in papers if "ART" in p["id_producto_pd"]]
+        grupos = [g["cod_grupo_gr"] for g in papers]
+        print("trabajos: ", len(trabajos))
+        print(trabajos)
+        print(grupos)
         groups_cod = []
         inst_cod = []
         for reg in papers:
@@ -45,6 +51,7 @@ def process_info_from_works(db, author, entry, groups_production_list):
             group_db = db["affiliations"].find_one(
                 {"external_ids.id": reg["cod_grupo_gr"]})
             if group_db:
+                print(group_db["names"][0]["name"])
                 name = group_db["names"][0]["name"]
                 for n in group_db["names"]:
                     if n["lang"] == "es":
@@ -170,6 +177,7 @@ def process_one(author_entry, db, collection, empty_person, cvlac_profile, group
         reg_db = collection.find_one({"external_ids.id.COD_RH": author["id_persona_pr"]})
 
         if reg_db:
+            print(reg_db["full_name"])
             # Updated
             sources = [x["source"] for x in reg_db["updated"]]
             if "minciencias" not in sources:
@@ -458,9 +466,10 @@ class Kahi_minciencias_opendata_person(KahiBase):
         pipeline = [
             # 0000000000 is a placeholder for missing id_persona_pd, there is not record for it, then we can omit it
             {'$match': {'id_persona_pd': {'$ne': '0000000000'}}},
-            {"$sort": {"ano_convo": -1}},
-            {'$group': {'_id': '$id_producto_pd', 'originalDoc': {'$first': '$$ROOT'}}},
-            {'$replaceRoot': {'newRoot': '$originalDoc'}},
+            {'$sort': {'ano_convo': -1}},
+            {'$group': {'_id': '$id_producto_pd', 'docs': {'$push': '$$ROOT'}}},
+            {'$unwind': '$docs'},
+            {'$replaceRoot': {'newRoot': '$docs'}},
             {'$group': {'_id': '$id_persona_pd', 'products': {'$push': '$$ROOT'}}}
         ]
         production_cursor = self.groups_production.aggregate(
