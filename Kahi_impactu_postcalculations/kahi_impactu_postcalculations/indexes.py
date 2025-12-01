@@ -22,3 +22,18 @@ def create_indexes(db):
     # https://github.com/colav/impactu/issues/418
     db["works"].create_index(
         {"subjects.subjects.level": 1, "subjects.subjects.name": 1})
+    # https://github.com/colav/impactu/issues/595
+    db["works"].create_index({"citations_count_openalex": 1})
+    db["affiliations"].create_index({"citations_count_openalex": 1})
+    db["works"].create_index({"open_access.is_open_access": 1})
+    db["sources"].create_index({"citations_count.source": 1, "citations_count.count": -1})
+    db["sources"].create_index({"products_count": -1, "_id": 1})
+    db["sources"].create_index({"names.name": 1, "_id": 1})
+    db["sources"].create_index({"types.type": 1})
+    db["sources"].create_index({"publisher.country_code": 1})
+    db["sources"].create_index({"external_ids.source": 1, "external_ids.id": 1})
+    db["sources"].create_index({"subjects.name": 1})
+    db["sources"].create_index({"ranking.source": 1, "ranking.to_date": -1, "ranking.rank": 1})
+    db["sources"].create_index({"ranking.source": 1})
+    db["sources"].create_index({"_id": 1, "ranking": 1})
+    
