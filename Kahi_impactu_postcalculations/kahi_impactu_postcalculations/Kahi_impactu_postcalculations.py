@@ -168,16 +168,15 @@ class Kahi_impactu_postcalculations(KahiBase):
         print("INFO: Setting up impactu types for works")
         self.process_types(db)
 
+        print(f"INFO: Denormalizing data in {self.database_name}.works")
+        denormalize(db)
+
         print(f"INFO: Creating indexes in db {self.database_name} for backend")
         db["works"].create_index("authors.id")
         create_indexes(db)
 
-        print(f"INFO: Denormalizing data in {self.database_name}.works")
-        denormalize(db.works)
-
         print("INFO: Setting up topics for works")
-        works_cursor = db["works"].find({"primary_topic": {}}, {
-                                        "titles": 1, "abstracts": 1, "source": 1, "primary_topic": 1, "topics": 1})
+        works_cursor = db["works"].find({"primary_topic": {}}, {"titles": 1, "abstracts": 1, "source": 1, "primary_topic": 1, "topics": 1})
         Parallel(n_jobs=self.n_jobs, verbose=10, backend="threading")(delayed(process_topic)(
             db["works"], openalex_db["topics"], work, self.inference_endpoint) for work in works_cursor)
 
