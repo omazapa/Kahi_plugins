@@ -36,4 +36,3 @@ def create_indexes(db):
     db["sources"].create_index({"ranking.source": 1, "ranking.to_date": -1, "ranking.rank": 1})
     db["sources"].create_index({"ranking.source": 1})
     db["sources"].create_index({"_id": 1, "ranking": 1})
-    
