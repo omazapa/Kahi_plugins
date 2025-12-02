@@ -176,18 +176,29 @@ class Kahi_impactu_postcalculations(KahiBase):
         create_indexes(db)
 
         print("INFO: Setting up topics for works")
-        works_cursor = db["works"].find({
-            "primary_topic": {}},
+        works_cursor = db["works"].find(
+            {"primary_topic": {}},
             {
                 "titles": 1,
                 "abstracts": 1,
                 "source": 1,
                 "primary_topic": 1,
-                "topics": 1
-            }
+                "topics": 1,
+            },
         )
-        Parallel(n_jobs=self.n_jobs, verbose=10, backend="threading")(delayed(process_topic)(
-            db["works"], openalex_db["topics"], work, self.inference_endpoint) for work in works_cursor)
+        Parallel(
+            n_jobs=self.n_jobs,
+            verbose=10,
+            backend="threading",
+        )(
+            delayed(process_topic)(
+                db["works"],
+                openalex_db["topics"],
+                work,
+                self.inference_endpoint,
+            )
+            for work in works_cursor
+        )
 
         # Getting the list of institutions ids with works
         print("INFO: Getting authors and affiliations ids")
