@@ -1056,7 +1056,7 @@ def set_works_groups_citations_count(collection) -> None:
     collection.aggregate(pipeline)
 
 
-def set_works_groups_ranking_to_works_collection(collection):
+def set_works_groups_ranking_to_works_collection(collection) -> None:
     """
     Function to set ranking data for groups inside works
 
@@ -1321,7 +1321,7 @@ def set_sources_products_count(collection) -> None:
     Parameters
     ----------
     collection : pymongo.collection.Collection
-        Works collection
+        Sources collection
     """
     pipeline = [
         {
@@ -1365,7 +1365,7 @@ def set_sources_citations_count_openalex(collection) -> None:
     Parameters
     ----------
     collection : pymongo.collection.Collection
-        Works collection
+        Sources collection
     """
     pipeline = [
         {
@@ -1445,7 +1445,8 @@ def normalize_sources_citations_count(collection) -> None:
 
 def clean_person_empty_affiliations_array(collection) -> None:
     """
-    Function to replace affiliations equal to [{}] with an empty list in person collection
+    Function to replace affiliations equal to [{}]
+    with an empty list in person collection
 
     Parameters
     ----------
