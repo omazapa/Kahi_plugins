@@ -207,6 +207,12 @@ class Kahi_scimago_sources(KahiBase):
                     "order": int(sjr["Rank"]) if sjr["Rank"] else None,
                     "source": "Scimago hindex"
                 })
+                if sjr.get("Open Access") and sjr.get("Open Access Diamond"):
+                    entry["open_access"].append({
+                        "provenance": "scimago",
+                        "is_open_access": True if sjr.get("Open Access") == "Yes" else False,
+                        "open_access_diamond": True if sjr.get("Open Access Diamond") == "Yes" else False
+                        })
                 if sjr["SJR"]:
                     rank = ""
                     if isinstance(sjr["SJR"], str):
