@@ -69,13 +69,30 @@ def process_one(source, client, db_name, empty_source):
         if not name_found:
             source_db["names"].append(
                 {"name": source["display_name"], "lang": "en", "source": "openalex"})
+        if "is_oa" in source.keys():
+            is_oa = source.get("is_oa")
+            apc = source.get("apc_prices")
+            has_apc = False
+            if apc:
+                for item in apc:
+                    if isinstance(item, dict) and item.get("price"):
+                        has_apc = True
+                        break
+            oa_reg = {
+                "provenance": "openalex",
+                "is_open_access": bool(is_oa),
+                "open_access_diamond": is_oa and not has_apc
+            }
+            if oa_reg not in source_db["open_access"]:
+                source_db["open_access"].append(oa_reg)
 
         collection.update_one({"_id": source_db["_id"]}, {"$set": {
             "updated": source_db["updated"],
             "names": source_db["names"],
             "external_ids": source_db["external_ids"],
             "types": source_db["types"],
-            "subjects": source_db["subjects"]
+            "subjects": source_db["subjects"],
+            "open_access": source_db["open_access"]
         }})
     else:
         entry = empty_source.copy()
@@ -106,6 +123,22 @@ def process_one(source, client, db_name, empty_source):
             if source["apc_usd"]:
                 entry["apc"] = {"currency": "USD",
                                 "charges": source["apc_usd"]}
+        if "is_oa" in source.keys():
+            is_oa = source.get("is_oa")
+            apc = source.get("apc_prices")
+            has_apc = False
+            if apc:
+                for item in apc:
+                    if isinstance(item, dict) and item.get("price"):
+                        has_apc = True
+                        break
+            entry["open_access"].append(
+                {
+                    "provenance": "openalex",
+                    "is_open_access": bool(is_oa),
+                    "open_access_diamond": is_oa and not has_apc
+                }
+            )
         if "abbreviated_title" in source.keys():
             if source["abbreviated_title"]:
                 entry["abbreviations"].append(
