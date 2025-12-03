@@ -212,7 +212,7 @@ class Kahi_scimago_sources(KahiBase):
                         "provenance": "scimago",
                         "is_open_access": True if sjr.get("Open Access") == "Yes" else False,
                         "open_access_diamond": True if sjr.get("Open Access Diamond") == "Yes" else False
-                        })
+                    })
                 if sjr["SJR"]:
                     rank = ""
                     if isinstance(sjr["SJR"], str):
