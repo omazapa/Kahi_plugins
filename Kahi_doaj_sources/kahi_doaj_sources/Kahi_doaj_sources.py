@@ -74,6 +74,15 @@ class Kahi_doaj_sources(KahiBase):
                 entry["apc"] = {"charges": reg["apc"]["max"][-1]["price"],
                                 "currency": reg["apc"]["max"][-1]["currency"]}
 
+        if reg.get("boai"):
+            oa_reg = {
+                "provenance": "doaj",
+                "is_open_access": reg.get("boai"),
+                "open_access_diamond": True if reg.get("boai") and not reg["apc"]["has_apc"] else False
+            }
+            if oa_reg not in entry["open_access"]:
+                entry["open_access"].append(oa_reg)
+
         subjects_source = {}
         sources = [sub["source"] for sub in entry["subjects"]]
         if "subject" in reg.keys():
@@ -148,6 +157,13 @@ class Kahi_doaj_sources(KahiBase):
                     entry["apc"] = {"charges": reg["apc"]["max"][-1]["price"],
                                     "currency": reg["apc"]["max"][-1]["currency"]}
 
+            if reg.get("boai"):
+                entry["open_access"].append({
+                    "provenance": "doaj",
+                    "is_open_access": reg.get("boai"),
+                    "open_access_diamond": True if reg.get("boai") and not reg["apc"]["has_apc"] else False
+                })
+
             subjects_source = {}
             if "subject" in reg.keys():
                 if reg["subject"]:
@@ -187,7 +203,7 @@ class Kahi_doaj_sources(KahiBase):
 
         if verbose >= 4:
             print(
-                f"""Inserted {self.collection.count_documents({"updated.source":"doaj"})} sources""")
+                f"""Inserted {self.collection.count_documents({"updated.source": "doaj"})} sources""")
 
         self.client.close()
 
