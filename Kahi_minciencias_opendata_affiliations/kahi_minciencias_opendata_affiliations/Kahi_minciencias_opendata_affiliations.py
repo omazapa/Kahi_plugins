@@ -89,11 +89,11 @@ class Kahi_minciencias_opendata_affiliations(KahiBase):
         elif "distrital francisco" in name:
             return "distrital francisco josé"
         elif "santander" in name and "industrial" in name:
-            return "industrial santander"
-        elif "santander" in name and "industrial" not in name:
+            return "universidad industrial santander"
+        elif "santander" in name and "industrial" not in name and "francisco" not in name and "paula" not in name:
             return "universidad santander"
         elif "francisco" in name and "paula" in name and "santander" in name:
-            return "francisco paula"
+            return "universidad francisco paula santander"
         elif "magdalena" in name:
             return "magdalena"
         elif "corporacion universitaria iberoamericana" == name:

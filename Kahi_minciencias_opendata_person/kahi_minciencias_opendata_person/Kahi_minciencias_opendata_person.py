@@ -549,9 +549,10 @@ class Kahi_minciencias_opendata_person(KahiBase):
         pipeline = [
             # 0000000000 is a placeholder for missing id_persona_pd, there is not record for it, then we can omit it
             {'$match': {'id_persona_pd': {'$ne': '0000000000'}}},
-            {"$sort": {"ano_convo": -1}},
-            {'$group': {'_id': '$id_producto_pd', 'originalDoc': {'$first': '$$ROOT'}}},
-            {'$replaceRoot': {'newRoot': '$originalDoc'}},
+            {'$sort': {'ano_convo': -1}},
+            {'$group': {'_id': '$id_producto_pd', 'docs': {'$push': '$$ROOT'}}},
+            {'$unwind': '$docs'},
+            {'$replaceRoot': {'newRoot': '$docs'}},
             {'$group': {'_id': '$id_persona_pd', 'products': {'$push': '$$ROOT'}}}
         ]
         production_cursor = self.groups_production.aggregate(
