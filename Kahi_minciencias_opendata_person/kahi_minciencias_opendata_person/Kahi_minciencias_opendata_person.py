@@ -3,7 +3,8 @@ from pymongo import MongoClient, TEXT
 from time import time
 from re import search, sub
 from joblib import Parallel, delayed
-from kahi_impactu_utils.Utils import get_id_from_url, get_id_type_from_url, parse_sex, check_date_format, split_names
+from kahi_impactu_utils.Utils import get_id_from_url, get_id_type_from_url, parse_sex, check_date_format, split_names, doi_processor
+import re
 
 
 def parse_ids(product_id, regex, values):
@@ -28,7 +29,75 @@ def parse_ids(product_id, regex, values):
     return ids
 
 
-def process_info_from_works(db, author, entry, groups_production_list):
+def extract_doi_candidates_from_html(html: str) -> list[str]:
+    """
+    Depending on stored HTML content, extract raw DOI-like strings.
+
+    Parameters
+    ----------
+    html : str
+        The HTML content in which to search for DOI-like patterns.
+
+    Returns
+    -------
+    list[str]
+        List of DOI-like substrings found in the HTML.
+    """
+    candidate_pattern = r"10\.\d{3,}/[^\s\"'<]+"
+    return re.findall(candidate_pattern, html, flags=re.IGNORECASE)
+
+
+def extract_valid_dois(html: str) -> list[str]:
+    """
+    Depending on stored HTML, normalize and return valid DOI URLs.
+
+    Parameters
+    ----------
+    html : str
+        The HTML content to scan for raw DOI strings.
+
+    Returns
+    -------
+    list[str]
+        List of normalized DOI URLs (e.g. “https://doi.org/…”), unique.
+    """
+    candidates = extract_doi_candidates_from_html(html)
+    valid = set()
+    for c in candidates:
+        doi_url = doi_processor(c)
+        if doi_url:
+            valid.add(doi_url)
+    return list(valid)
+
+
+def get_works_by_id(author_id, cvlac_html_dois) -> list[dict]:
+    """
+    Depending on stored HTML profiles, extract DOIs for an author.
+
+    Parameters
+    ----------
+    author_id : str
+        The identifier of the author whose profile should be inspected in cvlac_html_dois.
+    cvlac_html_dois : list of dict
+        A list of documents (each must contain '_id' and 'html') representing stored profiles.
+
+    Returns
+    -------
+    list of dict
+        Each dict has keys {'provenance', 'source', 'id'} corresponding to a detected valid DOI.
+    """
+    for author_reg in cvlac_html_dois:
+        if author_reg["_id"] == author_id:
+            doc = author_reg
+            break
+    if not doc or 'html' not in doc:
+        return []
+    html = doc['html']
+    dois = extract_valid_dois(html)
+    return [{'provenance': 'minciencias', 'source': 'doi', 'id': doi} for doi in dois]
+
+
+def process_info_from_works(db, author, entry, groups_production_list, cvlac_html_dois):
     # Works
     papers = []
     for prod in groups_production_list:
@@ -109,7 +178,8 @@ def process_info_from_works(db, author, entry, groups_production_list):
             ids = parse_ids(reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})-(\d{1,7})', [
                 "COD_RH", "COD_PRODUCTO", "SEQ_PRODUCTO"])
             if ids:
-                new_item = {"provenance": "minciencias", "source": "scienti", "id": ids}
+                new_item = {"provenance": "minciencias",
+                            "source": "scienti", "id": ids}
                 if new_item not in entry["related_works"]:
                     entry["related_works"].append(new_item)
 
@@ -117,7 +187,8 @@ def process_info_from_works(db, author, entry, groups_production_list):
             ids = parse_ids(reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})-(\d{1,7})', [
                             "COD_RH", "COD_PRODUCTO", "COD_REGISTRO"])
             if ids:
-                new_item = {"provenance": "minciencias", "source": "scienti", "id": ids}
+                new_item = {"provenance": "minciencias",
+                            "source": "scienti", "id": ids}
                 if new_item not in entry["related_works"]:
                     entry["related_works"].append(new_item)
 
@@ -125,7 +196,8 @@ def process_info_from_works(db, author, entry, groups_production_list):
             ids = parse_ids(reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})-(\d{1,7})', [
                 "COD_RH", "COD_PRODUCTO", "COD_SECRETO_INDUSTRIAL"])
             if ids:
-                new_item = {"provenance": "minciencias", "source": "scienti", "id": ids}
+                new_item = {"provenance": "minciencias",
+                            "source": "scienti", "id": ids}
                 if new_item not in entry["related_works"]:
                     entry["related_works"].append(new_item)
 
@@ -133,7 +205,8 @@ def process_info_from_works(db, author, entry, groups_production_list):
             ids = parse_ids(reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})-(\d{1,7})$', [
                 "COD_RH", "COD_PRODUCTO", " COD_PATENTE"])
             if ids:
-                new_item = {"provenance": "minciencias", "source": "scienti", "id": ids}
+                new_item = {"provenance": "minciencias",
+                            "source": "scienti", "id": ids}
                 if new_item not in entry["related_works"]:
                     entry["related_works"].append(new_item)
 
@@ -141,7 +214,8 @@ def process_info_from_works(db, author, entry, groups_production_list):
             ids = parse_ids(reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})$', [
                 "COD_RH", "COD_EVENTO"])
             if ids:
-                new_item = {"provenance": "minciencias", "source": "scienti", "id": ids}
+                new_item = {"provenance": "minciencias",
+                            "source": "scienti", "id": ids}
                 if new_item not in entry["related_works"]:
                     entry["related_works"].append(new_item)
 
@@ -149,12 +223,19 @@ def process_info_from_works(db, author, entry, groups_production_list):
             ids = parse_ids(
                 reg["id_producto_pd"], r'(\d{9,11})-(\d{1,7})$', ["COD_RH", "COD_PRODUCTO"])
             if ids:
-                new_item = {"provenance": "minciencias", "source": "scienti", "id": ids}
+                new_item = {"provenance": "minciencias",
+                            "source": "scienti", "id": ids}
                 if new_item not in entry["related_works"]:
                     entry["related_works"].append(new_item)
 
+    # Extract realted works from cvlac_html_profiles
+    cvlac_works_with_dois = get_works_by_id(
+        author["id_persona_pr"], cvlac_html_dois)
+    if cvlac_works_with_dois:
+        entry["related_works"].extend(cvlac_works_with_dois)
 
-def process_one(author_entry, db, collection, empty_person, cvlac_profile, groups_production_list, privates, verbose):
+
+def process_one(author_entry, db, collection, empty_person, cvlac_profile, groups_production_list, privates, cvlac_html_dois, verbose):
 
     if not author_entry or not cvlac_profile:
         return
@@ -165,9 +246,11 @@ def process_one(author_entry, db, collection, empty_person, cvlac_profile, group
     # Iterate over the authors
     for author in authors:
         # Define the author as a dictionary if it is not to permit the use of the same function for the cvlac_profile and the private_profiles.
-        author = author if isinstance(author, dict) else {"id_persona_pr": author}
+        author = author if isinstance(author, dict) else {
+            "id_persona_pr": author}
 
-        reg_db = collection.find_one({"external_ids.id.COD_RH": author["id_persona_pr"]})
+        reg_db = collection.find_one(
+            {"external_ids.id.COD_RH": author["id_persona_pr"]})
 
         if reg_db:
             # Updated
@@ -238,7 +321,8 @@ def process_one(author_entry, db, collection, empty_person, cvlac_profile, group
                     reg_db["ranking"].append(entry_rank)
 
             # Affiliations and related_works
-            process_info_from_works(db, author, reg_db, groups_production_list)
+            process_info_from_works(
+                db, author, reg_db, groups_production_list, cvlac_html_dois)
             # Update the record
             collection.update_one(
                 {"_id": reg_db["_id"]},
@@ -364,7 +448,8 @@ def process_one(author_entry, db, collection, empty_person, cvlac_profile, group
             })
 
         # affiliations and related works
-        process_info_from_works(db, author, entry, groups_production_list)
+        process_info_from_works(
+            db, author, entry, groups_production_list, cvlac_html_dois)
 
         # Ranking
         if "nme_clasificacion_pr" in author.keys():
@@ -428,6 +513,12 @@ class Kahi_minciencias_opendata_person(KahiBase):
         self.private_profiles = self.openadata_db[config["minciencias_opendata_person"]
                                                   ["private_profiles"]]
 
+        if config["minciencias_opendata_person"]["cvlac_html_profiles"] not in self.openadata_db.list_collection_names():
+            raise Exception("Collection {} not found in {}".format(
+                config["minciencias_opendata_person"]['cvlac_html_profiles'], config["minciencias_opendata_person"]["database_url"]))
+        self.cvlac_html_profiles = self.openadata_db[config["minciencias_opendata_person"]
+                                                     ["cvlac_html_profiles"]]
+
         self.n_jobs = config["minciencias_opendata_person"]["num_jobs"] if "num_jobs" in config["minciencias_opendata_person"].keys(
         ) else 1
 
@@ -483,6 +574,9 @@ class Kahi_minciencias_opendata_person(KahiBase):
         production_not_cvlac_cursor = self.groups_production.aggregate(
             pipeline, allowDiskUse=True)
 
+        # send all profiles with the cvlac html
+        cvlac_html_dois = list(self.cvlac_html_profiles.find())
+
         with MongoClient(self.mongodb_url) as client:
             db = client[self.config["database_name"]]
             person_collection = db["person"]
@@ -504,6 +598,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
                         {"id_persona_pr": author["_id"]}),
                     groups_production_list,
                     False,  # author is list of author documents
+                    cvlac_html_dois,
                     self.verbose
                 ) for author in cvlac_authors_list  # Iterate over the cvlac_authors_list
             )
@@ -525,6 +620,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
                         {"id_persona_pr": author}),
                     groups_production_list,
                     True,  # author is an author id
+                    cvlac_html_dois,
                     self.verbose
                     # Iterate over the authors_private_profile_list
                 ) for author in authors_private_profile_list
@@ -552,6 +648,7 @@ class Kahi_minciencias_opendata_person(KahiBase):
                             {"id_persona_pr": author}),
                         groups_production_not_cvlac_list,
                         True,  # author is an author id
+                        cvlac_html_dois,
                         self.verbose
                         # Iterate over the ids of the authors not in cvlac.
                     ) for author in list(authors_not_cvlac_ids)
