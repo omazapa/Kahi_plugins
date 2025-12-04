@@ -114,29 +114,29 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                 if author_db:
                     group_id = minciencias_author["affiliations"][0]['external_ids'][0]['id']
 
-                    affiliations_db = db["affiliations"].find_one(
+                    group_db = db["affiliations"].find_one(
                         {"external_ids.source": "scienti", "external_ids.id": group_id})
-                    if not affiliations_db:
-                        affiliations_db = db["affiliations"].find_one(
+                    if not group_db:
+                        group_db = db["affiliations"].find_one(
                             {"external_ids.id": group_id})
 
-                    if affiliations_db:
+                    if group_db:
                         for i, author in enumerate(colav_reg["authors"]):
                             if author_db["_id"] != author["id"]:
                                 continue
                             # Adding group to existing author in colav register
                             author_affiliations = [str(aff['id'])
                                                    for aff in author['affiliations']]
-                            if str(affiliations_db["_id"]) not in author_affiliations:
+                            if str(group_db["_id"]) not in author_affiliations:
                                 author["affiliations"].append(
                                     {
-                                        "id": affiliations_db["_id"],
-                                        "name": affiliations_db["names"][0]["name"],
-                                        "types": affiliations_db["types"]})
+                                        "id": group_db["_id"],
+                                        "name": group_db["names"][0]["name"],
+                                        "types": group_db["types"]})
                                 author_found = True
                                 if verbose > 4:
                                     print("group added to author: {}".format(
-                                        affiliations_db["names"][0]["name"]))
+                                        group_db["names"][0]["name"]))
                                 break
                             else:
                                 author_found = True
@@ -173,9 +173,9 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                                         affil in author_affiliations for affil in affiliations_person)
                                 if name_match and affiliation_match:
                                     author["affiliations"].append({
-                                        "id": affiliations_db["_id"],
-                                        "name": affiliations_db["names"][0]["name"].strip(),
-                                        "types": affiliations_db["types"]})
+                                        "id": group_db["_id"],
+                                        "name": group_db["names"][0]["name"].strip(),
+                                        "types": group_db["types"]})
                                     author_found = True
                                     break
 
@@ -183,9 +183,9 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                             colav_reg["authors"].append(
                                 {"id": author_db["_id"], "full_name": author_db["full_name"], "affiliations": [
                                     {
-                                        "id": affiliations_db["_id"],
-                                        "name": affiliations_db["names"][0]["name"],
-                                        "types": affiliations_db["types"]
+                                        "id": group_db["_id"],
+                                        "name": group_db["names"][0]["name"],
+                                        "types": group_db["types"]
                                     }
                                 ]}
                             )
@@ -223,7 +223,11 @@ def process_one_update(openadata_reg, colav_reg, db, collection, empty_work, ver
                 {"id": rgroup["_id"], "name": rgroup["names"][0]["name"]})
 
         # Adding group relation affiliation to the author affiliations
-        if author_db and rgroup["relations"]:
+        relations = rgroup.get("relations", [])
+        # Counting education type relations, if there is only one, it will be added to the author
+        edu_count = sum(1 for rel in relations if any((t.get("type") or "") == "Education" for t in rel.get("types", [])))
+
+        if author_db and rgroup["relations"] and edu_count == 1:
             for author in colav_reg["authors"]:
                 if author["id"] == author_db["_id"]:
                     affs = [aff["id"] for aff in author["affiliations"]]
