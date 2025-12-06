@@ -8,40 +8,43 @@ def process_relation(sub, client, db_name):
     db = client[db_name]
     collection = db["subjects"]
     relations = []
-    for rel in sub["related_concepts"]:
-        sub_db = collection.find_one(
-            {"external_ids.id": rel["id"]})
-        if sub_db:
-            name = sub_db["names"][0]["name"]
-            for n in sub_db["names"]:
-                if n["lang"] == "en":
-                    name = n["name"]
-                    break
-            rel_entry = {
-                "id": sub_db["_id"],
-                "name": name,
-                "level": sub_db["level"]
-            }
-            relations.append(rel_entry)
-        else:
-            print("Could not find related concept in colombia db")
-    for rel in sub["ancestors"]:
-        sub_db = collection.find_one(
-            {"external_ids.id": rel["id"]})
-        if sub_db:
-            name = sub_db["names"][0]["name"]
-            for n in sub_db["names"]:
-                if n["lang"] == "en":
-                    name = n["name"]
-                    break
-            rel_entry = {
-                "id": sub_db["_id"],
-                "name": name,
-                "level": sub_db["level"]
-            }
-            relations.append(rel_entry)
-        else:
-            print("Could not find related concept in colombia db")
+    if sub["related_concepts"]:
+        for rel in sub["related_concepts"]:
+            sub_db = collection.find_one(
+                {"external_ids.id": rel["id"]})
+            if sub_db:
+                name = sub_db["names"][0]["name"]
+                for n in sub_db["names"]:
+                    if n["lang"] == "en":
+                        name = n["name"]
+                        break
+                rel_entry = {
+                    "id": sub_db["_id"],
+                    "name": name,
+                    "level": sub_db["level"]
+                }
+                relations.append(rel_entry)
+            else:
+                print("Could not find related concept in colombia db")
+
+    if sub["ancestors"]:
+        for rel in sub["ancestors"]:
+            sub_db = collection.find_one(
+                {"external_ids.id": rel["id"]})
+            if sub_db:
+                name = sub_db["names"][0]["name"]
+                for n in sub_db["names"]:
+                    if n["lang"] == "en":
+                        name = n["name"]
+                        break
+                rel_entry = {
+                    "id": sub_db["_id"],
+                    "name": name,
+                    "level": sub_db["level"]
+                }
+                relations.append(rel_entry)
+            else:
+                print("Could not find related concept in colombia db")
     if len(relations) > 0:
         collection.update_one({"external_ids.id": sub["id"]}, {
             "$set": {"relations": relations}})
