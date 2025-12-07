@@ -36,12 +36,10 @@ def parse_openalex(reg, empty_work, verbose=0):
         reg["publication_date"], "%Y-%m-%d").timestamp())
     entry["types"].append(
         {"provenance": "openalex", "source": "openalex", "type": reg["type"], "level": None})
-    entry["types"].append(
-        {"provenance": "openalex", "source": "crossref", "type": reg["type_crossref"], "level": None})
 
     entry["citations_by_year"] = reg["counts_by_year"]
 
-    if reg["primary_location"] and reg["primary_location"]['source']:
+    if reg["primary_location"] and 'source' in reg["primary_location"].keys() and reg["primary_location"]['source']:
         entry["source"] = {
             "name": reg["primary_location"]['source']["display_name"],
             "external_ids": [{"source": "openalex", "id": reg["primary_location"]['source']["id"]}]
@@ -109,7 +107,7 @@ def parse_openalex(reg, empty_work, verbose=0):
             if inst:
                 aff_entry = {
                     "external_ids": [{"source": "openalex", "id": inst["id"]}],
-                    "name": inst["display_name"]
+                    "name": inst["display_name"] if "display_name" in inst.keys() else "" 
                 }
                 if "ror" in inst.keys():
                     aff_entry["external_ids"].append(
@@ -117,12 +115,12 @@ def parse_openalex(reg, empty_work, verbose=0):
                 affs.append(aff_entry)
         author = author["author"]
         author_entry = {
-            "external_ids": [{"source": "openalex", "id": author["id"]}],
+            "external_ids": [{"source": "openalex", "id": author["id"] if "id" in author.keys() else ""}],
             "full_name": author["display_name"],
             "types": [],
             "affiliations": affs
         }
-        if author["orcid"]:
+        if "orcid" in author.keys() and author["orcid"]:
             author_entry["external_ids"].append(
                 {"source": "orcid", "id": author["orcid"].replace("https://orcid.org/", "")})
         entry["authors"].append(author_entry)
@@ -138,6 +136,6 @@ def parse_openalex(reg, empty_work, verbose=0):
     entry["subjects"].append({"source": "openalex", "subjects": subjects})
 
     # topics section
-    entry["primary_topic"] = reg["primary_topic"]
+    entry["primary_topic"] = reg["primary_topic"] if "primary_topic" in reg.keys() else {} 
     entry["topics"] = reg["topics"]
     return entry
