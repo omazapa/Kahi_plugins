@@ -1958,19 +1958,24 @@ def normalize_source_scimago_best_quartile(collection) -> None:
                         "branches": [
                             {"case": {
                                 "$eq": ["$ranking.rank", "Q1"]
-                                }, "then": 1},
+                                },
+                                "then": 1},
                             {"case": {
                                 "$eq": ["$ranking.rank", "Q2"]
-                                }, "then": 2},
+                                },
+                                "then": 2},
                             {"case": {
                                 "$eq": ["$ranking.rank", "Q3"]
-                                }, "then": 3},
+                                },
+                                "then": 3},
                             {"case": {
                                 "$eq": ["$ranking.rank", "Q4"]
-                                }, "then": 4},
+                                },
+                                "then": 4},
                             {"case": {
                                 "$eq": ["$ranking.rank", "-"]
-                                }, "then": 5}
+                                },
+                                "then": 5}
                         ],
                         "default": 6
                     }
