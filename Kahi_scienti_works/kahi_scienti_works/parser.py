@@ -181,7 +181,7 @@ def parse_scienti(reg, empty_work, doi=None, verbose=0):
     # external_ids are added to the author entry for searching purposes
     author = reg["author"][0]
     author_entry = {
-        "full_name": author["TXT_TOTAL_NAMES"],
+        "full_name": re.sub(r'\s+', ' ', author["TXT_TOTAL_NAMES"].strip()),
         "affiliations": affiliations,
         "external_ids": [{"provenance": "scienti", "source": "scienti", "id": {"COD_RH": author["COD_RH"]}}]
     }

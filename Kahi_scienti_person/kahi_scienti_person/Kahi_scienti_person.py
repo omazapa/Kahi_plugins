@@ -351,15 +351,15 @@ class Kahi_scienti_person(KahiBase):
                                     "id": scopus_id})
                     # implement the right split names here
                     entry["first_names"] = title_case(
-                        author["TXT_NAMES_RH"]).strip().split()
+                        re.sub(r'\s+', ' ', author["TXT_NAMES_RH"].strip())).strip().split()
                     entry["last_names"] = []
                     if "TXT_PRIM_APELL" in author.keys():
                         entry["last_names"].append(
-                            title_case(author["TXT_PRIM_APELL"]))
+                            title_case(re.sub(r'\s+', ' ', author["TXT_PRIM_APELL"].strip())))
                     if "TXT_SEG_APELL" in author.keys():
                         if author["TXT_SEG_APELL"] is not None:
                             entry["last_names"].append(
-                                title_case(author["TXT_SEG_APELL"]))
+                                title_case(re.sub(r'\s+', ' ', author["TXT_SEG_APELL"].strip())))
                     entry["full_name"] = " ".join(
                         entry["first_names"]) + " " + " ".join(entry["last_names"])
                     entry["initials"] = "".join(
@@ -731,15 +731,15 @@ class Kahi_scienti_person(KahiBase):
                             author["TXT_NME_RH"]).strip().split()
                     elif "TXT_NAMES_RH" in author.keys() and author["TXT_NAMES_RH"]:
                         entry["first_names"] = title_case(
-                            author["TXT_NAMES_RH"]).strip().split()
+                            re.sub(r'\s+', ' ', author["TXT_NAMES_RH"].strip())).strip().split()
                     entry["last_names"] = []
                     if "TXT_PRIM_APELL" in author.keys():
                         entry["last_names"].append(
-                            title_case(author["TXT_PRIM_APELL"]))
+                            title_case(re.sub(r'\s+', ' ', author["TXT_PRIM_APELL"].strip())))
                     if "TXT_SEG_APELL" in author.keys():
                         if author["TXT_SEG_APELL"] is not None:
                             entry["last_names"].append(
-                                title_case(author["TXT_SEG_APELL"]))
+                                title_case(re.sub(r'\s+', ' ', author["TXT_SEG_APELL"].strip())))
                     entry["full_name"] = " ".join(
                         entry["first_names"]) + " " + " ".join(entry["last_names"])
                     entry["initials"] = "".join(
