@@ -2026,6 +2026,15 @@ def normalize_source_scimago_best_quartile(collection) -> None:
 
 
 def normalize_source_open_access_status(collection) -> None:
+    """
+    Function to categorize sources as diamond, gold, hybrid, or closed based on
+    open access start year and APC charges, and store this status on the source.
+
+    Parameters
+    ----------
+    collection : pymongo.collection.Collection
+        Collection where the sources are stored
+    """
     collection.aggregate([
         {
             "$project": {
