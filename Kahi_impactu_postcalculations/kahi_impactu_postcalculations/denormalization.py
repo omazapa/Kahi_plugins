@@ -2033,7 +2033,7 @@ def normalize_source_scimago_best_quartile(collection) -> None:
                 "whenNotMatched": "discard"
             }
         }
-    ])
+    ], allowDiskUse=True)
 
 
 def normalize_source_open_access_status(collection) -> None:
