@@ -1460,6 +1460,17 @@ def clean_person_empty_affiliations_array(collection) -> None:
 
 
 def normalize_source_apc_usd(collection) -> None:
+    """
+    Function to normalize APC charges to USD in the sources collection.
+
+    Uses a MongoDB aggregation pipeline to compute APC values in USD
+    based on existing APC charges and currencies for each source.
+
+    Parameters
+    ----------
+    collection : pymongo.collection.Collection
+        Sources collection where APC information is stored.
+    """
     collection.aggregate([
         {
             "$addFields": {
