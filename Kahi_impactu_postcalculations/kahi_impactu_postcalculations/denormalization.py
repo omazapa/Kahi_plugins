@@ -1926,6 +1926,19 @@ def normalize_source_apc_usd(collection) -> None:
 
 
 def normalize_source_scimago_best_quartile(collection) -> None:
+    """
+    Function to normalize the Scimago Best Quartile ranking for sources.
+
+    This aggregation selects, for each source, the best available Scimago
+    Best Quartile value (prioritizing Q1 over lower quartiles and other
+    values) and stores it in the ``scimago_best_quartile`` field of the
+    ``sources`` collection.
+
+    Parameters
+    ----------
+    collection : pymongo.collection.Collection
+        Collection where the sources are stored.
+    """
     collection.aggregate([
         {
             "$project": {
