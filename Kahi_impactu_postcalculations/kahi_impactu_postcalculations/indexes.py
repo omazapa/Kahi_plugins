@@ -52,4 +52,4 @@ def create_indexes(db):
     db["sources"].create_index({"apc.charges": 1})
     db["sources"].create_index({"publication_time_weeks": 1})
     db["sources"].create_index({"licenses.type": 1})
-    db["sources"].create_index({"open_access_start_year": 1, "apc.charges": 1})
+    db["sources"].create_index({"topics.id": 1})
