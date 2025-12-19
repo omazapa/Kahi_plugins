@@ -2197,6 +2197,142 @@ def normalize_source_open_access_status(collection) -> None:
     ], allowDiskUse=True)
 
 
+def normalize_source_topics(collection) -> None:
+    collection.aggregate(
+        [
+            {
+                "$project": {
+                    "_id": 1,
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "works",
+                    "localField": "_id",
+                    "foreignField": "source.id",
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "primary_topic.id": {
+                                    "$exists": True,
+                                    "$ne": None,
+                                }
+                            }
+                        },
+                        {
+                            "$count": "total",
+                        },
+                    ],
+                    "as": "works_count_result",
+                }
+            },
+            {
+                "$addFields": {
+                    "works_count": {
+                        "$ifNull": [
+                            {
+                                "$arrayElemAt": [
+                                    "$works_count_result.total",
+                                    0,
+                                ]
+                            },
+                            0,
+                        ]
+                    }
+                }
+            },
+            {
+                "$addFields": {
+                    "topics_threshold": {
+                        "$multiply": [
+                            "$works_count",
+                            0.01,
+                        ]
+                    }
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "works",
+                    "localField": "_id",
+                    "foreignField": "source.id",
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "primary_topic.id": {
+                                    "$exists": True,
+                                    "$ne": None,
+                                }
+                            }
+                        },
+                        {
+                            "$project": {
+                                "_id": 0,
+                                "primary_topic": 1,
+                            }
+                        },
+                        {
+                            "$group": {
+                                "_id": "$primary_topic.id",
+                                "count": {"$sum": 1},
+                                "topic": {"$first": "$primary_topic"},
+                            }
+                        },
+                    ],
+                    "as": "all_topics",
+                }
+            },
+            {
+                "$addFields": {
+                    "topics": {
+                        "$cond": {
+                            "if": {"$eq": ["$works_count", 0]},
+                            "then": [],
+                            "else": {
+                                "$map": {
+                                    "input": {
+                                        "$filter": {
+                                            "input": "$all_topics",
+                                            "as": "topic",
+                                            "cond": {
+                                                "$gte": [
+                                                    "$$topic.count",
+                                                    "$topics_threshold",
+                                                ]
+                                            },
+                                        }
+                                    },
+                                    "as": "filtered_topic",
+                                    "in": {
+                                        "id": "$$filtered_topic.topic.id",
+                                        "display_name": (
+                                            "$$filtered_topic.topic.display_name"
+                                        ),
+                                        "subfield": (
+                                            "$$filtered_topic.topic.subfield"
+                                        ),
+                                        "field": "$$filtered_topic.topic.field",
+                                        "domain": "$$filtered_topic.topic.domain",
+                                    },
+                                }
+                            },
+                        }
+                    }
+                }
+            },
+            {
+                "$merge": {
+                    "into": "sources",
+                    "on": "_id",
+                    "whenMatched": "merge",
+                    "whenNotMatched": "discard",
+                }
+            },
+        ],
+        allowDiskUse=True,
+    )
+
+
 DENORMALIZATION_PIPELINES = {
     "works": [
         set_works_authors_affiliations_country,
@@ -2221,6 +2357,7 @@ DENORMALIZATION_PIPELINES = {
         normalize_source_apc_usd,
         normalize_source_scimago_best_quartile,
         normalize_source_open_access_status,
+        normalize_source_topics
     ],
     "person": [
         set_person_affiliations_relations,
