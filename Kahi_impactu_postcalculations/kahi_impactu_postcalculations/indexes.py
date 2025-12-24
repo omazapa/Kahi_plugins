@@ -45,3 +45,11 @@ def create_indexes(db):
         "ranking.rank": 1
     })
     db["sources"].create_index({"_id": 1, "ranking": 1})
+    db["sources"].create_index({"open_access_status": 1})
+    db["sources"].create_index({"scimago_best_quartile": 1})
+    db["sources"].create_index({"apc.apc_usd": 1})
+    db["sources"].create_index({"open_access_start_year": 1})
+    db["sources"].create_index({"apc.charges": 1})
+    db["sources"].create_index({"publication_time_weeks": 1})
+    db["sources"].create_index({"licenses.type": 1})
+    db["sources"].create_index({"topics.id": 1})

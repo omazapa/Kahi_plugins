@@ -1459,6 +1459,880 @@ def clean_person_empty_affiliations_array(collection) -> None:
     )
 
 
+def normalize_source_apc_usd(collection) -> None:
+    """
+    Function to normalize APC charges to USD in the sources collection.
+
+    Uses a MongoDB aggregation pipeline to compute APC values in USD
+    based on existing APC charges and currencies for each source.
+
+    Parameters
+    ----------
+    collection : pymongo.collection.Collection
+        Sources collection where APC information is stored.
+    """
+    collection.aggregate([
+        {
+            "$addFields": {
+                "apc.apc_usd": {
+                    "$cond": {
+                        "if": {
+                            "$and": [
+                                {
+                                    "$ne": [
+                                        {"$type": "$apc.charges"},
+                                        "missing"
+                                    ]
+                                },
+                                {
+                                    "$ne": [
+                                        {"$type": "$apc.currency"},
+                                        "missing"
+                                    ]
+                                },
+                                {"$ne": ["$apc.charges", None]},
+                                {"$ne": ["$apc.currency", None]}
+                            ]
+                        },
+                        "then": {
+                            "$round": [
+                                {
+                                    "$switch": {
+                                        "branches": [
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "ARS"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        1484.75
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "AUD"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        1.540433
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "BDT"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        122.041105
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "BRL"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        5.384517
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "CAD"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        1.403056
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "CHF"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        0.795967
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "CNY"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        7.093
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "CZK"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        20.94248
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "EGP"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        47.544911
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "EUR"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        0.861265
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "GBP"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        0.747696
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "IDR"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        16582.079612
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "INR"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        88.029318
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "IQD"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        1310.124452
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "IRR"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        42443.577735
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "JPY"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        151.513219
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "KRW"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        1430.007464
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "MXN"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        18.436318
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "NGN"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        1464.430761
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "PEN"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        3.382431
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "PKR"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        283.341893
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "PLN"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        3.653606
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "RON"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        4.377858
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "RSD"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        100.941411
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "RUB"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        81.334585
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "TRY"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        41.977679
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "UAH"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        41.762775
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "USD"
+                                                    ]
+                                                },
+                                                "then": "$apc.charges"
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "ZAR"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        17.380682
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "case": {
+                                                    "$eq": [
+                                                        "$apc.currency",
+                                                        "XOF"
+                                                    ]
+                                                },
+                                                "then": {
+                                                    "$divide": [
+                                                        "$apc.charges",
+                                                        558.165538
+                                                    ]
+                                                }
+                                            }
+                                        ],
+                                        "default": None
+                                    }
+                                },
+                                2
+                            ]
+                        },
+                        "else": "$$REMOVE"
+                    }
+                }
+            }
+        },
+        {
+            "$merge": {
+                "into": "sources",
+                "whenMatched": "merge",
+                "whenNotMatched": "discard"
+            }
+        }
+    ])
+
+
+def normalize_source_scimago_best_quartile(collection) -> None:
+    """
+    Function to normalize the Scimago Best Quartile ranking for sources.
+
+    This aggregation selects, for each source, the best available Scimago
+    Best Quartile value (prioritizing Q1 over lower quartiles and other
+    values) and stores it in the ``scimago_best_quartile`` field of the
+    ``sources`` collection.
+
+    Parameters
+    ----------
+    collection : pymongo.collection.Collection
+        Collection where the sources are stored.
+    """
+    collection.aggregate([
+        {
+            "$project": {
+                "_id": 1,
+                "ranking": 1
+            }
+        },
+        {
+            "$match": {
+                "ranking.source": {
+                    "$in": ["scimago Best Quartile", "Scimago Best Quartile"]
+                }
+            }
+        },
+        {
+            "$unwind": "$ranking"
+        },
+        {
+            "$match": {
+                "ranking.source": {
+                    "$in": ["scimago Best Quartile", "Scimago Best Quartile"]
+                },
+                "ranking.rank": {"$exists": True, "$nin": [None, ""]}
+            }
+        },
+        {
+            "$addFields": {
+                "ranking_priority": {
+                    "$switch": {
+                        "branches": [
+                            {
+                                "case": {
+                                    "$eq": ["$ranking.rank", "Q1"]
+                                },
+                                "then": 1
+                            },
+                            {
+                                "case": {
+                                    "$eq": ["$ranking.rank", "Q2"]
+                                },
+                                "then": 2
+                            },
+                            {
+                                "case": {
+                                    "$eq": ["$ranking.rank", "Q3"]
+                                },
+                                "then": 3
+                            },
+                            {
+                                "case": {
+                                    "$eq": ["$ranking.rank", "Q4"]
+                                },
+                                "then": 4
+                            },
+                            {
+                                "case": {
+                                    "$eq": ["$ranking.rank", "-"]
+                                },
+                                "then": 5
+                            }
+                        ],
+                        "default": 6
+                    }
+                }
+            }
+        },
+        {
+            "$sort": {"_id": 1, "ranking_priority": 1}
+        },
+        {
+            "$group": {
+                "_id": "$_id",
+                "scimago_best_quartile": {"$first": "$ranking.rank"}
+            }
+        },
+        {
+            "$merge": {
+                "into": "sources",
+                "on": "_id",
+                "whenMatched": "merge",
+                "whenNotMatched": "discard"
+            }
+        }
+    ], allowDiskUse=True)
+
+
+def normalize_source_open_access_status(collection) -> None:
+    """
+    Function to categorize sources as diamond, gold, hybrid, or closed based on
+    open access start year and APC charges, and store this status on the source.
+
+    Parameters
+    ----------
+    collection : pymongo.collection.Collection
+        Collection where the sources are stored
+    """
+    collection.aggregate([
+        {
+            "$project": {
+                "_id": 1,
+                "open_access_start_year": 1,
+                "apc": 1
+            }
+        },
+        {
+            "$addFields": {
+                "open_access_status": {
+                    "$switch": {
+                        "branches": [
+                            {
+                                "case": {
+                                    "$and": [
+                                        {
+                                            "$ifNull": [
+                                                "$open_access_start_year",
+                                                False
+                                            ]
+                                        },
+                                        {
+                                            "$gt": [
+                                                "$open_access_start_year",
+                                                0
+                                            ]
+                                        },
+                                        {
+                                            "$or": [
+                                                {
+                                                    "$eq": [
+                                                        {
+                                                            "$ifNull": [
+                                                                "$apc.charges",
+                                                                0
+                                                            ]
+                                                        },
+                                                        0
+                                                    ]
+                                                },
+                                                {"$eq": ["$apc", {}]},
+                                                {
+                                                    "$not": {
+                                                        "$ifNull": [
+                                                            "$apc.charges",
+                                                            False
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "then": "diamond"
+                            },
+                            {
+                                "case": {
+                                    "$and": [
+                                        {
+                                            "$ifNull": [
+                                                "$open_access_start_year",
+                                                False
+                                            ]
+                                        },
+                                        {
+                                            "$gt": [
+                                                "$open_access_start_year",
+                                                0
+                                            ]
+                                        },
+                                        {
+                                            "$gt": [
+                                                {
+                                                    "$ifNull": [
+                                                        "$apc.charges",
+                                                        0
+                                                    ]
+                                                },
+                                                0
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "then": "gold"
+                            },
+                            {
+                                "case": {
+                                    "$and": [
+                                        {
+                                            "$or": [
+                                                {
+                                                    "$not": {
+                                                        "$ifNull": [
+                                                            "$open_access_start_year",  # noqa: E501
+                                                            False
+                                                        ]
+                                                    }
+                                                },
+                                                {
+                                                    "$eq": [
+                                                        "$open_access_start_year",  # noqa: E501
+                                                        0
+                                                    ]
+                                                },
+                                                {
+                                                    "$eq": [
+                                                        "$open_access_start_year",  # noqa: E501
+                                                        None
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "$gt": [
+                                                {
+                                                    "$ifNull": [
+                                                        "$apc.charges",
+                                                        0
+                                                    ]
+                                                },
+                                                0
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "then": "hybrid"
+                            }
+                        ],
+                        "default": "closed"
+                    }
+                }
+            }
+        },
+        {
+            "$project": {
+                "_id": 1,
+                "open_access_status": 1
+            }
+        },
+        {
+            "$merge": {
+                "into": "sources",
+                "on": "_id",
+                "whenMatched": "merge",
+                "whenNotMatched": "discard"
+            }
+        }
+    ], allowDiskUse=True)
+
+
+def normalize_source_topics(collection) -> None:
+    collection.aggregate(
+        [
+            {
+                "$project": {
+                    "_id": 1,
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "works",
+                    "localField": "_id",
+                    "foreignField": "source.id",
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "primary_topic.id": {
+                                    "$exists": True,
+                                    "$ne": None,
+                                }
+                            }
+                        },
+                        {
+                            "$count": "total",
+                        },
+                    ],
+                    "as": "works_count_result",
+                }
+            },
+            {
+                "$addFields": {
+                    "works_count": {
+                        "$ifNull": [
+                            {
+                                "$arrayElemAt": [
+                                    "$works_count_result.total",
+                                    0,
+                                ]
+                            },
+                            0,
+                        ]
+                    }
+                }
+            },
+            {
+                "$addFields": {
+                    "topics_threshold": {
+                        "$multiply": [
+                            "$works_count",
+                            0.01,
+                        ]
+                    }
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "works",
+                    "localField": "_id",
+                    "foreignField": "source.id",
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "primary_topic.id": {
+                                    "$exists": True,
+                                    "$ne": None,
+                                }
+                            }
+                        },
+                        {
+                            "$project": {
+                                "_id": 0,
+                                "primary_topic": 1,
+                            }
+                        },
+                        {
+                            "$group": {
+                                "_id": "$primary_topic.id",
+                                "count": {"$sum": 1},
+                                "topic": {"$first": "$primary_topic"},
+                            }
+                        },
+                    ],
+                    "as": "all_topics",
+                }
+            },
+            {
+                "$addFields": {
+                    "topics": {
+                        "$cond": {
+                            "if": {"$eq": ["$works_count", 0]},
+                            "then": [],
+                            "else": {
+                                "$map": {
+                                    "input": {
+                                        "$filter": {
+                                            "input": "$all_topics",
+                                            "as": "topic",
+                                            "cond": {
+                                                "$gte": [
+                                                    "$$topic.count",
+                                                    "$topics_threshold",
+                                                ]
+                                            },
+                                        }
+                                    },
+                                    "as": "filtered_topic",
+                                    "in": {
+                                        "id": "$$filtered_topic.topic.id",
+                                        "display_name": (
+                                            "$$filtered_topic.topic.display_name"
+                                        ),
+                                        "subfield": (
+                                            "$$filtered_topic.topic.subfield"
+                                        ),
+                                        "field": "$$filtered_topic.topic.field",
+                                        "domain": "$$filtered_topic.topic.domain",
+                                    },
+                                }
+                            },
+                        }
+                    }
+                }
+            },
+            {
+                "$merge": {
+                    "into": "sources",
+                    "on": "_id",
+                    "whenMatched": "merge",
+                    "whenNotMatched": "discard",
+                }
+            },
+        ],
+        allowDiskUse=True,
+    )
+
+
 DENORMALIZATION_PIPELINES = {
     "works": [
         set_works_authors_affiliations_country,
@@ -1480,6 +2354,10 @@ DENORMALIZATION_PIPELINES = {
         normalize_sources_products_count,
         set_sources_citations_count_openalex,
         normalize_sources_citations_count,
+        normalize_source_apc_usd,
+        normalize_source_scimago_best_quartile,
+        normalize_source_open_access_status,
+        normalize_source_topics
     ],
     "person": [
         set_person_affiliations_relations,
