@@ -219,9 +219,6 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
     verbose : int
         verbosity level.
     """
-    verbose : int
-        verbosity level.
-    """
     if collection.find_one({"external_ids.id": dspace_reg["_id"]}):
         if verbose > 4:
             print("Record with id {} already exists in the works collection".format(
