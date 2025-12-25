@@ -31,9 +31,9 @@ def parse_openalex(reg, empty_work, verbose=0):
         entry["external_ids"].append(
             {"provenance": "openalex", "source": source, "id": idx})
     entry["doi"] = reg["doi"]
-    entry["year_published"] = reg["publication_year"]
+    entry["year_published"] = reg["publication_year"] if "publication_year" in reg.keys() else ""
     entry["date_published"] = int(dt.strptime(
-        reg["publication_date"], "%Y-%m-%d").timestamp())
+        reg["publication_date"], "%Y-%m-%d").timestamp()) if "publication_date" in reg.keys() else ""
     entry["types"].append(
         {"provenance": "openalex", "source": "openalex", "type": reg["type"], "level": None})
 
@@ -86,11 +86,15 @@ def parse_openalex(reg, empty_work, verbose=0):
     if "apc_paid" in reg.keys():
         if reg["apc_paid"]:
             entry["apc"]["paid"] = {"value": reg["apc_paid"]["value"], "currency": reg["apc_paid"]["currency"],
-                                    "value_usd": reg["apc_paid"]["value_usd"], "provenance": "openalex"}
+                                    "provenance": "openalex"}
+            if "value_usd" in reg["apc_paid"].keys():
+                entry["apc"]["paid"]["value_usd"] = reg["apc_paid"]["value_usd"],
     if "apc_list" in reg.keys():
         if reg["apc_list"]:
             entry["apc"]["list"] = {"value": reg["apc_list"]["value"], "currency": reg["apc_list"]["currency"],
-                                    "value_usd": reg["apc_list"]["value_usd"], "provenance": "openalex"}
+                                    "provenance": "openalex"}
+            if "value_usd" in reg["apc_list"].keys():
+                entry["apc"]["list"]["value_usd"] = reg["apc_list"]["value_usd"],
     if "abstract_inverted_index" in reg.keys():
         if reg["abstract_inverted_index"]:
             abstract = inverted_index_to_text(reg["abstract_inverted_index"])
@@ -107,7 +111,7 @@ def parse_openalex(reg, empty_work, verbose=0):
             if inst:
                 aff_entry = {
                     "external_ids": [{"source": "openalex", "id": inst["id"]}],
-                    "name": inst["display_name"] if "display_name" in inst.keys() else "" 
+                    "name": inst["display_name"] if "display_name" in inst.keys() else ""
                 }
                 if "ror" in inst.keys():
                     aff_entry["external_ids"].append(
@@ -136,6 +140,7 @@ def parse_openalex(reg, empty_work, verbose=0):
     entry["subjects"].append({"source": "openalex", "subjects": subjects})
 
     # topics section
-    entry["primary_topic"] = reg["primary_topic"] if "primary_topic" in reg.keys() else {} 
+    entry["primary_topic"] = reg["primary_topic"] if "primary_topic" in reg.keys() else {
+    }
     entry["topics"] = reg["topics"]
     return entry
