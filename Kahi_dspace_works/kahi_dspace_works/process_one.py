@@ -119,6 +119,10 @@ def process_one_insert(entry, affiliation, db, collection, es_handler, verbose):
     -----------
     entry : dict
         entry to be inserted.
+    affiliation : dict | None
+        affiliation record, or None if affiliation is not found.
+    db : pymongo.database.Database
+        database object to kahi(ETL) database.
     collection : pymongo.collection.Collection
         collection object to kahi(ETL) database.
     es_handler : elasticsearch.Elasticsearch
@@ -137,22 +141,25 @@ def process_one_insert(entry, affiliation, db, collection, es_handler, verbose):
             author_normalized = author["full_name"]
             author_normalized = unidecode(author_normalized).lower()
             priotiry_source = ["staff", "scienti", "minciencias"]
-            author_found = db['person'].find_one(
-                {"full_name": author_normalized, "affiliations.id": affiliation["id"], "updated.source": {
-                    "$in": priotiry_source}},
-                {"full_name": 1, "updated": 1},
-                collation={"locale": "es", "strength": 1}
-            )
-            if not author_found:
+            author_found = None
+            if affiliation is not None:
                 author_found = db['person'].find_one(
-                    {"full_name": author_normalized,
-                        "affiliations.id": affiliation["id"]},
+                    {"full_name": author_normalized, "affiliations.id": affiliation["id"], "updated.source": {
+                        "$in": priotiry_source}},
                     {"full_name": 1, "updated": 1},
                     collation={"locale": "es", "strength": 1}
                 )
+                if not author_found:
+                    author_found = db['person'].find_one(
+                        {"full_name": author_normalized,
+                            "affiliations.id": affiliation["id"]},
+                        {"full_name": 1, "updated": 1},
+                        collation={"locale": "es", "strength": 1}
+                    )
             if author_found:
                 author["id"] = author_found["_id"]
-                author["affiliations"].append(affiliation)
+                if affiliation is not None:
+                    author["affiliations"].append(affiliation)
         del author["first_names"]
         del author["last_names"]
         del author["initials"]
@@ -195,8 +202,8 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
     -----------
     dspace_reg : dict
         dspace record.
-    affiliation : dict
-        affiliation record.
+    affiliation : dict | None
+        affiliation record, or None if affiliation is not found.
     base_url : str
         base url of the dspace instance.
     db : pymongo.database.Database
