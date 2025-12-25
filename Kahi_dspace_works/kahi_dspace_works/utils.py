@@ -67,10 +67,12 @@ def process_affiliation(ror_id, db):
 
     Returns
     -------
-    dict
-        affiliation processed.
+    dict | None
+        affiliation processed or None if affiliation is not found.
     """
     aff_rec = db["affiliations"].find_one({"external_ids.id": ror_id})
+    if aff_rec is None:
+        return None
     aff = {}
     aff["id"] = aff_rec["_id"]
     aff["name"] = next((i["name"]

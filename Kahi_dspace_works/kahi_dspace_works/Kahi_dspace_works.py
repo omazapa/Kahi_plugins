@@ -147,6 +147,9 @@ class Kahi_dspace_works(KahiBase):
                 f"INFO: Processing repository {repository['institution_id']} collection {repository['collection_name']} with url {repository['repository_url']}")
             affiliation = process_affiliation(
                 repository["institution_id"], self.db)
+            if affiliation is None:
+                print(
+                    f"WARNING: Affiliation not found for institution {repository['institution_id']}, processing without affiliation")
             base_url = repository["repository_url"]
             dspace_collection = dsapce_db[repository["collection_name"]]
             self.process_repository(affiliation, base_url, dspace_collection)
