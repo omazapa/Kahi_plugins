@@ -386,7 +386,7 @@ def process_one_insert(oa_reg, db, collection, empty_work, es_handler, verbose=0
     # insert in elasticsearch
     if es_handler:
         work = {}
-        work["title"] = entry["titles"][0]["title"]
+        work["title"] = entry["titles"][0]["title"] if entry["titles"] else ""
         work["source"] = entry["source"]["name"] if "name" in entry["source"].keys() else ""
         work["year"] = entry["year_published"]
         work["volume"] = entry["bibliographic_info"]["volume"] if "volume" in entry["bibliographic_info"].keys() else ""
