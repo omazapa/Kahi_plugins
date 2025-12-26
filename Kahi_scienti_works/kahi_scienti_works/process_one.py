@@ -830,16 +830,18 @@ def process_one(scienti_reg, db, collection, empty_work, es_handler, similarity,
                     authors.append(author["full_name"])
             work["authors"] = authors
             work["provenance"] = "scienti"
-            response = es_handler.search_work(
-                title=work["title"],
-                source=work["source"],
-                year=str(work["year"]),
-                authors=authors,
-                volume=work["volume"],
-                issue=work["issue"],
-                page_start=work["first_page"],
-                page_end=work["last_page"]
-            )
+            response = None
+            if work["title"] and work["title"].strip():
+                response = es_handler.search_work(
+                    title=work["title"],
+                    source=work["source"],
+                    year=str(work["year"]),
+                    authors=authors,
+                    volume=work["volume"],
+                    issue=work["issue"],
+                    page_start=work["first_page"],
+                    page_end=work["last_page"]
+                )
 
             if response:  # register already on db... update accordingly
                 colav_reg = collection.find_one(

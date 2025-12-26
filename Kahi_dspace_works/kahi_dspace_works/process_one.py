@@ -269,19 +269,21 @@ def process_one(dspace_reg, affiliation, base_url, db, collection, empty_work, e
                 authors.append(str_normilize(author["full_name"]))
         work["authors"] = authors
         work["provenance"] = "dspace"
-        responses = es_handler.search_work(
-            title=str_normilize(work["title"]),
-            source=work["source"],
-            year=str(work["year"]),
-            authors=authors,
-            volume=work["volume"],
-            issue=work["issue"],
-            page_start=work["first_page"],
-            page_end=work["last_page"],
-            use_es_thold=True,
-            es_thold=0,
-            hits=20
-        )
+        responses = None
+        if work["title"] and work["title"].strip():
+            responses = es_handler.search_work(
+                title=str_normilize(work["title"]),
+                source=work["source"],
+                year=str(work["year"]),
+                authors=authors,
+                volume=work["volume"],
+                issue=work["issue"],
+                page_start=work["first_page"],
+                page_end=work["last_page"],
+                use_es_thold=True,
+                es_thold=0,
+                hits=20
+            )
         if responses:
             found = False
             for response in responses:

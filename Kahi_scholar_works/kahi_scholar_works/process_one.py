@@ -308,21 +308,23 @@ def process_one(scholar_reg, db, collection, empty_work, similarity, es_handler,
         if es_handler:
             # Search in elasticsearch
             year = str(scholar_reg["year"])
-            response = es_handler.search_work(
-                title=scholar_reg["title"],
-                source=scholar_reg["journal"],
-                year=year if year != "" else "-1",  # FIXME, term in ES have to be fixed
-                authors=[auth.split(", ")[-1] + " " + auth.split(", ")[0]
-                         for auth in scholar_reg["author"].split(" and ")],
-                volume=scholar_reg["volume"] if "volume" in scholar_reg.keys(
-                ) else "",
-                issue=scholar_reg["issue"] if "issue" in scholar_reg.keys(
-                ) else "",
-                page_start=scholar_reg["pages"].split(
-                    "--")[0] if "pages" in scholar_reg.keys() else "",
-                page_end=scholar_reg["pages"].split(
-                    "--")[-1] if "pages" in scholar_reg.keys() else "",
-            )
+            response = None
+            if scholar_reg["title"] and scholar_reg["title"].strip():
+                response = es_handler.search_work(
+                    title=scholar_reg["title"],
+                    source=scholar_reg["journal"],
+                    year=year if year != "" else "-1",  # FIXME, term in ES have to be fixed
+                    authors=[auth.split(", ")[-1] + " " + auth.split(", ")[0]
+                             for auth in scholar_reg["author"].split(" and ")],
+                    volume=scholar_reg["volume"] if "volume" in scholar_reg.keys(
+                    ) else "",
+                    issue=scholar_reg["issue"] if "issue" in scholar_reg.keys(
+                    ) else "",
+                    page_start=scholar_reg["pages"].split(
+                        "--")[0] if "pages" in scholar_reg.keys() else "",
+                    page_end=scholar_reg["pages"].split(
+                        "--")[-1] if "pages" in scholar_reg.keys() else "",
+                )
 
             if response:  # register already on db... update accordingly
                 colav_reg = collection.find_one(
