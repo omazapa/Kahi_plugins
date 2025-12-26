@@ -446,7 +446,7 @@ def process_one(oa_reg, config, empty_work, client, es_handler, backend, verbose
             es_handler = None
             print("WARNING: No elasticsearch configuration provided")
 
-    doi = oa_reg["doi"]
+    doi = oa_reg["doi"] if "doi" in oa_reg.keys() else "" 
 
     if doi:
         # is the doi in colavdb?
@@ -474,12 +474,12 @@ def process_one(oa_reg, config, empty_work, client, es_handler, backend, verbose
             response = es_handler.search_work(
                 title=oa_reg["title"],
                 source=source,
-                year=str(oa_reg["publication_year"]),
+                year=str(oa_reg.get("publication_year","")),
                 authors=authors,
-                volume=oa_reg["biblio"]["volume"],
-                issue=oa_reg["biblio"]["issue"],
-                page_start=oa_reg["biblio"]["first_page"],
-                page_end=oa_reg["biblio"]["last_page"],
+                volume=oa_reg["biblio"]["volume"] if "volume" in oa_reg["biblio"].keys() else "",
+                issue=oa_reg["biblio"]["issue"] if "issue" in oa_reg["biblio"].keys() else "",
+                page_start=oa_reg["biblio"]["first_page"] if "first_page" in oa_reg["biblio"].keys() else "",
+                page_end=oa_reg["biblio"]["last_page"] if "last_page" in oa_reg["biblio"].keys() else "",
             )
 
             if response:  # register already on db... update accordingly
