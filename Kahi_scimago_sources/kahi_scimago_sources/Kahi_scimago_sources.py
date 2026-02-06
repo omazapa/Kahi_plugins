@@ -4,11 +4,14 @@ from datetime import datetime as dt
 from time import time
 from pandas import read_csv
 import iso3166
+import re
 
 
 class Kahi_scimago_sources(KahiBase):
 
     config = {}
+
+    _CAT_RE = re.compile(r"^(?P<name>.+?)\s*\((?P<q>Q[1-4])\)\s*$")
 
     def __init__(self, config):
         self.config = config
@@ -25,6 +28,82 @@ class Kahi_scimago_sources(KahiBase):
         self.scimago_file_paths = self.config["scimago_sources"]["file_path"]
 
         self.already_in_db = []
+
+    def _normalize_spaces(self, s: str) -> str:
+        return " ".join(s.strip().split())
+
+    def parse_scimago_categories(self, raw: str):
+        """
+        Convert a raw scimago categories string into a list of dicts with
+        'category_name' and 'quartile' keys.
+
+        Args:
+            raw (str): Raw categories string from scimago data.
+        Returns:
+            List[Dict[str, Optional[str]]]: List of parsed categories.
+        """
+        if not raw or not isinstance(raw, str):
+            return []
+
+        out = []
+        for part in raw.split(";"):
+            item = self._normalize_spaces(part)
+            if not item:
+                continue
+
+            m = self._CAT_RE.match(item)
+            if m:
+                out.append({
+                    "category_name": self._normalize_spaces(m.group("name")),
+                    "quartile": m.group("q").strip()
+                })
+            else:
+                out.append({"category_name": item, "quartile": None})
+
+        seen = set()
+        uniq = []
+        for x in out:
+            key = (x["category_name"], x["quartile"])
+            if key not in seen:
+                seen.add(key)
+                uniq.append(x)
+        return uniq
+
+    def upsert_scimago_category_rankings(self, sjr, entry):
+        """
+        Upsert scimago category rankings into the entry's ranking list.
+        Args:
+            sjr (pd.Series): Scimago journal record.
+            entry (dict): The source entry to update.
+        """
+        entry.setdefault("ranking", [])
+
+        from_ts = int(self.scimago_start_ts)
+        to_ts = int(self.scimago_end_ts)
+        order_val = int(sjr["Rank"]) if sjr.get("Rank") else None
+
+        cats = self.parse_scimago_categories(sjr.get("Categories", ""))
+
+        existing = set()
+        for r in entry["ranking"]:
+            if r.get("source") == "scimago Category Quartile":
+                existing.add((r.get("from_date"), r.get("to_date"), r.get("category_name")))
+
+        for c in cats:
+            cat_name = c["category_name"]
+            q = c["quartile"]  # Q1..Q4
+            key = (from_ts, to_ts, cat_name)
+            if key in existing:
+                continue
+
+            entry["ranking"].append({
+                "to_date": to_ts,
+                "from_date": from_ts,
+                "rank": q,
+                "order": order_val,
+                "source": "scimago Category Quartile",
+                "category_name": cat_name
+            })
 
     def update_scimago(self, sjr, entry):
         _id = entry["_id"]
@@ -103,12 +182,20 @@ class Kahi_scimago_sources(KahiBase):
                     "order": int(sjr["Rank"]) if sjr["Rank"] else None,
                     "source": "scimago"
                 })
+        # Upsert category rankings
+        self.upsert_scimago_category_rankings(sjr, entry)
 
         scimago_subjects = []
         for cat in sjr["Categories"].split(";"):
+            cat_clean = self._normalize_spaces(cat)
+            m = self._CAT_RE.match(cat_clean)
+            if m:
+                cat_name = self._normalize_spaces(m.group("name"))
+            else:
+                cat_name = cat_clean.split(" (")[0].strip()
             scimago_subjects.append({
                 "id": "",
-                "name": cat.split(" (")[0],
+                "name": cat_name,
                 "level": None,
                 "external_ids": []
             })
@@ -234,11 +321,21 @@ class Kahi_scimago_sources(KahiBase):
                         "order": int(sjr["Rank"]) if sjr["Rank"] else None,
                         "source": "Scimago"
                     })
+
+                # Upsert category rankings
+                self.upsert_scimago_category_rankings(sjr, entry)
+
                 scimago_subjects = []
                 for cat in sjr["Categories"].split(";"):
+                    cat_clean = self._normalize_spaces(cat)
+                    m = self._CAT_RE.match(cat_clean)
+                    if m:
+                        cat_name = self._normalize_spaces(m.group("name"))
+                    else:
+                        cat_name = cat_clean.split(" (")[0].strip()
                     scimago_subjects.append({
                         "id": "",
-                        "name": cat.split(" (")[0],
+                        "name": cat_name,
                         "level": None,
                         "external_ids": []
                     })
